@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SettingFragment">
+
+
+    <LinearLayout
+        android:layout_width="318dp"
+        android:layout_height="574dp"
+        android:layout_gravity="center"
+        android:layout_margin="10dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SOS Report Setting"
+            android:textSize="25sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="Receiver"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/text_receiver"
+                android:layout_width="350dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:layout_weight="1"
+                android:textSize="18sp" />
+            <Button
+                android:id="@+id/button_search"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:text="S"/>
+
+        </LinearLayout>
+
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/dialog_background"
+            android:maxLines="10"
+            android:minLines="2"
+            android:singleLine="false"
+            android:text="SOS Function Guide\n\n• When the SOS button is activated, a message will be sent every 3 minutes to the designated recipient until the battery is depleted.\n\n• To cancel SOS, press and hold the SOS button for 5 seconds. A cancellation message will be sent, and SOS transmissions will stop."
+            android:textSize="20sp" />
+
+    </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="left"
+            android:orientation="horizontal">
+            <Button
+                android:id="@+id/button_set_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:text="Save"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="50dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+            <Button
+                android:id="@+id/button_set_start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start"
+                android:textSize="20sp" />
+
+            <Button
+                android:id="@+id/button_set_stop"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="50dp"
+                android:text="Stop"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

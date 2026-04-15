@@ -1,0 +1,89 @@
+<resources>
+    <string name="app_name">MessageBox</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="title_activity_main">Main</string>
+    <string name="title_fragment_ble">BLE Set</string>
+
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >4 characters</string>
+    <string name="login_failed">"Login failed"</string>
+
+    <string name="notifyTitle">notify</string>
+    <string name="cancel">cancel</string>
+
+    <string name="connect">con</string>
+    <string name="connected">con</string>
+    <string name="disconnect">dis</string>
+    <string name="enter">input</string>
+    <string name="connect_fail">fail</string>
+    <string name="active_disconnected">disconnect</string>
+    <string name="disconnected">disconnect</string>
+
+    <string name="ble_permission_ble_access">Requires access to Bluetooth.</string>
+    <string name="gpsNotifyMsg">Please grant access to location information to detect Bluetooth.</string>
+
+    <string name="ble_test_msg">The test message has been sent to the terminal.</string>
+    <string name="ble_test_nul_device">The terminal is not connected.</string>
+
+    <string name="main_all_delete_message">Are you sure you want to delete all messages?</string>
+
+    <string name="inbox_receive_complite">There are no messages to read from the terminal.</string>
+    <string name="inbox_msg_del_alert">Are you sure you want to delete the message?</string>
+    <string name="inbox_sub_sender">Sender</string>
+    <string name="inbox_sub_title">Title</string>
+    <string name="inbox_sub_content">Body</string>
+    <string name="inbox_sub_content_type">Type</string>
+    <string name="inbox_sub_delete">Del</string>
+    <string name="inbox_sub_save">Save</string>
+
+    <string name="outbox_msg_del_alert">Are you sure you want to delete the created message?</string>
+    <string name="outbox_msg_cancel_alert">Are you sure you want to cancel the message being created?</string>
+    <string name="out_sub_receiver_empty">Please specify the recipient.</string>
+    <string name="out_sub_msg_size_alert">Message size exceeded 240.</string>
+    <string name="out_sub_msg_insert">Saved the message.</string>
+    <string name="outbox_new_msg">New</string>
+    <string name="outbox_new_cencel">Are you sure you want to cancel writing the message?</string>
+    <string name="outbox_ble_send">BLE Send</string>
+    <string name="outbox_msg_delete">All Del</string>
+    <string name="outbox_sub_receiver">Receiver</string>
+    <string name="outbox_sub_title">Title</string>
+    <string name="outbox_sub_content">Body</string>
+    <string name="outbox_sub_subject1">New</string>
+    <string name="outbox_sub_subject2">Edit</string>
+    <string name="outbox_sub_delete">Del</string>
+    <string name="outbox_sub_edit">Edit</string>
+    <string name="outbox_sub_cancel">Cancel</string>
+    <string name="outbox_sub_save">Save</string>
+    <string name="needs_key">publicKey and publicKey must exist.</string>
+
+    <string name="setting_publickey">public key</string>
+    <string name="setting_add">Add</string>
+    <string name="setting_save">Save</string>
+    <string name="setting_privatekey">private key</string>
+    <string name="setting_hpass">hpass</string>
+    <string name="setting_null_sender">Enter the recipient\'s</string>
+    <string name="setting_key_add">file has been added.</string>
+    <string name="setting_hpass_save">Saved hpss.</string>
+    <string name="setting_publickey_del">Are you sure you want to delete the public key?</string>
+    <string name="address_del_alert">Are you sure you want to delete the numbers?</string>
+
+    <string name="status_refresh">Call Device Info</string>
+    <string name="status_battery">BATTERY</string>
+    <string name="status_inbox">InBox Queue</string>
+    <string name="status_outbox">OutBox Queue</string>
+    <string name="status_signal">Signal</string>
+    <string name="status_gps">Current Location</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome!"</string>
+
+    <string name="location_del_alert">Are you sure you want to delete the location?</string>
+
+    <string name="google_maps_key">"AIzaSyDuqwkLnWdPIqsSNH_zMMfPLPhq60Nu-bc"</string>
+
+</resources>

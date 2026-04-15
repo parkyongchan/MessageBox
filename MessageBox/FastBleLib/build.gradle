@@ -1,0 +1,33 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdk 36
+
+    defaultConfig {
+        minSdkVersion 23
+        targetSdk 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    namespace 'com.clj.fastble'
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+task makeAAR(type: Copy) {
+    from('build/outputs/aar/')
+    into('build/aarFloder/')
+    include('FastBleLib-release.aar')
+    rename ('FastBleLib-release.aar', 'FastBLE-' + "2.4.1" + '.aar' )
+}
+makeAAR.dependsOn(build)

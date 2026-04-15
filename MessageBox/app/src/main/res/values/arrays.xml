@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="unit_type">
+        <item>CAR</item>
+        <item>UAV</item>
+        <item>UAT</item>
+    </string-array>
+</resources>

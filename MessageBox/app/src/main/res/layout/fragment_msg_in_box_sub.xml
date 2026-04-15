@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MsgInBoxSubFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:layout_margin="10dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="79dp"
+                android:layout_height="wrap_content"
+                android:text="@string/inbox_sub_sender"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/text_sender"
+                android:layout_width="140dp"
+                android:layout_height="wrap_content"
+                android:textAlignment="center"
+                android:layout_weight="1"
+                android:background="@drawable/livt_view_boder"
+                android:paddingRight="15dp"
+                android:textSize="24sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="79dp"
+                android:layout_height="wrap_content"
+                android:text="@string/inbox_sub_title"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/text_title"
+                android:layout_width="141dp"
+                android:layout_height="wrap_content"
+                android:textAlignment="center"
+                android:layout_weight="1"
+                android:background="@drawable/livt_view_boder"
+                android:paddingRight="15dp"
+                android:textSize="24sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="151dp"
+                android:layout_height="wrap_content"
+                android:text="@string/inbox_sub_content"
+                android:textSize="20sp" />
+
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/inbox_sub_content_type"-->
+<!--                android:textSize="20sp" />-->
+
+<!--            <Spinner-->
+<!--                android:id="@+id/spinner_msg_type"-->
+<!--                android:layout_width="77dp"-->
+<!--                android:layout_height="match_parent"-->
+<!--                android:layout_weight="1"-->
+<!--                android:enabled="false"-->
+<!--                android:spinnerMode="dropdown"-->
+<!--                android:textSize="20sp" />-->
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="400dp"
+            android:layout_marginTop="0dp"
+            android:gravity="center|fill_vertical"
+            android:background="@drawable/livt_view_boder"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_message"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:scrollHorizontally="false"
+                android:scrollbars="vertical"
+                android:gravity="top|left"
+                android:focusable="false"
+                android:maxLength="240"
+                android:lines="16"
+                android:minLines="1"
+                android:maxLines="16"
+                android:layout_marginTop="14dp"
+                android:textSize="24sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/button_msg_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="30dp"
+                android:layout_marginRight="30dp"
+                android:layout_weight="1"
+                android:text="@string/inbox_sub_delete"
+                android:textSize="20sp" />
+
+            <Button
+                android:id="@+id/button_msg_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="30dp"
+                android:layout_marginRight="30dp"
+                android:layout_weight="1"
+                android:text="@string/inbox_sub_save"
+                android:textSize="20sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="@drawable/dialog_background">
+
+    <!-- 받은 아이콘 -->
+    <ImageView
+        android:id="@+id/image_received"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/ic_received"
+        android:contentDescription="receive icon" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/text_name"
+            android:layout_width="120dp"
+            android:layout_height="match_parent"
+            android:text="Name"
+            android:textStyle="bold"
+            android:textSize="20sp" />
+    <TextView
+        android:id="@+id/text_code_num"
+        android:layout_width="120dp"
+        android:layout_height="match_parent"
+        android:text="code"
+        android:textSize="14sp" />
+    </LinearLayout>
+
+
+    <!-- 사용자 정보 및 메시지 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/text_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Title"
+            android:background="@android:drawable/editbox_background"
+            android:padding="4dp"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/text_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Time"
+            android:textSize="14sp"
+            android:textColor="#666666" />
+    </LinearLayout>
+
+    <!-- 삭제 버튼 -->
+    <Button
+        android:id="@+id/button_delete"
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:text="del"
+        android:textSize="12sp"
+        android:layout_gravity="center_vertical" />
+
+</LinearLayout>

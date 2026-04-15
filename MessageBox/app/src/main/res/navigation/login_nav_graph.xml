@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@+id/login_fragment">
+
+    <fragment
+        android:id="@+id/login_fragment"
+        android:name="com.ah.acr.messagebox.LogInFragment"
+        android:label="LogIn"
+        tools:layout="@layout/fragment_log_in">
+        <action
+            android:id="@+id/action_login_fragment_to_login_pw_fragment"
+            app:destination="@id/login_pw_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/login_pw_fragment"
+        android:name="com.ah.acr.messagebox.LogInPwEditFragment"
+        android:label="Password Edit"
+        tools:layout="@layout/fragment_log_in_pw_edit">
+        <action
+            android:id="@+id/action_login_pw_fragment_to_login_fragment"
+            app:destination="@id/login_fragment" />
+    </fragment>
+
+</navigation>
