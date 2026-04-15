@@ -9,10 +9,18 @@ class MsgRepository(private val msgDao: MsgDao) {
     val allMsgsFlow: Flow<List<MsgEntity>> = msgDao.getAllMsgsFlow()
     val allMsgAddress: LiveData<List<MsgWithAddress>> = msgDao.getAllMsgAddress()
 
+    // 연락처별 마지막 메시지 (대화방 목록)
+    val lastMsgPerContact: LiveData<List<MsgWithAddress>> = msgDao.getLastMsgPerContact()
 
-//    suspend fun getAllMsg(): List<MsgEntity> {
-//        return msgDao.getAllMsg()
-//    }
+    // 특정 연락처 대화 내역
+    fun getMsgsByContact(codeNum: String): LiveData<List<MsgWithAddress>> {
+        return msgDao.getMsgsByContact(codeNum)
+    }
+
+    // 읽지 않은 메시지 수
+    fun getUnreadCount(codeNum: String): LiveData<Int> {
+        return msgDao.getUnreadCount(codeNum)
+    }
 
     suspend fun insert(msg: MsgEntity): Long {
         return msgDao.insertMsg(msg)
@@ -30,7 +38,6 @@ class MsgRepository(private val msgDao: MsgDao) {
         return msgDao.getMsgFromId(msgId)
     }
 
-
     suspend fun updateMsgRead(msgId: Int) {
         msgDao.updateMsgReaded(msgId)
     }
@@ -42,8 +49,6 @@ class MsgRepository(private val msgDao: MsgDao) {
     suspend fun updateMsgDeviceSend(msgId: Int) {
         msgDao.updateMsgDeviceSended(msgId)
     }
-
-
 
     suspend fun deleteById(msgId: Int) {
         msgDao.deleteMsgById(msgId)

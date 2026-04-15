@@ -283,17 +283,9 @@ public class MsgBoxFragment extends Fragment {
 
 
     private void observeUsers() {
-        msgViewModel.getAllMsgAddress().observe(getViewLifecycleOwner(), new Observer<List<MsgWithAddress>>() {
-            @Override
-            public void onChanged(List<MsgWithAddress> msgs) {
- //               Log.v(TAG, "onChanged" + msgs.size());
-                mAdapter.submitList(msgs);
-//                for (MsgWithAddress msg : msgs) {
-//                    Log.v(TAG, msg.toString());
-//                }
-            }
+        msgViewModel.getLastMsgPerContact().observe(getViewLifecycleOwner(), msgs -> {
+            mAdapter.submitList(msgs);
         });
-
     }
 
 

@@ -1,31 +1,21 @@
 package com.ah.acr.messagebox.adapter;
 
-import android.graphics.Color;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.ah.acr.messagebox.R;
-import com.ah.acr.messagebox.database.AddressViewModel;
-import com.ah.acr.messagebox.database.InboxMsg;
 import com.ah.acr.messagebox.database.MsgEntity;
-import com.ah.acr.messagebox.database.MsgViewModel;
 import com.ah.acr.messagebox.database.MsgWithAddress;
-import com.ah.acr.messagebox.databinding.AdapterMsgInboxBinding;
-import com.ah.acr.messagebox.databinding.AdapterMsgboxBinding;
 
 import java.text.SimpleDateFormat;
-import java.util.List;
+import java.util.Locale;
 
 public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.MsgViewHolder> {
 
@@ -35,6 +25,7 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
     }
 
     private final OnMsgClickListener onMsgClickListener;
+
     public MsgBoxAdapter(OnMsgClickListener onMsgClickListener) {
         super(new MsgDiffCallback());
         this.onMsgClickListener = onMsgClickListener;
@@ -43,10 +34,9 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
     @NonNull
     @Override
     public MsgViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        AdapterMsgboxBinding binding = AdapterMsgboxBinding.inflate(
-                LayoutInflater.from(parent.getContext()), parent, false);
-
-        return new MsgViewHolder(binding);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_chat_room, parent, false);
+        return new MsgViewHolder(view);
     }
 
     @Override
@@ -54,51 +44,51 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
         holder.bind(getItem(position), onMsgClickListener);
     }
 
-
     public static class MsgViewHolder extends RecyclerView.ViewHolder {
-        private final AdapterMsgboxBinding binding;
-        private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        private final TextView textName;
+        private final TextView textLastMsg;
+        private final TextView textTime;
+        private final TextView textDirection;
+        private final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd HH:mm", Locale.getDefault());
 
-
-
-        public MsgViewHolder(AdapterMsgboxBinding binding) {
-            super(binding.getRoot());
-            this.binding = binding;
-
-
-
+        public MsgViewHolder(View itemView) {
+            super(itemView);
+            textName = itemView.findViewById(R.id.text_chat_name);
+            textLastMsg = itemView.findViewById(R.id.text_chat_last_msg);
+            textTime = itemView.findViewById(R.id.text_chat_time);
+            textDirection = itemView.findViewById(R.id.text_chat_direction);
         }
 
-        public void bind(MsgWithAddress msg, OnMsgClickListener onMsgClickListener) {
+        public void bind(MsgWithAddress item, OnMsgClickListener listener) {
+            // 연락처 이름 (별명 없으면 번호 표시)
+            String name = item.getAddress() != null && item.getAddress().getNumbersNic() != null
+                    ? item.getAddress().getNumbersNic()
+                    : item.getMsg().getCodeNum();
+            textName.setText(name);
 
-            // send message
+            // 마지막 메시지
+            String lastMsg = item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "";
+            if (lastMsg.length() > 30) lastMsg = lastMsg.substring(0, 30) + "...";
+            textLastMsg.setText(lastMsg);
 
-            if (msg.getMsg().isSendMsg()){
-                binding.imageReceived.setImageResource(R.drawable.ic_sent);
-
-                if (!msg.getMsg().isSend()) binding.getRoot().setBackgroundColor(Color.LTGRAY);
-                else binding.getRoot().setBackgroundColor(Color.WHITE);
-                //if (msg.isSend() && !msg.isDeviceSend()) binding.getRoot().setBackgroundColor(Color.CYAN);
-                //if (msg.isDeviceSend()) binding.getRoot().setBackgroundColor(Color.WHITE);
-
-            } else {  // recevice message
-                binding.imageReceived.setImageResource(R.drawable.ic_received);
-
-                if (!msg.getMsg().isRead()) binding.getRoot().setBackgroundColor(Color.CYAN);
-                else binding.getRoot().setBackgroundColor(Color.WHITE);
+            // 시간
+            if (item.getMsg().getCreateAt() != null) {
+                textTime.setText(sdf.format(item.getMsg().getCreateAt()));
             }
 
-            //String bodyMsg = msg.getMsg().getMsg().trim();
-            //if (bodyMsg.length() > 15) binding.textTitle.setText(bodyMsg.substring(0,15));
-            //else binding.textTitle.setText(bodyMsg);
+            // 송수신 방향
+            if (item.getMsg().isSendMsg()) {
+                textDirection.setText("▶ 발신");
+                textDirection.setTextColor(0xFF00E5D1);
+            } else {
+                textDirection.setText("◀ 수신");
+                textDirection.setTextColor(0xFFFFB300);
+            }
 
-            binding.textTitle.setText(msg.getMsg().getTitle());
-            binding.textName.setText(msg.getAddress()==null? msg.getMsg().getCodeNum(): msg.getAddress().getNumbersNic());
-            binding.textCodeNum.setText(msg.getMsg().getCodeNum());
-            binding.textTime.setText(sdf.format(msg.getMsg().getCreateAt()));
-
-            binding.getRoot().setOnClickListener(v -> onMsgClickListener.onMessageClick(msg.getMsg()));
-            binding.buttonDelete.setOnClickListener(v -> onMsgClickListener.onMsgDeleteClick(msg.getMsg()));
+            // 클릭
+            itemView.setOnClickListener(v -> {
+                if (listener != null) listener.onMessageClick(item.getMsg());
+            });
         }
     }
 }

@@ -11,4 +11,5 @@
     <color name="colorPrimary">#1DE9B6</color>
     <color name="colorPrimaryDark">#1DE9B6</color>
     <color name="colorAccent">#FF5722</color>
+    <color name="nav_background">#FF0D1F3C</color>
 </resources>
