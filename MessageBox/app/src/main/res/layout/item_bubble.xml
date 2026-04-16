@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_bubble_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="6dp"
+    android:gravity="start">
+
+    <!-- 상대방 아바타 (수신 시만 표시) -->
+    <TextView
+        android:id="@+id/text_bubble_avatar"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="#1A2F50"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="2dp" />
+
+    <!-- 말풍선 컨테이너 -->
+    <LinearLayout
+        android:id="@+id/layout_bubble_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- 발신자 이름 (수신 시만 표시) -->
+        <TextView
+            android:id="@+id/text_bubble_sender"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#8899AA"
+            android:textSize="11sp"
+            android:layout_marginBottom="3dp"
+            android:layout_marginStart="4dp" />
+
+        <LinearLayout
+            android:id="@+id/layout_bubble_row"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="bottom">
+
+            <!-- 시간 (발신 시 말풍선 왼쪽) -->
+            <TextView
+                android:id="@+id/text_bubble_time_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#4A5F78"
+                android:textSize="10sp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
+
+            <!-- 말풍선 본체 -->
+            <LinearLayout
+                android:id="@+id/layout_bubble_box"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:maxWidth="260dp"
+                android:background="#1A2F50"
+                android:padding="10dp">
+
+                <!-- 제목 -->
+                <TextView
+                    android:id="@+id/text_bubble_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#00E5D1"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"
+                    android:visibility="gone" />
+
+                <!-- 본문 -->
+                <TextView
+                    android:id="@+id/text_bubble_msg"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="2dp" />
+
+            </LinearLayout>
+
+            <!-- 시간 (수신 시 말풍선 오른쪽) -->
+            <TextView
+                android:id="@+id/text_bubble_time_right"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#4A5F78"
+                android:textSize="10sp"
+                android:layout_marginStart="6dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

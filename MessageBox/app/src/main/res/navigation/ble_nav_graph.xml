@@ -113,7 +113,16 @@
         <action
             android:id="@+id/main_msgbox_fragment_to_main_outbox_new_fragment"
             app:destination="@id/main_outbox_sub_new_fragment" />
+        <action
+            android:id="@+id/action_msgbox_to_chat_room"
+            app:destination="@id/chat_room_fragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/chat_room_fragment"
+        android:name="com.ah.acr.messagebox.ChatRoomFragment"
+        android:label="ChatRoom"
+        tools:layout="@layout/fragment_chat_room" />
 
     <fragment
         android:id="@+id/main_inbox_sub_fragment"

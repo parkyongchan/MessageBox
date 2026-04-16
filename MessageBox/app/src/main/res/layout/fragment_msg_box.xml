@@ -27,6 +27,18 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <!-- 선택 버튼 -->
+        <Button
+            android:id="@+id/button_select_mode"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="선택"
+            android:textColor="#8899AA"
+            android:textSize="12sp"
+            android:backgroundTint="#1A2F50"
+            android:layout_marginEnd="8dp" />
+
+
         <Button
             android:id="@+id/button_msg_new"
             android:layout_width="wrap_content"
@@ -36,6 +48,20 @@
             android:textSize="12sp"
             android:backgroundTint="#1A2F50"
             android:layout_marginEnd="8dp" />
+
+
+
+        <!-- 체크 삭제 버튼 (체크모드일 때만 표시) -->
+        <Button
+            android:id="@+id/button_check_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="🗑 삭제"
+            android:textColor="#FF5252"
+            android:textSize="12sp"
+            android:backgroundTint="#3D0000"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/button_reflesh"
@@ -84,11 +110,129 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list_msgbox"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false" />
+    <!-- 미전송 메시지 현황 -->
+    <LinearLayout
+        android:id="@+id/layout_unsent_info"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#0D1628"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📤 미전송 대기"
+            android:textColor="#8899AA"
+            android:textSize="12sp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/text_unsent_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#FFB300"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="건"
+            android:textColor="#8899AA"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="전송 후 사라집니다"
+            android:textColor="#4A5F78"
+            android:textSize="10sp" />
+
+    </LinearLayout>
+
+
+    <!-- 하단 페이저 (20개 초과 시 활성화) -->
+    <LinearLayout
+        android:id="@+id/layout_pager"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="#0D1F3C"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btn_page_first"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="◀◀"
+            android:textSize="10sp"
+            android:textColor="#8899AA"
+            android:backgroundTint="#1A2F50"
+            android:padding="0dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_page_prev"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="◀"
+            android:textSize="12sp"
+            android:textColor="#8899AA"
+            android:backgroundTint="#1A2F50"
+            android:padding="0dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/text_page_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1 / 1"
+            android:textColor="#00E5D1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_page_next"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="▶"
+            android:textSize="12sp"
+            android:textColor="#8899AA"
+            android:backgroundTint="#1A2F50"
+            android:padding="0dp"
+            android:layout_marginStart="4dp" />
+
+        <Button
+            android:id="@+id/btn_page_last"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="▶▶"
+            android:textSize="10sp"
+            android:textColor="#8899AA"
+            android:backgroundTint="#1A2F50"
+            android:padding="0dp"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
 
 </LinearLayout>
