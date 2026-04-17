@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@+id/main_msgbox_fragment">
+
+    <fragment
+        android:id="@+id/main_msgbox_fragment"
+        android:name="com.ah.acr.messagebox.MsgBoxFragment"
+        android:label="Message Box"
+        tools:layout="@layout/fragment_msg_box">
+        <action
+            android:id="@+id/main_msgbox_fragment_to_main_inbox_sub_fragment"
+            app:destination="@id/main_inbox_sub_fragment" />
+        <action
+            android:id="@+id/main_msgbox_fragment_to_main_outbox_sub_fragment"
+            app:destination="@id/main_outbox_sub_fragment" />
+        <action
+            android:id="@+id/main_msgbox_fragment_to_main_outbox_new_fragment"
+            app:destination="@id/main_outbox_sub_new_fragment" />
+        <action
+            android:id="@+id/action_msgbox_to_chat_room"
+            app:destination="@id/chat_room_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/chat_room_fragment"
+        android:name="com.ah.acr.messagebox.ChatRoomFragment"
+        android:label="ChatRoom"
+        tools:layout="@layout/fragment_chat_room" />
+
+    <fragment
+        android:id="@+id/main_inbox_sub_fragment"
+        android:name="com.ah.acr.messagebox.MsgInBoxSubFragment"
+        android:label="InBox Content"
+        tools:layout="@layout/fragment_msg_in_box_sub" />
+
+    <fragment
+        android:id="@+id/main_outbox_sub_fragment"
+        android:name="com.ah.acr.messagebox.MsgOutBoxSubFragment"
+        android:label="OutBox Content"
+        tools:layout="@layout/fragment_msg_out_box_sub" />
+
+    <fragment
+        android:id="@+id/main_outbox_sub_new_fragment"
+        android:name="com.ah.acr.messagebox.MsgOutBoxSubNewFragment"
+        android:label="OutBox New"
+        tools:layout="@layout/fragment_msg_out_box_sub_new" />
+
+</navigation>

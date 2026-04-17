@@ -45,15 +45,35 @@
             android:orientation="horizontal"
             android:gravity="bottom">
 
-            <!-- 시간 (발신 시 말풍선 왼쪽) -->
-            <TextView
-                android:id="@+id/text_bubble_time_left"
+            <!-- 발신 시 - 좌측: 모래시계(위) + 시간(아래) 세로 배치 -->
+            <LinearLayout
+                android:id="@+id/layout_bubble_time_left"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#4A5F78"
-                android:textSize="10sp"
+                android:orientation="vertical"
+                android:gravity="end"
                 android:layout_marginEnd="6dp"
-                android:visibility="gone" />
+                android:visibility="gone">
+
+                <!-- 모래시계 아이콘 (미전송 표시) -->
+                <ImageView
+                    android:id="@+id/img_bubble_pending_left"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_pending"
+                    android:layout_marginBottom="2dp"
+                    android:visibility="gone"
+                    android:contentDescription="Pending" />
+
+                <!-- 시간 -->
+                <TextView
+                    android:id="@+id/text_bubble_time_left"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#4A5F78"
+                    android:textSize="10sp" />
+
+            </LinearLayout>
 
             <!-- 말풍선 본체 -->
             <LinearLayout
@@ -87,7 +107,7 @@
 
             </LinearLayout>
 
-            <!-- 시간 (수신 시 말풍선 오른쪽) -->
+            <!-- 수신 시 - 우측: 시간만 표시 -->
             <TextView
                 android:id="@+id/text_bubble_time_right"
                 android:layout_width="wrap_content"

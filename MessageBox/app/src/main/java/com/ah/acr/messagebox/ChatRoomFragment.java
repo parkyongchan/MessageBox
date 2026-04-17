@@ -2,6 +2,7 @@ package com.ah.acr.messagebox;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,11 +15,11 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.ah.acr.messagebox.adapter.ChatRoomAdapter;
-import com.ah.acr.messagebox.ble.BLE;
 import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgViewModel;
 import com.ah.acr.messagebox.database.AddressViewModel;
 import com.ah.acr.messagebox.databinding.FragmentChatRoomBinding;
+import com.ah.acr.messagebox.util.ByteLengthFilter;
 
 import java.util.Date;
 import java.util.List;
@@ -54,6 +55,7 @@ public class ChatRoomFragment extends Fragment {
 
         setupHeader();
         setupRecyclerView();
+        setupInputFilters();      // ⭐ 신규: 바이트 제한
         setupObserver();
         setupClickListeners();
     }
@@ -75,6 +77,19 @@ public class ChatRoomFragment extends Fragment {
         layoutManager.setStackFromEnd(true); // 최신 메시지가 하단에
         binding.recyclerChatRoom.setLayoutManager(layoutManager);
         binding.recyclerChatRoom.setAdapter(adapter);
+    }
+
+    /** ⭐ UTF-8 바이트 제한 적용 (영어 1byte / 한글 3byte) */
+    private void setupInputFilters() {
+        // 제목: 20 byte
+        binding.editChatTitle.setFilters(new InputFilter[]{
+                new ByteLengthFilter(20, "UTF-8")
+        });
+
+        // 본문: 200 byte
+        binding.editChatMsg.setFilters(new InputFilter[]{
+                new ByteLengthFilter(200, "UTF-8")
+        });
     }
 
     private void setupObserver() {
@@ -103,7 +118,7 @@ public class ChatRoomFragment extends Fragment {
             String msg   = binding.editChatMsg.getText().toString().trim();
 
             if (msg.isEmpty()) {
-                Toast.makeText(getContext(), "메시지를 입력해주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Please enter a message.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -128,19 +143,19 @@ public class ChatRoomFragment extends Fragment {
                         binding.editChatTitle.setText("");
                         binding.editChatMsg.setText("");
                         Toast.makeText(getContext(),
-                                "메시지 저장됨 (메시지함에서 전송하세요)", Toast.LENGTH_SHORT).show();
+                                "Message saved (send from Inbox)", Toast.LENGTH_SHORT).show();
                     });
                 }
-                return null; // Kotlin Unit 반환
+                return null;
             });
         });
 
         // 전체 삭제
         binding.btnChatDeleteAll.setOnClickListener(v -> {
             new AlertDialog.Builder(requireContext())
-                    .setTitle("대화 삭제")
-                    .setMessage(mContactName + "와의 대화를 모두 삭제하시겠습니까?")
-                    .setPositiveButton("삭제", (dialog, which) -> {
+                    .setTitle("Delete chat")
+                    .setMessage("Delete all messages with " + mContactName + "?")
+                    .setPositiveButton("Delete", (dialog, which) -> {
                         List<com.ah.acr.messagebox.database.MsgWithAddress> msgs =
                                 adapter.getCurrentList();
                         for (com.ah.acr.messagebox.database.MsgWithAddress m : msgs) {
@@ -148,7 +163,7 @@ public class ChatRoomFragment extends Fragment {
                         }
                         requireActivity().onBackPressed();
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton("Cancel", null)
                     .show();
         });
     }

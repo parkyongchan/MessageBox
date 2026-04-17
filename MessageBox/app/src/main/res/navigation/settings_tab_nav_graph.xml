@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@+id/main_setting_parent_fragment">
+
+    <fragment
+        android:id="@+id/main_setting_parent_fragment"
+        android:name="com.ah.acr.messagebox.SettingParentFragment"
+        android:label="Setting"
+        tools:layout="@layout/fragment_setting_parent">
+        <action
+            android:id="@+id/action_main_setting_fragment_to_main_ble_login_change_fragment"
+            app:destination="@id/main_ble_login_change_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/main_ble_login_change_fragment"
+        android:name="com.ah.acr.messagebox.BleLoginChangeFragment"
+        android:label="Ble Password Change"
+        tools:layout="@layout/fragment_ble_login_change" />
+
+</navigation>

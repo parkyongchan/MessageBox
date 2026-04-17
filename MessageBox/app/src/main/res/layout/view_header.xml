@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/header_view"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#0A1628"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <ImageView
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@drawable/ic_sat_brand" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="10dp">
+
+        <TextView
+            android:id="@+id/text_header_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TYTO MessageBox"
+            android:textColor="#E8F1FB"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/text_header_sub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IMEI  -"
+            android:textColor="#95B0D4"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            android:fontFamily="monospace" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/btn_sos_header"
+        android:layout_width="44dp"
+        android:layout_height="34dp"
+        android:background="@drawable/bg_sos_button"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SOS"
+            android:textColor="#E24B4A"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_gravity="center" />
+
+    </FrameLayout>
+
+</LinearLayout>

@@ -8,7 +8,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentResultListener;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -23,22 +22,16 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
-import com.ah.acr.messagebox.database.AddressEntity;
 import com.ah.acr.messagebox.database.AddressViewModel;
 import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgViewModel;
 import com.ah.acr.messagebox.databinding.FragmentMsgOutBoxSubNewBinding;
 import com.ah.acr.messagebox.search.SearchDialogFragment;
-import com.ah.acr.messagebox.util.ByteLengthFilter;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
-import com.google.android.material.snackbar.Snackbar;
+import com.ah.acr.messagebox.util.ByteLengthFilter;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-
-import kotlinx.coroutines.CoroutineScope;
-import kotlinx.coroutines.CoroutineScopeKt;
-import kotlinx.coroutines.Dispatchers;
 
 
 public class MsgOutBoxSubNewFragment extends Fragment {

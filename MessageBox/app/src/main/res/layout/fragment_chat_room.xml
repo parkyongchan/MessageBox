@@ -51,15 +51,17 @@
 
         </LinearLayout>
 
-        <Button
+        <!-- 전체삭제 버튼 (휴지통 아이콘) -->
+        <ImageView
             android:id="@+id/btn_chat_delete_all"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:text="삭제"
-            android:textColor="#FF5252"
-            android:textSize="11sp"
-            android:backgroundTint="#3D0000"
-            android:padding="8dp" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_delete_all"
+            android:padding="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Delete all" />
 
     </LinearLayout>
 
@@ -94,7 +96,7 @@
             android:id="@+id/edit_chat_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="제목 (선택)"
+            android:hint="Title (optional)"
             android:textColor="#FFFFFF"
             android:textColorHint="#4A5F78"
             android:textSize="12sp"
@@ -104,7 +106,6 @@
             android:paddingTop="6dp"
             android:paddingBottom="6dp"
             android:layout_marginBottom="6dp"
-            android:maxLength="20"
             android:singleLine="true" />
 
         <!-- 본문 + 전송 버튼 -->
@@ -119,7 +120,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="메시지 입력..."
+                android:hint="Enter message..."
                 android:textColor="#FFFFFF"
                 android:textColorHint="#4A5F78"
                 android:textSize="13sp"
@@ -128,7 +129,6 @@
                 android:paddingEnd="12dp"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
-                android:maxLength="200"
                 android:inputType="textMultiLine"
                 android:maxLines="4"
                 android:layout_marginEnd="8dp" />

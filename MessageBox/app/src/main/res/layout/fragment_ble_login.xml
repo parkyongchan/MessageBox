@@ -1,55 +1,219 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:app="http://schemas.android.com/apk/res-auto"
-xmlns:tools="http://schemas.android.com/tools"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-tools:context=".BleLoginFragment">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A1628"
+    tools:context=".BleLoginFragment">
 
-<LinearLayout
-    android:layout_width="0dp"
-    android:layout_height="0dp"
-    android:orientation="vertical"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintWidth_percent="0.6"
-    app:layout_constraintHeight_percent="0.4">
+    <!-- 메인 컨테이너 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/lang_panel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <EditText
-        android:id="@+id/text_id"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:paddingTop="40dp"
+            android:paddingBottom="40dp">
+
+            <!-- 아이콘 -->
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@mipmap/ic_blue_remote"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="BLE icon" />
+
+            <!-- 타이틀 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BLE Login"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <!-- 서브 타이틀 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enter password to connect TYTO2"
+                android:textColor="#95B0D4"
+                android:textSize="13sp"
+                android:layout_marginBottom="32dp" />
+
+            <!-- IMEI 카드 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_input_card"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="IMEI"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textAllCaps="true" />
+
+                <EditText
+                    android:id="@+id/text_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:background="@android:color/transparent"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textColorHint="#5A7090"
+                    android:hint="-"
+                    android:fontFamily="monospace"
+                    android:padding="0dp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- 비밀번호 카드 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_input_card"
+                android:padding="14dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Password"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textAllCaps="true" />
+
+                <EditText
+                    android:id="@+id/text_pw"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Enter 9-digit number password"
+                    android:inputType="numberPassword"
+                    android:maxLength="9"
+                    android:digits="0123456789"
+                    android:background="@android:color/transparent"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textColorHint="#5A7090"
+                    android:padding="0dp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- Remember 체크박스 -->
+            <CheckBox
+                android:id="@+id/checkbox_remember"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Remember password"
+                android:textColor="#B8CEE8"
+                android:textSize="13sp"
+                android:buttonTint="#00E5D1"
+                android:checked="false"
+                android:layout_marginBottom="20dp" />
+
+            <!-- 연결 버튼 -->
+            <Button
+                android:id="@+id/button_login"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="BLE Connect"
+                android:textColor="#0A1628"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:background="@drawable/bg_btn_primary"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- 하단 언어 선택 패널 -->
+    <LinearLayout
+        android:id="@+id/lang_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:focusable="false"
-        android:text=""
-        android:textSize="20dp" />
+        android:orientation="vertical"
+        android:background="#0D1F3C"
+        android:paddingTop="14dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <EditText
-        android:id="@+id/text_pw"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="password"
-        android:ems="10"
-        android:inputType="textPassword" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Language"
+            android:textColor="#95B0D4"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:layout_gravity="center"
+            android:layout_marginBottom="10dp" />
 
-<!--    <Space-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_weight="1" />-->
-    <CheckBox
-        android:id="@+id/checkbox_remember"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Password Remember"
-        android:checked="false" />
+        <RadioGroup
+            android:id="@+id/group_language"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/button_login"
-        android:layout_width="140dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="ble connect" />
-</LinearLayout>
+            <RadioButton
+                android:id="@+id/radio_en"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="English"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:buttonTint="#00E5D1"
+                android:checked="true"
+                android:layout_marginEnd="20dp" />
+
+            <RadioButton
+                android:id="@+id/radio_ko"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="한국어"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:buttonTint="#00E5D1"
+                android:layout_marginEnd="20dp" />
+
+            <RadioButton
+                android:id="@+id/radio_ja"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="日本語"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:buttonTint="#00E5D1" />
+
+        </RadioGroup>
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

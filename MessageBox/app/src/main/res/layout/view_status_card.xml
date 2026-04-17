@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/status_card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="#0F1E36"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- ─── 1줄: BLE | 위성감도 | 위치보고 ─── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="10dp">
+
+            <!-- BLE -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:id="@+id/img_status_ble"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_ble"
+                    app:tint="#FF5252" />
+
+                <TextView
+                    android:id="@+id/text_ble_status_main"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="미연결"
+                    android:textColor="#FF5252"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="4dp" />
+
+            </LinearLayout>
+
+            <!-- 위성감도 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_sat_signal"
+                    app:tint="#378ADD" />
+
+                <LinearLayout
+                    android:id="@+id/signal_bar_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="14dp"
+                    android:orientation="horizontal"
+                    android:gravity="bottom"
+                    android:layout_marginStart="6dp">
+
+                    <TextView
+                        android:id="@+id/sig_no_signal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✕"
+                        android:textColor="#FF5252"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View android:id="@+id/sig_bar1"
+                        android:layout_width="3dp" android:layout_height="3dp"
+                        android:layout_marginEnd="2dp" android:background="#1E3A5F" />
+                    <View android:id="@+id/sig_bar2"
+                        android:layout_width="3dp" android:layout_height="6dp"
+                        android:layout_marginEnd="2dp" android:background="#1E3A5F" />
+                    <View android:id="@+id/sig_bar3"
+                        android:layout_width="3dp" android:layout_height="9dp"
+                        android:layout_marginEnd="2dp" android:background="#1E3A5F" />
+                    <View android:id="@+id/sig_bar4"
+                        android:layout_width="3dp" android:layout_height="12dp"
+                        android:layout_marginEnd="2dp" android:background="#1E3A5F" />
+                    <View android:id="@+id/sig_bar5"
+                        android:layout_width="3dp" android:layout_height="14dp"
+                        android:background="#1E3A5F" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 위치 상태 -->
+            <LinearLayout
+                android:id="@+id/card_location_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical|end">
+
+                <ImageView
+                    android:id="@+id/img_location_status"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_pin"
+                    app:tint="#95B0D4" />
+
+                <TextView
+                    android:id="@+id/text_location_status_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OFF"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="4dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 구분선 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:background="#1E3A5F" />
+
+        <!-- ─── 2줄: 배터리 | 수신함 | 송신대기 ─── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="10dp">
+
+            <!-- 배터리 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_battery"
+                    app:tint="#378ADD" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="6dp">
+
+                    <TextView
+                        android:id="@+id/text_main_battery"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="- %"
+                        android:textColor="#E8F1FB"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="배터리"
+                        android:textColor="#95B0D4"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 세로 구분선 -->
+            <View
+                android:layout_width="0.5dp"
+                android:layout_height="32dp"
+                android:background="#1E3A5F" />
+
+            <!-- 수신함 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginStart="10dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_mail"
+                    app:tint="#378ADD" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="6dp">
+
+                    <TextView
+                        android:id="@+id/text_main_inbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#E8F1FB"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="수신함"
+                        android:textColor="#95B0D4"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 세로 구분선 -->
+            <View
+                android:layout_width="0.5dp"
+                android:layout_height="32dp"
+                android:background="#1E3A5F" />
+
+            <!-- 송신대기 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginStart="10dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_send"
+                    app:tint="#378ADD" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="6dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/text_main_outbox"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="#E8F1FB"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/text_main_unsent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:textColor="#FFB300"
+                            android:textSize="11sp"
+                            android:layout_marginStart="3dp"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="송신대기"
+                        android:textColor="#95B0D4"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

@@ -1,104 +1,149 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="wrap_content"
+    android:layout_marginTop="5dp"
+    android:layout_marginBottom="5dp"
+    app:cardBackgroundColor="#152A4A"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp">
 
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp">
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="10dp">
 
+        <!-- BLE 아이콘 -->
         <ImageView
             android:id="@+id/img_blue"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_centerVertical="true"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:src="@mipmap/ic_blue_remote" />
 
+        <!-- 이름 + MAC -->
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="10dp"
-            android:layout_toRightOf="@id/img_blue"
-            android:gravity="center_vertical"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/txt_name"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="2dp"
-                android:textSize="14sp" />
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/txt_mac"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textSize="12sp" />
+                android:layout_marginTop="3dp"
+                android:textColor="#B8CEE8"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:ellipsize="end" />
 
         </LinearLayout>
 
+        <!-- 연결 가능 상태 -->
         <LinearLayout
             android:id="@+id/layout_idle"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_alignParentRight="true"
-            android:gravity="center"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone">
 
+            <!-- RSSI 수치 -->
             <TextView
                 android:id="@+id/txt_rssi"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14sp" />
+                android:textColor="#B8CEE8"
+                android:textSize="12sp"
+                android:minWidth="32dp"
+                android:gravity="end" />
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginLeft="5dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="10dp"
                 android:src="@mipmap/ic_rssi" />
 
+            <!-- Connect 버튼 (Button 유지) -->
             <Button
                 android:id="@+id/btn_connect"
-                android:layout_width="50dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="5dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="80dp"
+                android:layout_height="42dp"
                 android:text="@string/connect"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="12sp" />
+                android:textColor="#00E5D1"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:background="@drawable/bg_btn_connect"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp" />
 
         </LinearLayout>
 
+        <!-- 연결됨 상태 -->
         <LinearLayout
             android:id="@+id/layout_connected"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_alignParentRight="true"
-            android:gravity="center"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
                 android:text="@string/connected"
-                android:textColor="@color/colorPrimary"
-                android:textSize="14sp" />
+                android:textColor="#00E5D1"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
+            <!-- Disconnect 버튼 (Button 유지) -->
             <Button
                 android:id="@+id/btn_disconnect"
-                android:layout_width="50dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="5dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="90dp"
+                android:layout_height="42dp"
                 android:text="@string/disconnect"
-                android:textSize="12sp" />
-
+                android:textColor="#FF5252"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:background="@drawable/bg_btn_disconnect"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp" />
 
         </LinearLayout>
 
+    </LinearLayout>
 
-    </RelativeLayout>
-
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

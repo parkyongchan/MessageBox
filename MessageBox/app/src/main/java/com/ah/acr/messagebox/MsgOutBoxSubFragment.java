@@ -1,6 +1,5 @@
 package com.ah.acr.messagebox;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 
@@ -12,36 +11,25 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
-import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import com.ah.acr.messagebox.database.AddressEntity;
 import com.ah.acr.messagebox.database.AddressViewModel;
-import com.ah.acr.messagebox.database.MsgRoomDatabase;
 import com.ah.acr.messagebox.database.MsgViewModel;
-import com.ah.acr.messagebox.database.OutboxMsg;
-import com.ah.acr.messagebox.database.OutboxViewModel;
-import com.ah.acr.messagebox.database.OutboxViewModelFactory;
 import com.ah.acr.messagebox.databinding.FragmentMsgOutBoxSubBinding;
-import com.ah.acr.messagebox.packet.PacketProcUtil;
-import com.ah.acr.messagebox.packet.security.SharedUtil;
 import com.ah.acr.messagebox.search.SearchDialogFragment;
-import com.ah.acr.messagebox.util.ByteLengthFilter;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
-import com.google.android.material.snackbar.Snackbar;
+import com.ah.acr.messagebox.util.ByteLengthFilter;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
 
