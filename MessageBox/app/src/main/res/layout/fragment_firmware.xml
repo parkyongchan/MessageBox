@@ -1,197 +1,532 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A1628"
     tools:context=".FirmwareFragment">
 
+    <!-- 타이틀 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1F3C"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_tab_firmware"
+            app:tint="#00E5D1"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Firmware" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Firmware Update"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- 스크롤 가능한 본문 -->
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Firmware Update"
-                android:textSize="25sp"
-                android:textStyle="bold" />
-
-            <!-- 파일 선택 섹션 -->
+            <!-- ═══════ FIRMWARE FILE ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_folder"
+                    app:tint="#95B0D4"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="File" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FIRMWARE FILE"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08" />
+
+            </LinearLayout>
+
+            <!-- 파일 선택 (이름 + 선택 버튼) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input_card"
+                android:paddingStart="12dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="18dp">
 
                 <TextView
                     android:id="@+id/text_file_name"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/dialog_background"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="8dp"
-                    android:text="Select a file."
-                    android:textSize="16sp" />
+                    android:text="Select a firmware file..."
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:singleLine="true"
+                    android:ellipsize="middle"
+                    android:paddingEnd="8dp" />
 
-                <Button
-                    android:id="@+id/button_select_file"
+                <!-- Select 버튼 -->
+                <androidx.cardview.widget.CardView
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Select"
-                    android:textSize="18sp" />
+                    android:layout_height="40dp"
+                    app:cardBackgroundColor="#1E3A5F"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:id="@+id/button_select_file"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:src="@drawable/ic_folder"
+                            app:tint="#00E5D1"
+                            android:layout_marginEnd="6dp"
+                            android:contentDescription="Browse" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Browse"
+                            android:textColor="#00E5D1"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="false" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
 
             </LinearLayout>
 
-            <!-- 파일 선택 및 보내기 버튼 -->
+            <!-- ═══════ CHUNK SIZE ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:gravity="center"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
 
-                <Button
-                    android:id="@+id/button_send"
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_distance"
+                    app:tint="#95B0D4"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Size" />
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:text="Send"
-                    android:textSize="18sp" />
-
-                <Button
-                    android:id="@+id/button_cancel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:text="Cancel"
-                    android:textSize="18sp" />
+                    android:text="CHUNK SIZE"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08" />
 
             </LinearLayout>
 
-            <!-- 전송 진행바 섹션 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input_card"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="18dp">
+
+                <EditText
+                    android:id="@+id/edit_packet_size"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:hint="256"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#5A7090"
+                    android:textSize="15sp"
+                    android:background="@android:color/transparent"
+                    android:inputType="number"
+                    android:maxLength="4"
+                    android:singleLine="true"
+                    android:text="256"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="bytes"
+                    android:textColor="#8899AA"
+                    android:textSize="13sp"
+                    android:layout_marginStart="8dp" />
+
+            </LinearLayout>
+
+            <!-- ═══════ PROGRESS (전송 중에만 표시) ═══════ -->
             <LinearLayout
                 android:id="@+id/progress_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
                 android:orientation="vertical"
-                android:visibility="gone">
+                android:background="@drawable/bg_info_cyan"
+                android:padding="14dp"
+                android:visibility="gone"
+                android:layout_marginBottom="18dp">
 
-                <TextView
-                    android:id="@+id/text_progress_status"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Uploading firmware..."
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/text_progress_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Uploading firmware..."
+                        android:textColor="#00E5D1"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/text_progress_percentage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textColor="#00E5D1"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
 
                 <ProgressBar
                     android:id="@+id/progress_bar"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_height="8dp"
                     android:max="100"
-                    android:progress="0" />
-
-                <TextView
-                    android:id="@+id/text_progress_percentage"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:gravity="center"
-                    android:text="0%"
-                    android:textSize="14sp" />
+                    android:progress="0"
+                    android:progressTint="#00E5D1"
+                    android:progressBackgroundTint="#1E3A5F" />
 
             </LinearLayout>
 
-            <!-- 펌웨어 업데이트 가이드 -->
+            <!-- ═══════ UPDATE GUIDE ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/dialog_background"
-                    android:maxLines="10"
-                    android:minLines="2"
-                    android:padding="12dp"
-                    android:singleLine="false"
-                    android:text="Firmware Update Guide\n\n• Select the firmware file to upload.\n\n• Make sure the device is connected via BLE before sending.\n\n• Do not disconnect during the update process.\n\n• The update may take several minutes to complete."
-                    android:textSize="16sp" />
-
-            </LinearLayout>
-
-            <!-- 사이즈 설정 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
+                android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_info"
+                    app:tint="#00E5D1"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Info" />
 
                 <TextView
-                    android:layout_width="100dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="사이즈:"
-                    android:textSize="18sp" />
+                    android:text="UPDATE GUIDE"
+                    android:textColor="#00E5D1"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08" />
 
-                <EditText
-                    android:id="@+id/edit_packet_size"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/dialog_background"
-                    android:hint="256"
-                    android:inputType="number"
-                    android:padding="8dp"
-                    android:text="256"
-                    android:textSize="16sp" />
             </LinearLayout>
 
-
-
-            <TextView
-                android:id="@+id/text_pw"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="50dp"
-                android:text="TYTO2 Password Change"
-                android:textSize="25sp" />
-
+            <!-- 안내문 박스 (청록 테두리) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_info_cyan"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp">
 
-                android:gravity="center"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/button_pw"
-                    android:layout_width="76dp"
+                <!-- 항목 1 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="pw change"
-                    android:textSize="20sp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="•"
+                        android:textColor="#00E5D1"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginTop="-2dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Select the firmware file to upload."
+                        android:textColor="#E8F1FB"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp" />
+
+                </LinearLayout>
+
+                <!-- 항목 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="•"
+                        android:textColor="#00E5D1"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginTop="-2dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Make sure the device is connected via BLE before sending."
+                        android:textColor="#E8F1FB"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp" />
+
+                </LinearLayout>
+
+                <!-- 항목 3 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="•"
+                        android:textColor="#00E5D1"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginTop="-2dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Do not disconnect during the update process."
+                        android:textColor="#E8F1FB"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp" />
+
+                </LinearLayout>
+
+                <!-- 항목 4 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="•"
+                        android:textColor="#00E5D1"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginTop="-2dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="The update may take several minutes to complete."
+                        android:textColor="#E8F1FB"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp" />
+
+                </LinearLayout>
+
             </LinearLayout>
 
+            <!-- ═══════ SEND / CANCEL ═══════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
+                <!-- SEND 버튼 (청록) -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardBackgroundColor="#00E5D1"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:id="@+id/button_send"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_upload"
+                            app:tint="#0A1628"
+                            android:layout_marginEnd="8dp"
+                            android:contentDescription="Send" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Send"
+                            android:textColor="#0A1628"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="false" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- CANCEL 버튼 (회색) -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardBackgroundColor="#152A4A"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:id="@+id/button_cancel"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_cancel"
+                            app:tint="#95B0D4"
+                            android:layout_marginEnd="8dp"
+                            android:contentDescription="Cancel" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cancel"
+                            android:textColor="#95B0D4"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="false" />
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+            <!-- 
+                ⚠️ TYTO2 Password Change 섹션은 제거함
+                별도 위치로 이동 예정 (주소록 My Profile 카드 내 추천)
+            -->
+            <!-- password change 용 빈 뷰 (Java 호환용, 숨김) -->
+            <View
+                android:id="@+id/text_pw"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/button_pw"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
         </LinearLayout>
 
     </ScrollView>
 
-</FrameLayout>
+</LinearLayout>

@@ -1,44 +1,814 @@
 package com.ah.acr.messagebox.tabs;
 
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.ah.acr.messagebox.R;
+import com.ah.acr.messagebox.adapter.MyTrackAdapter;
+import com.ah.acr.messagebox.database.MyTrackEntity;
+import com.ah.acr.messagebox.database.MyTrackViewModel;
+import com.ah.acr.messagebox.service.LocationPermissionHelper;
+import com.ah.acr.messagebox.service.LocationTrackingService;
+
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.modules.OfflineTileProvider;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.tileprovider.tilesource.XYTileSource;
+import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 /**
- * 장비 탭 - 연결된 TYTO 디바이스 목록
- * Step 4에서 Node 카드 리스트 구현 예정
+ * Devices Tab - Step 6 Implementation
+ *
+ * Adds:
+ *   - Compact tracking UI (bigger map)
+ *   - Saved tracks RecyclerView with adapter
+ *   - Track detail dialog
+ *   - Track deletion
  */
 public class DevicesTabFragment extends Fragment {
 
+    private static final String TAG = "DevicesTabFragment";
+    private static final String MBTILES_SUBDIR = "mbtiles";
+    private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
+
+    private static final int TAB_MY_LOCATION = 0;
+    private static final int TAB_SATELLITE = 1;
+    private int currentTab = TAB_MY_LOCATION;
+
+    // Segment tabs
+    private TextView segMyLocation;
+    private TextView segSatellite;
+    private View containerMyLocation;
+    private View containerSatellite;
+
+    // State: Not Tracking
+    private View stateNotTracking;
+    private Spinner spinnerInterval;
+    private Spinner spinnerDistance;
+    private Button btnStartTracking;
+    private RecyclerView rvTracks;
+    private TextView tvTrackCount;
+    private TextView tvEmptyTracks;
+
+    // State: Tracking
+    private View stateTracking;
+    private TextView tvElapsed;
+    private TextView tvDistance;
+    private TextView tvSpeed;
+    private TextView tvPoints;
+    private TextView tvWaitingGps;
+    private MapView mapViewTracking;
+    private Button btnStopTracking;
+
+    // Satellite tab
+    private TextView tvSatelliteStatus;
+    private RecyclerView rvSatTracks;
+    private TextView tvSatTrackCount;
+    private TextView tvEmptySatTracks;
+
+
+    private MyTrackViewModel myTrackViewModel;
+    private MyTrackAdapter trackAdapter;
+    private int currentTrackId = -1;
+    private long trackingStartTime = 0;
+
+    private Polyline pathPolyline;
+    private Marker currentLocationMarker;
+    private List<GeoPoint> pathPoints = new ArrayList<>();
+
+    private Handler uiHandler = new Handler(Looper.getMainLooper());
+    private Runnable timerRunnable;
+
+    private final int[] INTERVAL_SECONDS = {10, 30, 60, 120, 300, 600};
+    private final int[] MIN_DISTANCES = {5, 10, 20, 50, 100};
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   BROADCAST RECEIVER
+    // ═══════════════════════════════════════════════════════════════
+
+    private final BroadcastReceiver locationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+            String action = intent.getAction();
+            if (LocationTrackingService.BROADCAST_LOCATION_UPDATE.equals(action)) {
+                handleLocationUpdate(intent);
+            } else if (LocationTrackingService.BROADCAST_SERVICE_STATE.equals(action)) {
+                handleServiceStateChange(intent);
+            }
+        }
+    };
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   LIFECYCLE
+    // ═══════════════════════════════════════════════════════════════
+
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        FrameLayout root = new FrameLayout(requireContext());
-        root.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        root.setBackgroundColor(0xFF0A1628);
+        Configuration.getInstance().setUserAgentValue(
+                requireActivity().getPackageName()
+        );
+        File osmDir = requireContext().getExternalFilesDir(null);
+        if (osmDir != null) {
+            Configuration.getInstance().setOsmdroidBasePath(osmDir);
+            Configuration.getInstance().setOsmdroidTileCache(
+                    new File(osmDir, "cache")
+            );
+        }
 
-        TextView tv = new TextView(requireContext());
-        tv.setText("🔗 장비\n\n연결된 TYTO 디바이스 목록\n(Step 4에서 구현)");
-        tv.setTextColor(0xFF95B0D4);
-        tv.setTextSize(16);
-        tv.setGravity(android.view.Gravity.CENTER);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.gravity = android.view.Gravity.CENTER;
-        tv.setLayoutParams(lp);
-        root.addView(tv);
+        View root = inflater.inflate(R.layout.fragment_devices_tab, container, false);
+
+        bindViews(root);
+        setupSegmentTabs();
+        setupSpinners();
+        setupRecyclerViews();
+        setupButtons();
+        setupViewModel();
+        setupMap();
+
+        updateSegmentVisuals(TAB_MY_LOCATION);
+
+        if (LocationTrackingService.isServiceRunning) {
+            currentTrackId = LocationTrackingService.currentTrackId;
+            switchToTrackingState();
+        } else {
+            switchToNotTrackingState();
+        }
 
         return root;
+    }
+
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(LocationTrackingService.BROADCAST_LOCATION_UPDATE);
+        filter.addAction(LocationTrackingService.BROADCAST_SERVICE_STATE);
+        LocalBroadcastManager.getInstance(requireContext())
+                .registerReceiver(locationReceiver, filter);
+
+        if (mapViewTracking != null) {
+            mapViewTracking.onResume();
+        }
+
+        if (LocationTrackingService.isServiceRunning) {
+            currentTrackId = LocationTrackingService.currentTrackId;
+            switchToTrackingState();
+            reloadPathFromDb();
+        }
+    }
+
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        LocalBroadcastManager.getInstance(requireContext())
+                .unregisterReceiver(locationReceiver);
+
+        if (mapViewTracking != null) {
+            mapViewTracking.onPause();
+        }
+
+        stopElapsedTimer();
+    }
+
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        stopElapsedTimer();
+        if (mapViewTracking != null) {
+            mapViewTracking.onDetach();
+            mapViewTracking = null;
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   SETUP
+    // ═══════════════════════════════════════════════════════════════
+
+    private void bindViews(View root) {
+        segMyLocation = root.findViewById(R.id.segMyLocation);
+        segSatellite = root.findViewById(R.id.segSatellite);
+        containerMyLocation = root.findViewById(R.id.containerMyLocation);
+        containerSatellite = root.findViewById(R.id.containerSatellite);
+
+        stateNotTracking = root.findViewById(R.id.stateNotTracking);
+        spinnerInterval = root.findViewById(R.id.spinnerInterval);
+        spinnerDistance = root.findViewById(R.id.spinnerDistance);
+        btnStartTracking = root.findViewById(R.id.btnStartTracking);
+        rvTracks = root.findViewById(R.id.rvTracks);
+        tvTrackCount = root.findViewById(R.id.tvTrackCount);
+        tvEmptyTracks = root.findViewById(R.id.tvEmptyTracks);
+
+        stateTracking = root.findViewById(R.id.stateTracking);
+        tvElapsed = root.findViewById(R.id.tvElapsed);
+        tvDistance = root.findViewById(R.id.tvDistance);
+        tvSpeed = root.findViewById(R.id.tvSpeed);
+        tvPoints = root.findViewById(R.id.tvPoints);
+        tvWaitingGps = root.findViewById(R.id.tvWaitingGps);
+        mapViewTracking = root.findViewById(R.id.mapViewTracking);
+        btnStopTracking = root.findViewById(R.id.btnStopTracking);
+
+        tvSatelliteStatus = root.findViewById(R.id.tvSatelliteStatus);
+        rvSatTracks = root.findViewById(R.id.rvSatTracks);
+        tvSatTrackCount = root.findViewById(R.id.tvSatTrackCount);
+        tvEmptySatTracks = root.findViewById(R.id.tvEmptySatTracks);
+    }
+
+
+    private void setupSegmentTabs() {
+        segMyLocation.setOnClickListener(v -> switchTab(TAB_MY_LOCATION));
+        segSatellite.setOnClickListener(v -> switchTab(TAB_SATELLITE));
+    }
+
+
+    private void switchTab(int tabIndex) {
+        if (currentTab == tabIndex) return;
+        currentTab = tabIndex;
+        updateSegmentVisuals(tabIndex);
+    }
+
+
+    private void updateSegmentVisuals(int tabIndex) {
+        if (tabIndex == TAB_MY_LOCATION) {
+            segMyLocation.setSelected(true);
+            segSatellite.setSelected(false);
+            segMyLocation.setTextColor(0xFF0A1628);
+            segSatellite.setTextColor(0xFF95B0D4);
+            containerMyLocation.setVisibility(View.VISIBLE);
+            containerSatellite.setVisibility(View.GONE);
+        } else {
+            segMyLocation.setSelected(false);
+            segSatellite.setSelected(true);
+            segMyLocation.setTextColor(0xFF95B0D4);
+            segSatellite.setTextColor(0xFF0A1628);
+            containerMyLocation.setVisibility(View.GONE);
+            containerSatellite.setVisibility(View.VISIBLE);
+        }
+    }
+
+
+    private void setupSpinners() {
+        String[] intervals = {"10s", "30s", "1m", "2m", "5m", "10m"};
+        ArrayAdapter<String> intervalAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_item,
+                intervals
+        );
+        intervalAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerInterval.setAdapter(intervalAdapter);
+        spinnerInterval.setSelection(1);
+
+        String[] distances = {"5m", "10m", "20m", "50m", "100m"};
+        ArrayAdapter<String> distanceAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_item,
+                distances
+        );
+        distanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerDistance.setAdapter(distanceAdapter);
+        spinnerDistance.setSelection(2);
+    }
+
+
+    private void setupRecyclerViews() {
+        // ⭐ Saved tracks adapter
+        trackAdapter = new MyTrackAdapter(new MyTrackAdapter.OnTrackActionListener() {
+            @Override
+            public void onTrackClick(MyTrackEntity track) {
+                openTrackDetail(track);
+            }
+
+            @Override
+            public void onTrackDelete(MyTrackEntity track) {
+                confirmDeleteTrack(track);
+            }
+        });
+
+        rvTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rvTracks.setAdapter(trackAdapter);
+        rvTracks.setNestedScrollingEnabled(false);
+
+        // Satellite tracks (Step 7 later)
+        rvSatTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
+    }
+
+
+    private void setupButtons() {
+        btnStartTracking.setOnClickListener(v -> onStartClicked());
+        btnStopTracking.setOnClickListener(v -> onStopClicked());
+    }
+
+
+    private void setupViewModel() {
+        myTrackViewModel = new ViewModelProvider(this).get(MyTrackViewModel.class);
+
+        myTrackViewModel.getCompletedTracks().observe(getViewLifecycleOwner(), tracks -> {
+            int count = tracks != null ? tracks.size() : 0;
+            tvTrackCount.setText(String.valueOf(count));
+
+            if (count == 0) {
+                tvEmptyTracks.setVisibility(View.VISIBLE);
+                rvTracks.setVisibility(View.GONE);
+            } else {
+                tvEmptyTracks.setVisibility(View.GONE);
+                rvTracks.setVisibility(View.VISIBLE);
+                trackAdapter.submitList(tracks);
+            }
+        });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   TRACK DETAIL & DELETE
+    // ═══════════════════════════════════════════════════════════════
+
+    private void openTrackDetail(MyTrackEntity track) {
+        MyTrackDetailFragment dialog = MyTrackDetailFragment.newInstance(track.getId());
+        dialog.show(getParentFragmentManager(), "MyTrackDetail");
+    }
+
+
+    private void confirmDeleteTrack(MyTrackEntity track) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Track")
+                .setMessage("Delete \"" + track.getName() + "\"?\nThis cannot be undone.")
+                .setPositiveButton("Delete", (d, w) -> {
+                    myTrackViewModel.deleteTrack(track);
+                    Toast.makeText(requireContext(),
+                            "✅ Track deleted",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   MAP SETUP (same as Map tab)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupMap() {
+        mapViewTracking.setMultiTouchControls(true);
+        mapViewTracking.setBuiltInZoomControls(false);
+        mapViewTracking.setTilesScaledToDpi(true);
+
+        loadMapSource();
+
+        mapViewTracking.getController().setZoom(16.0);
+        mapViewTracking.getController().setCenter(DEFAULT_CENTER);
+
+        pathPolyline = new Polyline();
+        pathPolyline.setColor(Color.RED);
+        pathPolyline.setWidth(8.0f);
+        mapViewTracking.getOverlays().add(pathPolyline);
+
+        currentLocationMarker = new Marker(mapViewTracking);
+        currentLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        currentLocationMarker.setTitle("Current Position");
+        mapViewTracking.getOverlays().add(currentLocationMarker);
+    }
+
+
+    private void loadMapSource() {
+        try {
+            if (isNetworkAvailable()) {
+                mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
+                Log.v(TAG, "Map: ONLINE");
+                return;
+            }
+
+            File mbtilesDir = new File(
+                    requireContext().getExternalFilesDir(null),
+                    MBTILES_SUBDIR
+            );
+            if (!mbtilesDir.exists()) mbtilesDir.mkdirs();
+
+            File[] mbtilesFiles = mbtilesDir.listFiles(
+                    (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
+            );
+
+            if (mbtilesFiles != null && mbtilesFiles.length > 0) {
+                OfflineTileProvider tileProvider = new OfflineTileProvider(
+                        new SimpleRegisterReceiver(requireContext()),
+                        mbtilesFiles
+                );
+                mapViewTracking.setTileProvider(tileProvider);
+                mapViewTracking.setTileSource(new XYTileSource(
+                        "offline", 0, 18, 256, ".png", new String[]{}
+                ));
+                Log.v(TAG, "Map: OFFLINE");
+                return;
+            }
+
+            mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
+            Log.w(TAG, "Map: No network, no MBTiles");
+        } catch (Exception e) {
+            Log.e(TAG, "Map source load failed: " + e.getMessage());
+            mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
+        }
+    }
+
+
+    private boolean isNetworkAvailable() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager)
+                    requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   START/STOP TRACKING
+    // ═══════════════════════════════════════════════════════════════
+
+    private void onStartClicked() {
+        if (!LocationPermissionHelper.hasLocationPermission(requireContext())) {
+            requestLocationPermission();
+            return;
+        }
+
+        if (!LocationPermissionHelper.isGpsEnabled(requireContext())) {
+            showGpsDisabledDialog();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && !LocationPermissionHelper.hasNotificationPermission(requireContext())) {
+            requestNotificationPermission();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                && !LocationPermissionHelper.hasBackgroundLocationPermission(requireContext())) {
+            requestBackgroundPermission();
+        }
+
+        startTracking();
+    }
+
+
+    private void startTracking() {
+        int intervalSec = INTERVAL_SECONDS[spinnerInterval.getSelectedItemPosition()];
+        int minDist = MIN_DISTANCES[spinnerDistance.getSelectedItemPosition()];
+
+        String trackName = "Track " + android.text.format.DateFormat.format(
+                "MM/dd HH:mm", new Date()).toString();
+
+        myTrackViewModel.startNewTrack(trackName, intervalSec, minDist, trackId -> {
+            currentTrackId = trackId.intValue();
+            trackingStartTime = System.currentTimeMillis();
+
+            LocationTrackingService.start(
+                    requireContext(),
+                    currentTrackId,
+                    intervalSec,
+                    minDist
+            );
+
+            requireActivity().runOnUiThread(() -> {
+                switchToTrackingState();
+                Toast.makeText(requireContext(),
+                        "🔴 Tracking started",
+                        Toast.LENGTH_SHORT).show();
+            });
+            return null;
+        });
+    }
+
+
+    private void onStopClicked() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Stop Tracking")
+                .setMessage("Stop and save this track?")
+                .setPositiveButton("Stop & Save", (d, w) -> stopTracking())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void stopTracking() {
+        LocationTrackingService.stop(requireContext());
+
+        if (currentTrackId > 0) {
+            myTrackViewModel.stopTrack(currentTrackId);
+        }
+
+        Toast.makeText(requireContext(),
+                "✅ Track saved",
+                Toast.LENGTH_SHORT).show();
+
+        currentTrackId = -1;
+        trackingStartTime = 0;
+
+        switchToNotTrackingState();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   UI STATE
+    // ═══════════════════════════════════════════════════════════════
+
+    private void switchToTrackingState() {
+        stateNotTracking.setVisibility(View.GONE);
+        stateTracking.setVisibility(View.VISIBLE);
+
+        tvDistance.setText("0.00 km");
+        tvSpeed.setText("0 km/h");
+        tvPoints.setText("0 pt");
+        tvElapsed.setText("00:00:00");
+        tvWaitingGps.setVisibility(View.VISIBLE);
+
+        pathPoints.clear();
+        if (pathPolyline != null) {
+            pathPolyline.setPoints(pathPoints);
+        }
+        if (mapViewTracking != null) {
+            mapViewTracking.invalidate();
+        }
+
+        startElapsedTimer();
+    }
+
+
+    private void switchToNotTrackingState() {
+        stateTracking.setVisibility(View.GONE);
+        stateNotTracking.setVisibility(View.VISIBLE);
+        stopElapsedTimer();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   TIMER
+    // ═══════════════════════════════════════════════════════════════
+
+    private void startElapsedTimer() {
+        stopElapsedTimer();
+
+        if (trackingStartTime == 0 && currentTrackId > 0) {
+            myTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
+                if (track != null && trackingStartTime == 0) {
+                    trackingStartTime = track.getStartTime().getTime();
+                }
+            });
+        }
+
+        timerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (trackingStartTime > 0) {
+                    long elapsed = System.currentTimeMillis() - trackingStartTime;
+                    tvElapsed.setText(formatElapsed(elapsed));
+                }
+                uiHandler.postDelayed(this, 1000);
+            }
+        };
+        uiHandler.post(timerRunnable);
+    }
+
+
+    private void stopElapsedTimer() {
+        if (timerRunnable != null) {
+            uiHandler.removeCallbacks(timerRunnable);
+            timerRunnable = null;
+        }
+    }
+
+
+    private String formatElapsed(long ms) {
+        long seconds = ms / 1000;
+        long hours = seconds / 3600;
+        long mins = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+        return String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   LOCATION UPDATE
+    // ═══════════════════════════════════════════════════════════════
+
+    private void handleLocationUpdate(Intent intent) {
+        double lat = intent.getDoubleExtra(LocationTrackingService.EXTRA_LATITUDE, 0);
+        double lng = intent.getDoubleExtra(LocationTrackingService.EXTRA_LONGITUDE, 0);
+        double speed = intent.getDoubleExtra(LocationTrackingService.EXTRA_SPEED, 0);
+
+        tvWaitingGps.setVisibility(View.GONE);
+
+        GeoPoint newPoint = new GeoPoint(lat, lng);
+        pathPoints.add(newPoint);
+
+        pathPolyline.setPoints(pathPoints);
+        currentLocationMarker.setPosition(newPoint);
+
+        if (pathPoints.size() <= 3) {
+            mapViewTracking.getController().animateTo(newPoint);
+            mapViewTracking.getController().setZoom(17.0);
+        } else {
+            mapViewTracking.getController().animateTo(newPoint);
+        }
+
+        mapViewTracking.invalidate();
+
+        tvSpeed.setText(String.format(Locale.US, "%.0f km/h", speed));
+        updateStatsFromDb();
+    }
+
+
+    private void handleServiceStateChange(Intent intent) {
+        boolean isRunning = intent.getBooleanExtra(LocationTrackingService.EXTRA_IS_RUNNING, false);
+
+        if (!isRunning && currentTrackId != -1) {
+            switchToNotTrackingState();
+            currentTrackId = -1;
+        }
+    }
+
+
+    private void updateStatsFromDb() {
+        if (currentTrackId <= 0) return;
+
+        myTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
+            if (track == null) return;
+
+            double distanceKm = track.getTotalDistance() / 1000.0;
+            tvDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
+            tvPoints.setText(String.format(Locale.US, "%d pt", track.getPointCount()));
+
+            if (trackingStartTime == 0) {
+                trackingStartTime = track.getStartTime().getTime();
+            }
+        });
+    }
+
+
+    private void reloadPathFromDb() {
+        if (currentTrackId <= 0) return;
+
+        myTrackViewModel.getPointsByTrack(currentTrackId)
+                .observe(getViewLifecycleOwner(), points -> {
+                    if (points == null || points.isEmpty()) return;
+
+                    pathPoints.clear();
+                    for (com.ah.acr.messagebox.database.MyTrackPointEntity p : points) {
+                        pathPoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
+                    }
+                    pathPolyline.setPoints(pathPoints);
+
+                    if (!pathPoints.isEmpty()) {
+                        GeoPoint last = pathPoints.get(pathPoints.size() - 1);
+                        currentLocationMarker.setPosition(last);
+                        mapViewTracking.getController().animateTo(last);
+                        tvWaitingGps.setVisibility(View.GONE);
+                    }
+
+                    mapViewTracking.invalidate();
+                });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   PERMISSIONS
+    // ═══════════════════════════════════════════════════════════════
+
+    private void requestLocationPermission() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Location Permission Required")
+                .setMessage("GPS tracking requires location permission.")
+                .setPositiveButton("Grant", (d, w) -> {
+                    String[] perms = {
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    };
+                    requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_LOCATION);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void requestBackgroundPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Background Location")
+                .setMessage("For reliable tracking when the screen is off, please allow location access \"All the time\".")
+                .setPositiveButton("Grant", (d, w) -> {
+                    String[] perms = {Manifest.permission.ACCESS_BACKGROUND_LOCATION};
+                    requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_BACKGROUND_LOCATION);
+                })
+                .setNegativeButton("Skip", null)
+                .show();
+    }
+
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Notification Permission")
+                .setMessage("A notification will keep tracking alive in the background.")
+                .setPositiveButton("Grant", (d, w) -> {
+                    String[] perms = {Manifest.permission.POST_NOTIFICATIONS};
+                    requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_NOTIFICATIONS);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+
+        switch (requestCode) {
+            case LocationPermissionHelper.REQUEST_CODE_LOCATION:
+                if (granted) {
+                    onStartClicked();
+                } else {
+                    Toast.makeText(requireContext(),
+                            "Location permission denied",
+                            Toast.LENGTH_SHORT).show();
+                }
+                break;
+
+            case LocationPermissionHelper.REQUEST_CODE_NOTIFICATIONS:
+                onStartClicked();
+                break;
+
+            case LocationPermissionHelper.REQUEST_CODE_BACKGROUND_LOCATION:
+                startTracking();
+                break;
+        }
+    }
+
+
+    private void showGpsDisabledDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("GPS is disabled")
+                .setMessage("Please enable GPS/Location in your device settings.")
+                .setPositiveButton("Settings", (d, w) -> {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivity(intent);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 }

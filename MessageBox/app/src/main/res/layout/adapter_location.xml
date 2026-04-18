@@ -3,237 +3,320 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginBottom="2dp"
+    app:cardBackgroundColor="#152A4A"
     app:cardCornerRadius="8dp"
-    app:cardElevation="4dp"
-    app:cardUseCompatPadding="true">
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="8dp">
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
 
-        <!-- 상단 체크박스와 제목 영역 -->
+        <!-- 상단: 아바타 + 이름 + 시간 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- 이니셜 아바타 (작게) -->
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_avatar_box"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/text_avatar_initial"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="?"
+                    android:textColor="#00E5D1"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <!-- 이름 + 배지 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/badge_type"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_data"
+                        android:paddingStart="5dp"
+                        android:paddingEnd="5dp"
+                        android:paddingTop="1dp"
+                        android:paddingBottom="1dp"
+                        android:text="DATA"
+                        android:textColor="#95B0D4"
+                        android:textSize="8sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/tv_sender"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Name"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:singleLine="true"
+                        android:ellipsize="end" />
+
+                </LinearLayout>
+
+                <!-- IMEI -->
+                <TextView
+                    android:id="@+id/tv_imei"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="000000000000000"
+                    android:textColor="#8899AA"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginTop="1dp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:id="@+id/tv_datetime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--:--"
+                    android:textColor="#95B0D4"
+                    android:textSize="10sp" />
+
+                <ImageButton
+                    android:id="@+id/btn_address_edit"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_edit"
+                    app:tint="#5A7090"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:scaleType="centerInside"
+                    android:padding="3dp"
+                    android:layout_marginTop="1dp"
+                    android:contentDescription="Edit" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 좌표 행 (인라인) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginTop="6dp">
 
+            <ImageView
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:src="@drawable/ic_pin"
+                app:tint="#00E5D1"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="Location" />
 
             <TextView
-                android:id="@+id/tv_datetime"
+                android:id="@+id/tv_latitude"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.000000"
+                android:textColor="#E8F1FB"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=", "
+                android:textColor="#5A7090"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_longitude"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="yyyy-mm-dd hh:mm"
-                android:textSize="13sp"
-                android:textColor="#666666" />
+                android:text="0.000000"
+                android:textColor="#E8F1FB"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
 
-            <Button
+            <!-- 액션 버튼 (인라인) -->
+            <LinearLayout
+                android:id="@+id/btn_copy"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:gravity="center"
+                android:background="@drawable/bg_btn_header"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="3dp">
+
+                <ImageView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:src="@drawable/ic_copy"
+                    app:tint="#95B0D4"
+                    android:contentDescription="Copy" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_map"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:gravity="center"
+                android:background="@drawable/bg_btn_header_accent"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="3dp">
+
+                <ImageView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:src="@drawable/ic_map_view"
+                    app:tint="#00E5D1"
+                    android:contentDescription="Map" />
+
+            </LinearLayout>
+
+            <ImageButton
                 android:id="@+id/btn_del"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="Del"
-                android:textSize="12sp"
-                android:layout_marginEnd="8dp"
-                android:minWidth="50dp"
-                android:minHeight="0dp" />
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_delete_all"
+                app:tint="#FF5252"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:scaleType="centerInside"
+                android:padding="5dp"
+                android:contentDescription="Delete" />
 
         </LinearLayout>
 
-        <!-- 메인 제목과 버튼들 -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="6dp"
-            app:cardElevation="2dp"
-            app:cardBackgroundColor="#ffffff">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="2dp">
-
-                <ImageButton
-                    android:id="@+id/btn_address_edit"
-                    android:layout_width="20dp"
-                    android:layout_height="wrap_content"/>
-
-                <TextView
-                    android:id="@+id/tv_sender"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Name(Imei)"
-                    android:textSize="18sp"
-                    android:textColor="#000000"
-                    android:textStyle="bold" />
-
-                <Button
-                    android:id="@+id/btn_copy"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Copy"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="8dp"
-                    android:minWidth="50dp"
-                    android:minHeight="0dp" />
-
-                <Button
-                    android:id="@+id/btn_map"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Map"
-                    android:textSize="12sp"
-                    android:minWidth="60dp"
-                    android:minHeight="0dp" />
-
-            </LinearLayout>
-
-        </androidx.cardview.widget.CardView>
-
-
-
-        <!-- 정보 영역 -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="2dp"
-            app:cardBackgroundColor="#f8f8f8">
-
+        <!-- 상세 정보 (고도/방향/속도) - UAV/UAT 모드만 -->
         <LinearLayout
+            android:id="@+id/lay_detail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp"
-            android:layout_marginStart="30dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-
-                <TextView
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="Latitude :"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
-
-                <TextView
-                    android:id="@+id/tv_latitude"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="33.053"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-
-                <TextView
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="Longitude :"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
-
-                <TextView
-                    android:id="@+id/tv_longitude"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="123.123"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
-
-            </LinearLayout>
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
 
             <LinearLayout
                 android:id="@+id/lay_altitude"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="Altitude :"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                <ImageView
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:src="@drawable/ic_altitude"
+                    app:tint="#8899AA"
+                    android:layout_marginEnd="3dp"
+                    android:contentDescription="Altitude" />
 
                 <TextView
                     android:id="@+id/tv_altitude"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="12"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                    android:text="0m"
+                    android:textColor="#B8CEE8"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/lay_direction"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="Direction :"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                <ImageView
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:src="@drawable/ic_direction"
+                    app:tint="#8899AA"
+                    android:layout_marginEnd="3dp"
+                    android:contentDescription="Direction" />
 
                 <TextView
                     android:id="@+id/tv_direction"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="220"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                    android:text="0°"
+                    android:textColor="#B8CEE8"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/lay_speed"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="Velocity :"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                <ImageView
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:src="@drawable/ic_speed"
+                    app:tint="#8899AA"
+                    android:layout_marginEnd="3dp"
+                    android:contentDescription="Speed" />
 
                 <TextView
                     android:id="@+id/tv_speed"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0.003km/h"
-                    android:textSize="14sp"
-                    android:textColor="#333333" />
+                    android:text="0km/h"
+                    android:textColor="#B8CEE8"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
 
             </LinearLayout>
 
         </LinearLayout>
-        </androidx.cardview.widget.CardView>
 
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

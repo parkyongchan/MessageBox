@@ -17,7 +17,7 @@
         android:orientation="vertical"
         android:padding="12dp">
 
-        <!-- ─── 1줄: BLE | 위성감도 | 위치보고 ─── -->
+        <!-- ─── Row 1: BLE | Satellite Signal | Location Status ─── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -44,7 +44,7 @@
                     android:id="@+id/text_ble_status_main"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="미연결"
+                    android:text="Disconnected"
                     android:textColor="#FF5252"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -52,7 +52,7 @@
 
             </LinearLayout>
 
-            <!-- 위성감도 -->
+            <!-- Satellite Signal -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -104,7 +104,7 @@
 
             </LinearLayout>
 
-            <!-- 위치 상태 -->
+            <!-- Location Status -->
             <LinearLayout
                 android:id="@+id/card_location_status"
                 android:layout_width="0dp"
@@ -134,13 +134,13 @@
 
         </LinearLayout>
 
-        <!-- 구분선 -->
+        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
             android:background="#1E3A5F" />
 
-        <!-- ─── 2줄: 배터리 | 수신함 | 송신대기 ─── -->
+        <!-- ─── Row 2: Battery | Inbox | Outbox ─── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -148,7 +148,7 @@
             android:gravity="center_vertical"
             android:paddingTop="10dp">
 
-            <!-- 배터리 -->
+            <!-- Battery -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -180,7 +180,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="배터리"
+                        android:text="Battery"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 
@@ -188,13 +188,13 @@
 
             </LinearLayout>
 
-            <!-- 세로 구분선 -->
+            <!-- Vertical Divider -->
             <View
                 android:layout_width="0.5dp"
                 android:layout_height="32dp"
                 android:background="#1E3A5F" />
 
-            <!-- 수신함 -->
+            <!-- Inbox -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -227,7 +227,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="수신함"
+                        android:text="Inbox"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 
@@ -235,13 +235,13 @@
 
             </LinearLayout>
 
-            <!-- 세로 구분선 -->
+            <!-- Vertical Divider -->
             <View
                 android:layout_width="0.5dp"
                 android:layout_height="32dp"
                 android:background="#1E3A5F" />
 
-            <!-- 송신대기 -->
+            <!-- Outbox -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -292,7 +292,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="송신대기"
+                        android:text="Outbox"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 

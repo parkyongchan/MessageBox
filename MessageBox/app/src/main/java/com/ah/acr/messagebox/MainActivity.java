@@ -52,6 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +66,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_ACCESS_FINE_LOCATION = 2;
     private static final int PERMISSION_ACCESS_COARSE_LOCATION = 1;
 
+    // Test data IMEIs
+    private static final String TEST_IMEI_TRACK = "TEST-001";
+    private static final String TEST_IMEI_SOS = "TEST-002";
+
     private ActivityMainBinding binding;
 
     private BleViewModel mBleViewModel;
@@ -72,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
     private MsgViewModel msgViewModel;
     private LocationViewModel locationViewModel;
 
-    // 테스트모드 상태
     private int mTestTapCount = 0;
     private boolean mIsTestMode = false;
 
@@ -82,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // ─── 권한 체크 (기존 그대로) ───
+        // Permission check
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -90,36 +94,31 @@ public class MainActivity extends AppCompatActivity {
                 builder.setMessage(getString(R.string.gpsNotifyMsg));
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
+                    @Override public void onDismiss(DialogInterface dialog) {
                         requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN}, PERMISSION_BLUETOOTH_SCAN);
                     }
                 });
                 builder.show();
             }
-
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(getString(R.string.ble_permission_ble_access));
                 builder.setMessage(getString(R.string.gpsNotifyMsg));
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
+                    @Override public void onDismiss(DialogInterface dialog) {
                         requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, PERMISSION_BLUETOOTH_CONNECT);
                     }
                 });
                 builder.show();
             }
-
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(getString(R.string.ble_permission_ble_access));
                 builder.setMessage(getString(R.string.gpsNotifyMsg));
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
+                    @Override public void onDismiss(DialogInterface dialog) {
                         requestPermissions(new String[]{Manifest.permission.BLUETOOTH_ADVERTISE}, PERMISSION_BLUETOOTH_ADVERTISE);
                     }
                 });
@@ -132,8 +131,7 @@ public class MainActivity extends AppCompatActivity {
                 builder.setMessage(getString(R.string.gpsNotifyMsg));
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
+                    @Override public void onDismiss(DialogInterface dialog) {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_ACCESS_FINE_LOCATION);
                     }
                 });
@@ -146,8 +144,7 @@ public class MainActivity extends AppCompatActivity {
                 builder.setMessage(getString(R.string.gpsNotifyMsg));
                 builder.setPositiveButton(android.R.string.ok, null);
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
+                    @Override public void onDismiss(DialogInterface dialog) {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_ACCESS_COARSE_LOCATION);
                     }
                 });
@@ -155,8 +152,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // ─── BLE 선택 observer: 실제 하드웨어 연결/해제 시 setConnectBleDevice 호출 ───
-        // (UI 업데이트는 setupFixedHeaderObservers() 안에서 별도로 처리됨)
         BLE.INSTANCE.getSelectedDevice().observe(this, bleDevice -> {
             if (bleDevice != null) {
                 Log.v("BLE", bleDevice.toString());
@@ -166,13 +161,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // ─── BLE 쓰기 큐 observer (기존 그대로) ───
         BLE.INSTANCE.getWriteQueue().observe(this, queue -> {
             String request = queue.poll();
             bleSendMessage(request);
         });
 
-        // ─── ViewModel 초기화 (기존 그대로) ───
         mKeyViewModel = new ViewModelProvider(this).get(KeyViewModel.class);
         mBleViewModel = new ViewModelProvider(this).get(BleViewModel.class);
         msgViewModel = new ViewModelProvider(this).get(MsgViewModel.class);
@@ -181,24 +174,15 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, MODE_PRIVATE);
         checkExternalStorage();
 
-        // ─────────────────────────────────────────────
-        //   Step 1: 고정 헤더/상태카드 observer
-        // ─────────────────────────────────────────────
         setupFixedHeaderObservers();
-
-        // ─────────────────────────────────────────────
-        //   Step 2: 하단 탭 (채팅/장비/지도/설정/연결)
-        // ─────────────────────────────────────────────
         setupBottomTabs();
     }
 
     // ═════════════════════════════════════════════════════════════
-    //   Step 1: 고정 헤더/상태카드 관련 메서드
+    //   Fixed Header / Status Card
     // ═════════════════════════════════════════════════════════════
 
-    /** 헤더+상태카드 observer 설정 */
     private void setupFixedHeaderObservers() {
-        // DeviceInfo observer: IMEI + 위치상태 (연결 직후 약 0.5초 내 즉시 표시)
         BLE.INSTANCE.getDeviceInfo().observe(this, info -> {
             if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
                 binding.headerArea.textHeaderSub.setText("IMEI  " + info.getImei());
@@ -206,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
                 binding.headerArea.textHeaderSub.setText("IMEI  -");
             }
 
-            // 위치 상태 즉시 표시 (DeviceStatus 5초 기다리지 않고)
             if (info != null) {
                 if (info.isSosStarted()) updateLocationStatus(2);
                 else if (info.isTrackingMode()) updateLocationStatus(1);
@@ -214,17 +197,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // BLE 연결 상태 (헤더 색상 변경)
         BLE.INSTANCE.getSelectedDevice().observe(this, device -> {
             if (device != null) {
                 mIsTestMode = false;
-                binding.statusArea.textBleStatusMain.setText("연결됨");
+                binding.statusArea.textBleStatusMain.setText("Connected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
                 BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
             } else {
                 if (mIsTestMode) return;
-                binding.statusArea.textBleStatusMain.setText("미연결");
+                binding.statusArea.textBleStatusMain.setText("Disconnected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
                 binding.statusArea.textMainBattery.setText("- %");
@@ -236,7 +218,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // DeviceStatus observer (배터리, 신호, 메시지 수 - 5초 주기)
         mBleViewModel.getDeviceStatus().observe(this, status -> {
             if (status == null) return;
             binding.statusArea.textMainBattery.setText(String.format("%d%%", status.getBattery()));
@@ -244,13 +225,11 @@ public class MainActivity extends AppCompatActivity {
             binding.statusArea.textMainInbox.setText(String.valueOf(status.getInBox()));
             binding.statusArea.textMainOutbox.setText(String.valueOf(status.getOutBox()));
 
-            // 위치 상태 (주기적 재확인)
             if (status.isSosMode()) updateLocationStatus(2);
             else if (status.isTrackingMode()) updateLocationStatus(1);
             else updateLocationStatus(0);
         });
 
-        // 미전송 메시지 수
         msgViewModel.getAllMsgs().observe(this, allMsgs -> {
             if (allMsgs == null) return;
             int unsent = 0;
@@ -265,18 +244,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // SOS 버튼 (헤더 우측)
         binding.headerArea.btnSosHeader.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
-                        .setTitle("SOS 긴급 전송")
-                        .setMessage("SOS 신호를 전송하시겠습니까?\n3분 간격으로 계속 전송됩니다.")
-                        .setPositiveButton("전송", (d, w) ->
+                        .setTitle("SOS Emergency")
+                        .setMessage("Send SOS signal?\nIt will be sent every 3 minutes.")
+                        .setPositiveButton("Send", (d, w) ->
                                 BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"))
-                        .setNegativeButton("취소", null)
+                        .setNegativeButton("Cancel", null)
                         .show()
         );
 
-        // 테스트모드 (타이틀 5번 탭)
         binding.headerArea.textHeaderTitle.setOnClickListener(v -> {
             mTestTapCount++;
             if (mTestTapCount >= 5) {
@@ -286,7 +263,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** 신호 감도 막대 (0~5) */
     private void updateSignalBar(int signal) {
         View[] bars = {
                 binding.statusArea.sigBar1, binding.statusArea.sigBar2,
@@ -309,7 +285,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** 위치 상태 (0=OFF, 1=TRACKING, 2=SOS) */
     private void updateLocationStatus(int state) {
         switch (state) {
             case 1:
@@ -330,11 +305,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** 테스트 모드 토글 (BLE 없이 UI 확인용) */
+    /** Test mode toggle - inject/delete location data */
     private void toggleTestMode() {
         if (mIsTestMode) {
+            // ═══ OFF ═══
             mIsTestMode = false;
-            binding.statusArea.textBleStatusMain.setText("미연결");
+            binding.statusArea.textBleStatusMain.setText("Disconnected");
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
             binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
             binding.statusArea.textMainBattery.setText("- %");
@@ -343,8 +319,11 @@ public class MainActivity extends AppCompatActivity {
             binding.headerArea.textHeaderSub.setText("IMEI  -");
             updateSignalBar(0);
             updateLocationStatus(0);
-            Toast.makeText(this, "🧪 테스트 모드 해제", Toast.LENGTH_SHORT).show();
+
+            deleteTestLocationData();
+            Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
         } else {
+            // ═══ ON ═══
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
             test.setBattery(85);
@@ -354,17 +333,117 @@ public class MainActivity extends AppCompatActivity {
             test.setTrackingMode(true);
             test.setSosMode(false);
             mBleViewModel.getDeviceStatus().postValue(test);
-            binding.statusArea.textBleStatusMain.setText("테스트모드");
+            binding.statusArea.textBleStatusMain.setText("Test Mode");
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);
             binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
             binding.headerArea.textHeaderSub.setText("IMEI  300434061000001");
-            Toast.makeText(this, "🧪 테스트 데이터 주입", Toast.LENGTH_SHORT).show();
+
+            insertTestLocationData();
+            Toast.makeText(this, "🧪 Test data injected (20 points)", Toast.LENGTH_SHORT).show();
         }
     }
 
-    /** 하단 탭 설정 (Step 2) */
+
+    // ═════════════════════════════════════════════════════════════
+    //   Test Location Data
+    // ═════════════════════════════════════════════════════════════
+
+    /** Inject test location data near Yeongdeungpo */
+    private void insertTestLocationData() {
+        // TRACK x10 (movement around Yeongdeungpo Station)
+        double[][] trackCoords = {
+                {37.5264, 126.8960},
+                {37.5270, 126.8975},
+                {37.5280, 126.8990},
+                {37.5290, 126.9005},
+                {37.5300, 126.9020},
+                {37.5310, 126.9035},
+                {37.5305, 126.9050},
+                {37.5295, 126.9060},
+                {37.5285, 126.9055},
+                {37.5275, 126.9050}
+        };
+
+        // SOS x10 (clustered near Yeongdeungpo Park)
+        double[][] sosCoords = {
+                {37.5240, 126.8930},
+                {37.5245, 126.8935},
+                {37.5235, 126.8925},
+                {37.5242, 126.8940},
+                {37.5238, 126.8928},
+                {37.5244, 126.8932},
+                {37.5236, 126.8938},
+                {37.5241, 126.8926},
+                {37.5239, 126.8936},
+                {37.5243, 126.8929}
+        };
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+
+        // TRACK (past, 10-min intervals)
+        for (int i = 0; i < trackCoords.length; i++) {
+            cal.setTime(now);
+            cal.add(Calendar.MINUTE, -(10 * (trackCoords.length - i)));
+            Date pastTime = cal.getTime();
+
+            LocationEntity entity = new LocationEntity(
+                    0, false, 2, TEST_IMEI_TRACK,
+                    trackCoords[i][0], trackCoords[i][1],
+                    10 + i * 5, 45 + i * 10, 15 + i,
+                    pastTime, pastTime,
+                    false, false, false
+            );
+            locationViewModel.insert(entity);
+        }
+
+        // SOS (past, 5-min intervals)
+        for (int i = 0; i < sosCoords.length; i++) {
+            cal.setTime(now);
+            cal.add(Calendar.MINUTE, -(5 * (sosCoords.length - i) + 5));
+            Date pastTime = cal.getTime();
+
+            LocationEntity entity = new LocationEntity(
+                    0, false, 4, TEST_IMEI_SOS,
+                    sosCoords[i][0], sosCoords[i][1],
+                    0, 0, 0,
+                    pastTime, pastTime,
+                    false, false, false
+            );
+            locationViewModel.insert(entity);
+        }
+
+        Log.v("TEST_MODE", "Inserted 20 test locations");
+    }
+
+
+    /** Delete test location data (match by IMEI) */
+    private void deleteTestLocationData() {
+        locationViewModel.getAllLocations().observe(this, new androidx.lifecycle.Observer<List<LocationEntity>>() {
+            @Override
+            public void onChanged(List<LocationEntity> allLocations) {
+                if (allLocations == null) return;
+                locationViewModel.getAllLocations().removeObserver(this);
+
+                int deleted = 0;
+                for (LocationEntity loc : allLocations) {
+                    if (TEST_IMEI_TRACK.equals(loc.getCodeNum())
+                            || TEST_IMEI_SOS.equals(loc.getCodeNum())) {
+                        locationViewModel.delete(loc);
+                        deleted++;
+                    }
+                }
+                Log.v("TEST_MODE", "Deleted " + deleted + " test locations");
+            }
+        });
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   Bottom Tabs
+    // ═════════════════════════════════════════════════════════════
+
     private void setupBottomTabs() {
-        // 첫 진입 = 지도 탭
         if (getSupportFragmentManager().findFragmentById(R.id.tab_container) == null) {
             switchTab(new MapTabFragment());
             binding.bottomNav.setSelectedItemId(R.id.tab_map);
@@ -391,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //   기존 메서드 (그대로 유지)
+    //   Existing methods (kept as-is)
     // ═════════════════════════════════════════════════════════════
 
     @Override
@@ -458,7 +537,6 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_CHANGE_TRY);
             }
-
         } else if (packet.startsWith("LOGIN=")) {
             String msg = packet.substring(6);
             String[] vals = msg.split(",");
@@ -468,7 +546,6 @@ public class MainActivity extends AppCompatActivity {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_OK);
                 BLE.INSTANCE.isLogon().postValue(true);
             }
-
         } else if (packet.startsWith("CHANGELOGIN=")) {
             String msg = packet.substring(12);
             String[] vals = msg.split(",");
@@ -490,7 +567,6 @@ public class MainActivity extends AppCompatActivity {
             String msg = packet.substring(6);
             String[] vals = msg.split(",");
             int idx = Integer.parseInt(vals[0]);
-
             if (vals[1].equals("OK")) {
                 FirmUpdate state = new FirmUpdate(idx, "NEXT");
                 BLE.INSTANCE.getFirmwareUdateState().postValue(state);
@@ -506,11 +582,9 @@ public class MainActivity extends AppCompatActivity {
                 FirmUpdate state = new FirmUpdate(idx, "END");
                 BLE.INSTANCE.getFirmwareUdateState().postValue(state);
             }
-
         } else if (packet.startsWith("SET=")) {
             String msg = packet.substring(4);
             String[] vals = msg.split(",");
-
             if (vals[0].equals("OK")) {
                 Toast.makeText(this, "Change successful.", Toast.LENGTH_LONG).show();
             } else if (vals[0].equals("FAIL")) {
@@ -521,39 +595,32 @@ public class MainActivity extends AppCompatActivity {
         } else if (packet.startsWith("LOCATION=")) {
             String msg = packet.substring(9);
             String[] vals = msg.split(",");
-
             if (vals[0].equals("1")) Toast.makeText(this, "A single location request has been sent to the terminal.", Toast.LENGTH_LONG).show();
             if (vals[0].equals("2")) Toast.makeText(this, "The terminal was told to start tracking mode.", Toast.LENGTH_LONG).show();
             if (vals[0].equals("3")) Toast.makeText(this, "The terminal has been told to stop tracking mode.", Toast.LENGTH_LONG).show();
             if (vals[0].equals("4")) Toast.makeText(this, "The terminal was told to start SOS mode.", Toast.LENGTH_LONG).show();
             if (vals[0].equals("5")) Toast.makeText(this, "The terminal was told to stop SOS mode.", Toast.LENGTH_LONG).show();
-
         } else if (packet.startsWith("SENDING=")) {
             String msg = packet.substring(8);
             String[] vals = msg.split(",");
-
             if (vals[1].equals("OK")) {
                 BLE.INSTANCE.getOutboxMsgStatus().postValue(packet);
             }
-
         } else if (packet.startsWith("DEVICESEND=")) {
             String msg = packet.substring(11);
             String[] vals = msg.split(",");
-
             if (vals[1].equals("OK")) {
                 int id = Integer.parseInt(vals[0]);
             }
         } else if (packet.startsWith("RECEIVED=")) {
             String sms = packet.substring(9);
             String[] vals = sms.split(",");
-
             try {
                 Log.v("RECEIVE", "number of remaining  : " + vals[1]);
                 if (vals[1].equals("0")) {
                     Toast.makeText(this, getString(R.string.inbox_receive_complite), Toast.LENGTH_LONG).show();
                     return;
                 }
-
                 byte[] data = Base64.decode(vals[2], Base64.NO_WRAP);
                 Log.v("RECEIVE-HEX", HexUtil.formatHexString(data));
                 ByteBuf buffer = Unpooled.wrappedBuffer(data);
@@ -572,24 +639,19 @@ public class MainActivity extends AppCompatActivity {
                         int senderB = buffer.readInt();
                         sender = String.format("%08d%07d", senderF, senderB);
                     }
-
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     byte etc = buffer.readByte();
 
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             sender, lat, lng, 0, 0, 0, null,
-                            new Date(),
-                            false, false, false);
-
+                            new Date(), false, false, false);
                     Log.v("VER 11", addLoc.toString());
-
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "위치 저장 완료");
-                        else Log.v("Location ADD", "위치 저장 실패");
+                        if (success) Log.v("Location ADD", "Location saved");
+                        else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
-
                 } else if (ver == 0x12) {
                     int senderLen = buffer.readableBytes() - 14;
                     buffer.readByte();
@@ -612,16 +674,13 @@ public class MainActivity extends AppCompatActivity {
 
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             sender, lat, lng, alt, dir, speed, null,
-                            new Date(),
-                            false, false, false);
+                            new Date(), false, false, false);
                     Log.v("VER 12", addLoc.toString());
-
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "위치 저장 완료");
-                        else Log.v("Location ADD", "위치 저장 실패");
+                        if (success) Log.v("Location ADD", "Location saved");
+                        else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
-
                 } else if (ver == 0x13) {
                     int senderLen = buffer.readableBytes() - 21;
                     buffer.readByte();
@@ -655,14 +714,11 @@ public class MainActivity extends AppCompatActivity {
 
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             sender, lat, lng, alt, dir, speed, date,
-                            new Date(),
-                            false, false, false);
-
+                            new Date(), false, false, false);
                     Log.v("VER 13", addLoc.toString());
-
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "위치 저장 완료");
-                        else Log.v("Location ADD", "위치 저장 실패");
+                        if (success) Log.v("Location ADD", "Location saved");
+                        else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
                 } else if (ver == 0x16) {
@@ -679,18 +735,14 @@ public class MainActivity extends AppCompatActivity {
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-
                     msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "메시지 저장 완료");
-                        else Log.v("MSG ADD", "메시지 저장 실패");
+                        if (success) Log.v("MSG ADD", "Message saved");
+                        else Log.v("MSG ADD", "Message save failed");
                         return null;
                     });
-
                 } else if (ver == 0x17) {
                     Log.v("MSG FREE", "Size : " + buffer.readableBytes());
-
                     buffer.readByte();
-
                     int size = buffer.readUnsignedByte();
                     String codeNum = buffer.readCharSequence(size, StandardCharsets.US_ASCII).toString();
                     size = buffer.readUnsignedByte();
@@ -703,10 +755,9 @@ public class MainActivity extends AppCompatActivity {
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-
                     msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "메시지 저장 완료");
-                        else Log.v("MSG ADD", "메시지 저장 실패");
+                        if (success) Log.v("MSG ADD", "Message saved");
+                        else Log.v("MSG ADD", "Message save failed");
                         return null;
                     });
                 }
@@ -715,7 +766,6 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,FAIL", vals[0]));
             }
-
         } else if (packet.startsWith("MSGDEL=")) {
             String msg = packet.substring(7);
             String[] vals = msg.split(",");
@@ -723,8 +773,10 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), "All messages in the terminal have been deleted.", Toast.LENGTH_LONG).show();
             }
         } else if (packet.startsWith("BROAD=")) {
+            Log.v("BROAD-RX", packet);
             String msg = packet.substring(6);
             String[] vals = msg.split(",");
+            Log.v("BROAD-RX", "battery=" + vals[0] + " inbox=" + vals[1] + " UNSENT=" + vals[2] + " signal=" + vals[3]);
 
             DeviceStatus sta = new DeviceStatus();
             sta.setBattery(Integer.parseInt(vals[0]));
@@ -739,9 +791,7 @@ public class MainActivity extends AppCompatActivity {
                 sta.setSosMode(!vals[7].equals("0"));
                 sta.setTrackingMode(!vals[8].equals("0"));
             }
-
             mBleViewModel.getDeviceStatus().setValue(sta);
-
         } else if (packet.startsWith("SN=")) {
             String msg = packet.substring(3);
             String[] vals = msg.split(",");
@@ -770,26 +820,21 @@ public class MainActivity extends AppCompatActivity {
             snackbar.show();
             return;
         }
-
         BluetoothGattCharacteristic characteristic = getWriteCharacteristic(bleDevice);
         if (characteristic == null) {
             BleManager.getInstance().disconnect(bleDevice);
             return;
         }
-
         BleManager.getInstance().write(
                 bleDevice,
                 BLE_SERVICE_UUID.toString(),
                 characteristic.getUuid().toString(),
                 sendMsg.getBytes(),
                 new BleWriteCallback() {
-                    @Override
-                    public void onWriteSuccess(final int current, final int total, final byte[] justWrite) {
+                    @Override public void onWriteSuccess(final int current, final int total, final byte[] justWrite) {
                         runOnUiThread(() -> { });
                     }
-
-                    @Override
-                    public void onWriteFailure(final BleException exception) {
+                    @Override public void onWriteFailure(final BleException exception) {
                         runOnUiThread(() -> { });
                     }
                 });
@@ -813,26 +858,20 @@ public class MainActivity extends AppCompatActivity {
             BleManager.getInstance().disconnect(bleDevice);
             return;
         }
-
         BleManager.getInstance().notify(bleDevice,
                 BLE_SERVICE_UUID.toString(),
                 readCharacteristic.getUuid().toString(),
                 new BleNotifyCallback() {
-                    @Override
-                    public void onNotifySuccess() {
+                    @Override public void onNotifySuccess() {
                         runOnUiThread(() -> {
                             Log.v("BLE", "connect success");
                             BLE.INSTANCE.getWriteQueue().offer("INFO=?");
                         });
                     }
-
-                    @Override
-                    public void onNotifyFailure(final BleException exception) {
+                    @Override public void onNotifyFailure(final BleException exception) {
                         runOnUiThread(() -> { });
                     }
-
-                    @Override
-                    public void onCharacteristicChanged(byte[] data) {
+                    @Override public void onCharacteristicChanged(byte[] data) {
                         runOnUiThread(() -> {
                             BLE.INSTANCE.addReceviceData(new String(data));
                             if (data[data.length - 1] == '\n') {
@@ -840,7 +879,6 @@ public class MainActivity extends AppCompatActivity {
                                     List<String> read = BLE.INSTANCE.getReceiveData();
                                     String reads = String.join("", read);
                                     BLE.INSTANCE.getReceiveData().clear();
-
                                     receivePacketProcess(new String(Base64.decode(reads, Base64.NO_WRAP)));
                                 } catch (Exception e) {
                                     // Log.e("RECEIVE", e.getMessage());

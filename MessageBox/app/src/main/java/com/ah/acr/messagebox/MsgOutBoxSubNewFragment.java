@@ -187,14 +187,14 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
         });
 
-        binding.buttonMsgCancel.setOnClickListener(v->{
+        binding.buttonMsgCancel.setOnClickListener(v -> {
             new AlertDialog.Builder(getContext())
-                    .setTitle("Message Cancel")
-                    .setMessage(getString(R.string.outbox_new_cencel))
-                    .setPositiveButton("Confirm", (dialog, which) -> {
+                    .setTitle("Discard message?")
+                    .setMessage("Your message will not be saved.")
+                    .setPositiveButton("Discard", (dialog, which) -> {
                         navigateBack();
                     })
-                    .setNegativeButton("cancel", null)
+                    .setNegativeButton("Keep editing", null)
                     .show();
         });
 

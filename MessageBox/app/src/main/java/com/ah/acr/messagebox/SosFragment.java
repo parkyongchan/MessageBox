@@ -1,7 +1,6 @@
 package com.ah.acr.messagebox;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,8 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
-import android.widget.CompoundButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,11 +18,9 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 
 import com.ah.acr.messagebox.ble.BLE;
 import com.ah.acr.messagebox.ble.BleViewModel;
-import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.data.DeviceStatus;
 import com.ah.acr.messagebox.database.AddressViewModel;
 import com.ah.acr.messagebox.databinding.FragmentSosBinding;
@@ -41,8 +36,13 @@ public class SosFragment extends Fragment {
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
+    // 다크 테마 SOS 색상
+    private static final int COLOR_SOS_ACTIVE    = 0xFFFF5252;  // 빨강 (긴급)
+    private static final int COLOR_SOS_INACTIVE  = 0xFF3A1A1A;  // 진한 빨강 (비활성)
+    private static final int COLOR_STOP_ACTIVE   = 0xFF00E5D1;  // 청록 (정지 활성)
+    private static final int COLOR_STOP_INACTIVE = 0xFF152A4A;  // 진한 카드 배경
 
-    //Android 6.0 (API level 23)
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,93 +61,94 @@ public class SosFragment extends Fragment {
         binding = FragmentSosBinding.inflate(inflater, container, false);
         SharedUtil shared = mKeyViewModel.getSharedUtil().getValue();
 
+        binding.getRoot().setOnClickListener(v -> hideKeyboard());
 
-        binding.getRoot().setOnClickListener(v->{
-            hideKeyboard();
-        });
-
-        //setupFragmentResultListener();
-
-        binding.buttonSearch.setOnClickListener(v-> {
+        // 검색 버튼
+        binding.buttonSearch.setOnClickListener(v -> {
             setupFragmentResultListener();
             showSearchDialog();
         });
 
+        // 장비 설정 수신
         BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
-                if (s.startsWith("SET=")) {
-                    String msg = s.substring(4);
-                    String[] vals = msg.split(",");
+                if (s == null || !s.startsWith("SET=")) return;
 
-                    if (vals[0].equals("OK") || (vals[0].equals("FAIL"))) {
-                        Toast.makeText(getContext(), "SOS Setting :" + vals[0], Toast.LENGTH_LONG).show();
-                    } else {
-                        String type = vals[0];
+                String msg = s.substring(4);
+                String[] vals = msg.split(",");
 
-                        if (vals.length > 4) {
-                            String recevier = vals[4];
-                            if (!recevier.equals("0")) {
-                                addressViewModel.getAddressByNumbers(vals[4]).observe(getViewLifecycleOwner(), addressEntity -> {
-                                    if (addressEntity != null) {
-                                        binding.textReceiver.setText(addressEntity.getNumbersNic());
-                                    } else binding.textReceiver.setText(recevier);
-                                });
+                if (vals[0].equals("OK") || vals[0].equals("FAIL")) {
+                    Toast.makeText(getContext(), "SOS Setting: " + vals[0], Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                if (vals.length > 4) {
+                    String receiver = vals[4];
+                    if (!receiver.equals("0")) {
+                        addressViewModel.getAddressByNumbers(receiver).observe(getViewLifecycleOwner(), addressEntity -> {
+                            if (addressEntity != null) {
+                                binding.textReceiver.setText(addressEntity.getNumbersNic());
+                            } else {
+                                binding.textReceiver.setText(receiver);
                             }
-                        }
-
+                        });
                     }
                 }
             }
         });
 
+        // 장비 상태 관찰 (SOS 모드 표시)
         mBleViewModel.getDeviceStatus().observe(getViewLifecycleOwner(), new Observer<DeviceStatus>() {
             @Override
             public void onChanged(@Nullable final DeviceStatus status) {
-                if (BLE.INSTANCE.getSelectedDevice().getValue() != null) {
-//                    Log.v("SOS DEVICE: ", String.format("%d%%", status.getBattery()));
-//                    Log.v("SOS DEVICE: ", String.valueOf(status.getInBox()));
-//                    Log.v("SOS DEVICE: ", String.valueOf(status.getOutBox()));
-//                    Log.v("SOS DEVICE: ", String.valueOf(status.getSignal()));
-//
-//                    DeviceInfo deviceInfo = BLE.INSTANCE.getDeviceInfo().getValue();
-//                    Log.v("SOS DEVICE: ", deviceInfo.getImei().toString());
-//                    Log.v("SOS DEVICE: ", status.getGpsTime());
-//                    Log.v("SOS DEVICE: ", String.format("%s, %s", status.getGpsLat(), status.getGpsLng()));
-//                    Log.v("SOS DEVICE: ", String.format("%s, %s", status.isSosMode(), status.isTrackingMode()));
-
-                    if (status.isSosMode()) {
-                        binding.buttonSetStart.setBackgroundColor(Color.parseColor("#9E9E9E"));
-                        binding.buttonSetStop.setBackgroundColor(Color.parseColor("#1DE9B6"));
-                    } else {
-                        binding.buttonSetStart.setBackgroundColor(Color.parseColor("#1DE9B6"));
-                        binding.buttonSetStop.setBackgroundColor(Color.parseColor("#9E9E9E"));
-                    }
+                if (BLE.INSTANCE.getSelectedDevice().getValue() != null && status != null) {
+                    updateStartStopButtonState(status.isSosMode());
                 }
             }
         });
 
-
-
         return binding.getRoot();
+    }
+
+    /** Start/Stop 버튼 시각 상태 업데이트 */
+    private void updateStartStopButtonState(boolean isSosMode) {
+        if (binding == null) return;
+
+        if (isSosMode) {
+            // SOS 활성 중: Start(어두운 빨강 - 이미 작동중), Stop(청록 - 눌러서 정지 가능)
+            binding.buttonSetStart.setBackgroundColor(COLOR_SOS_INACTIVE);
+            binding.buttonSetStop.setBackgroundColor(COLOR_STOP_ACTIVE);
+        } else {
+            // 정지 상태: Start(밝은 빨강 - 긴급 전송 가능), Stop(어두운 카드)
+            binding.buttonSetStart.setBackgroundColor(COLOR_SOS_ACTIVE);
+            binding.buttonSetStop.setBackgroundColor(COLOR_STOP_INACTIVE);
+        }
     }
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-//        BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
-//            if (device != null) {
-//                BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
-//            }
-//        });
+        // SOS Start (LOCATION=4)
+        binding.buttonSetStart.setOnClickListener(v -> {
+            // 긴급 전송 확인 다이얼로그
+            new android.app.AlertDialog.Builder(getContext())
+                    .setTitle("Start SOS")
+                    .setMessage("SOS signal will be sent every 3 minutes.\nAre you sure?")
+                    .setPositiveButton("Start SOS", (d, w) ->
+                            BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"))
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
 
-        binding.buttonSetStart.setOnClickListener(v-> BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"));
+        // SOS Stop (LOCATION=5)
+        binding.buttonSetStop.setOnClickListener(v ->
+                BLE.INSTANCE.getWriteQueue().offer("LOCATION=5"));
 
-        binding.buttonSetStop.setOnClickListener(v-> BLE.INSTANCE.getWriteQueue().offer("LOCATION=5"));
-
+        // Save 버튼
         binding.buttonSetSave.setOnClickListener(v -> {
-
             String nicName = binding.textReceiver.getText().toString().trim();
+
             addressViewModel.getAddressByNicName(nicName).observe(getViewLifecycleOwner(), addressEntity -> {
                 String codeNum = nicName;
                 if (addressEntity != null) {
@@ -161,30 +162,23 @@ public class SosFragment extends Fragment {
                     codeNum = "0";
                 }
 
-
                 StringBuilder setting = new StringBuilder();
                 setting.append("SET=SOS,T0000,D0000,");
                 setting.append(codeNum);
 
                 Log.v(TAG, setting.toString());
-
                 BLE.INSTANCE.getWriteQueue().offer(setting.toString());
             });
-
-
         });
-
     }
 
 
     private void showSearchDialog() {
         SearchDialogFragment searchDialog = new SearchDialogFragment();
-        // Fragment에서는 getParentFragmentManager() 또는 getChildFragmentManager() 사용
         searchDialog.show(getParentFragmentManager(), "SearchDialog");
     }
 
     private void setupFragmentResultListener() {
-        // 검색 결과 받기 - Fragment에서는 getParentFragmentManager() 사용
         getParentFragmentManager().setFragmentResultListener("search_result", this,
                 new FragmentResultListener() {
                     @Override
@@ -192,8 +186,6 @@ public class SosFragment extends Fragment {
                         int selectedId = bundle.getInt("selected_id");
                         String selectedTitle = bundle.getString("selected_nic");
                         String selectedDescription = bundle.getString("selected_code");
-
-                        // 선택된 결과 처리
                         handleSearchResult(selectedId, selectedTitle, selectedDescription);
                     }
                 });
@@ -201,11 +193,8 @@ public class SosFragment extends Fragment {
 
 
     private void handleSearchResult(int id, String title, String code) {
-        // 검색 결과 처리 로직
         if (getContext() != null) {
-            //Toast.makeText(getContext(), "선택됨: " + title, Toast.LENGTH_SHORT).show();
             binding.textReceiver.setText(title);
-            // save........
         }
     }
 
@@ -214,10 +203,7 @@ public class SosFragment extends Fragment {
         try {
             NavController navController = Navigation.findNavController(requireView());
             navController.navigateUp();
-            // 또는
-            // navController.popBackStack();
         } catch (Exception e) {
-            // Navigation이 설정되지 않은 경우 기본 방법 사용
             closeFragment();
         }
     }
@@ -228,10 +214,10 @@ public class SosFragment extends Fragment {
         }
     }
 
-    private void hideKeyboard(){
+    private void hideKeyboard() {
         if (getActivity() != null && requireActivity().getCurrentFocus() != null) {
-            InputMethodManager imm = (InputMethodManager)requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(requireActivity().getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS );
+            InputMethodManager imm = (InputMethodManager) requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(requireActivity().getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
         }
     }
 
@@ -239,7 +225,6 @@ public class SosFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        //BLE.INSTANCE.getWriteQueue().offer("BROAD=0");
         binding = null;
     }
 

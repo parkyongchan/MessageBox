@@ -13,7 +13,7 @@
         android:orientation="horizontal"
         android:background="#0D1F3C"
         android:paddingStart="14dp"
-        android:paddingEnd="14dp"
+        android:paddingEnd="10dp"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"
         android:gravity="center_vertical">
@@ -22,80 +22,127 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="💬 메시지함"
+            android:text="Message Box"
             android:textColor="#00E5D1"
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- 선택 버튼 -->
+        <!-- Select 버튼 -->
         <Button
             android:id="@+id/button_select_mode"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="선택"
-            android:textColor="#8899AA"
+            android:minWidth="72dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Select"
+            android:textColor="#B8CEE8"
             android:textSize="12sp"
-            android:backgroundTint="#1A2F50"
-            android:layout_marginEnd="8dp" />
+            android:textAllCaps="false"
+            android:background="@drawable/bg_btn_header"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="6dp" />
 
-
+        <!-- New 버튼 -->
         <Button
             android:id="@+id/button_msg_new"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="✏️ 작성"
+            android:minWidth="72dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="New"
             android:textColor="#00E5D1"
             android:textSize="12sp"
-            android:backgroundTint="#1A2F50"
-            android:layout_marginEnd="8dp" />
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:background="@drawable/bg_btn_header_accent"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="6dp" />
 
-
-
-        <!-- 체크 삭제 버튼 (체크모드일 때만 표시) -->
+        <!-- Delete 버튼 (체크모드일 때만 표시) -->
         <Button
             android:id="@+id/button_check_delete"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="🗑 삭제"
+            android:minWidth="72dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Delete"
             android:textColor="#FF5252"
             android:textSize="12sp"
-            android:backgroundTint="#3D0000"
-            android:layout_marginEnd="8dp"
+            android:textAllCaps="false"
+            android:background="@drawable/bg_btn_header_danger"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="6dp"
             android:visibility="gone" />
 
-        <Button
+        <!-- 새로고침 버튼 -->
+        <ImageButton
             android:id="@+id/button_reflesh"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:text="🔄"
-            android:textSize="14sp"
-            android:backgroundTint="#1A2F50"
-            android:padding="0dp" />
+            android:src="@drawable/ic_refresh"
+            android:background="@drawable/bg_btn_header"
+            android:scaleType="centerInside"
+            android:padding="6dp"
+            android:contentDescription="Refresh" />
 
     </LinearLayout>
 
-    <!-- 전송 버튼 -->
-    <LinearLayout
+    <!-- ⭐ Send pending messages 버튼 (CardView로 확실하게) -->
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="#0A1628"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp">
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="4dp"
+        app:cardBackgroundColor="#00E5D1"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp">
 
-        <Button
+        <LinearLayout
             android:id="@+id/button_msg_send"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:text="📤 미전송 메시지 전송"
-            android:textColor="#0A1628"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:backgroundTint="#00E5D1" />
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
-    </LinearLayout>
+            <!-- 아이콘 (명시적으로 tint 지정) -->
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_send_cloud"
+                app:tint="#0A1628"
+                android:layout_marginEnd="12dp"
+                android:contentDescription="Send" />
+
+            <!-- 텍스트 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Send pending messages"
+                android:textColor="#0A1628"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:letterSpacing="0.02" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
 
     <!-- 전송 진행바 -->
     <ProgressBar
@@ -117,6 +164,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false" />
+
     <!-- 미전송 메시지 현황 -->
     <LinearLayout
         android:id="@+id/layout_unsent_info"
@@ -129,10 +177,17 @@
         android:paddingEnd="16dp"
         android:visibility="gone">
 
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_pending"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="Pending" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📤 미전송 대기"
+            android:text="Pending"
             android:textColor="#8899AA"
             android:textSize="12sp"
             android:layout_marginEnd="8dp" />
@@ -150,7 +205,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="건"
+            android:text="items"
             android:textColor="#8899AA"
             android:textSize="12sp" />
 
@@ -162,14 +217,13 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="전송 후 사라집니다"
+            android:text="Auto-dismissed after sending"
             android:textColor="#4A5F78"
             android:textSize="10sp" />
 
     </LinearLayout>
 
-
-    <!-- 하단 페이저 (20개 초과 시 활성화) -->
+    <!-- 하단 페이저 -->
     <LinearLayout
         android:id="@+id/layout_pager"
         android:layout_width="match_parent"
@@ -181,24 +235,30 @@
 
         <Button
             android:id="@+id/btn_page_first"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="◀◀"
             android:textSize="10sp"
             android:textColor="#8899AA"
-            android:backgroundTint="#1A2F50"
+            android:background="@drawable/bg_btn_header"
             android:padding="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:layout_marginEnd="4dp" />
 
         <Button
             android:id="@+id/btn_page_prev"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="◀"
             android:textSize="12sp"
             android:textColor="#8899AA"
-            android:backgroundTint="#1A2F50"
+            android:background="@drawable/bg_btn_header"
             android:padding="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:layout_marginEnd="8dp" />
 
         <TextView
@@ -213,24 +273,30 @@
 
         <Button
             android:id="@+id/btn_page_next"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="▶"
             android:textSize="12sp"
             android:textColor="#8899AA"
-            android:backgroundTint="#1A2F50"
+            android:background="@drawable/bg_btn_header"
             android:padding="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:layout_marginStart="4dp" />
 
         <Button
             android:id="@+id/btn_page_last"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="▶▶"
             android:textSize="10sp"
             android:textColor="#8899AA"
-            android:backgroundTint="#1A2F50"
+            android:background="@drawable/bg_btn_header"
             android:padding="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:layout_marginStart="4dp" />
 
     </LinearLayout>

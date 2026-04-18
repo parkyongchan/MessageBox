@@ -43,6 +43,7 @@ import com.google.android.material.snackbar.Snackbar;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -63,7 +64,12 @@ public class MsgBoxFragment extends Fragment {
     private MsgBoxAdapter mAdapter;
     private ProgressDialog dialog;
 
+    // 화면 표시용 (각 연락처 최근 1개씩)
     private List<MsgWithAddress> mAllMsgs = new ArrayList<>();
+
+    // ⭐ 전송용: 모든 미전송 메시지 전체 리스트
+    private List<MsgEntity> mAllUnsentMsgs = new ArrayList<>();
+
     private int mCurrentPage = 0;
 
     @Override
@@ -98,7 +104,7 @@ public class MsgBoxFragment extends Fragment {
         mAdapter = new MsgBoxAdapter(new MsgBoxAdapter.OnMsgClickListener() {
             @Override
             public void onMessageClick(MsgEntity msg) {
-                if (mAdapter.isCheckMode()) return; // 체크모드면 클릭 무시
+                if (mAdapter.isCheckMode()) return;
                 handleMsgClick(msg);
             }
             @Override
@@ -106,7 +112,7 @@ public class MsgBoxFragment extends Fragment {
                 handleDeleteClick(msg);
             }
             @Override
-            public void onLongClick() {} // 미사용
+            public void onLongClick() {}
         });
 
         RecyclerView recyclerView = binding.listMsgbox;
@@ -134,10 +140,9 @@ public class MsgBoxFragment extends Fragment {
                         String codeNum = swipedItem.getMsg().getCodeNum();
 
                         new AlertDialog.Builder(getContext())
-                                .setTitle("대화 전체 삭제")
-                                .setMessage("이 연락처의 모든 대화를 삭제하시겠습니까?")
-                                .setPositiveButton("전체삭제", (dlg, which) -> {
-                                    // 해당 codeNum의 모든 메시지 삭제
+                                .setTitle("Delete all conversations")
+                                .setMessage("Delete all conversations with this contact?")
+                                .setPositiveButton("Delete All", (dlg, which) -> {
                                     for (MsgWithAddress item : mAllMsgs) {
                                         if (codeNum != null &&
                                                 codeNum.equals(item.getMsg().getCodeNum())) {
@@ -145,7 +150,7 @@ public class MsgBoxFragment extends Fragment {
                                         }
                                     }
                                 })
-                                .setNegativeButton("취소", (dlg, which) ->
+                                .setNegativeButton("Cancel", (dlg, which) ->
                                         mAdapter.notifyItemChanged(position))
                                 .setCancelable(false)
                                 .show();
@@ -156,25 +161,23 @@ public class MsgBoxFragment extends Fragment {
                                             @NonNull RecyclerView recyclerView,
                                             @NonNull RecyclerView.ViewHolder viewHolder,
                                             float dX, float dY, int actionState, boolean isCurrentlyActive) {
-                        // 스와이프 시 빨간 배경 + 🗑 표시
                         View itemView = viewHolder.itemView;
                         android.graphics.Paint paint = new android.graphics.Paint();
                         paint.setColor(0xFFB71C1C);
                         c.drawRect(itemView.getRight() + dX, itemView.getTop(),
                                 itemView.getRight(), itemView.getBottom(), paint);
 
-                        // 🗑 텍스트 표시
                         paint.setColor(0xFFFFFFFF);
-                        paint.setTextSize(40f);
+                        paint.setTextSize(32f);
                         paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+                        paint.setFakeBoldText(true);
                         float textX = itemView.getRight() - 80f;
-                        float textY = itemView.getTop() + (itemView.getBottom() - itemView.getTop()) / 2f + 15f;
-                        c.drawText("🗑", textX, textY, paint);
+                        float textY = itemView.getTop() + (itemView.getBottom() - itemView.getTop()) / 2f + 12f;
+                        c.drawText("Delete", textX, textY, paint);
 
                         super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
                     }
 
-                    // 체크모드일 때 스와이프 비활성화
                     @Override
                     public int getSwipeDirs(@NonNull RecyclerView recyclerView,
                                             @NonNull RecyclerView.ViewHolder viewHolder) {
@@ -207,11 +210,11 @@ public class MsgBoxFragment extends Fragment {
 
     private void handleDeleteClick(MsgEntity msg) {
         new AlertDialog.Builder(getContext())
-                .setTitle("Message Delete")
-                .setMessage(getString(R.string.inbox_msg_del_alert))
+                .setTitle("Delete message")
+                .setMessage("Are you sure you want to delete this message?")
                 .setPositiveButton("Delete", (dialog, which) ->
                         msgViewModel.deleteById(msg.getId()))
-                .setNegativeButton("cancel", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -232,7 +235,8 @@ public class MsgBoxFragment extends Fragment {
         binding.buttonMsgNew.setOnClickListener(v ->
                 NavHostFragment.findNavController(MsgBoxFragment.this)
                         .navigate(R.id.main_msgbox_fragment_to_main_outbox_new_fragment));
-        // ── 선택 버튼 (체크모드 토글) ──
+
+        // ── Select 버튼 (체크모드 토글) ──
         binding.buttonSelectMode.setOnClickListener(v -> {
             if (mAdapter.isCheckMode()) {
                 exitCheckMode();
@@ -244,19 +248,19 @@ public class MsgBoxFragment extends Fragment {
         // ── 전체 삭제 버튼 ──
         binding.buttonCheckDelete.setOnClickListener(v -> {
             if (mAllMsgs.isEmpty()) {
-                Toast.makeText(getContext(), "삭제할 메시지가 없습니다.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "No messages to delete.", Toast.LENGTH_SHORT).show();
                 return;
             }
             new AlertDialog.Builder(getContext())
-                    .setTitle("전체 삭제")
-                    .setMessage("메시지함의 모든 대화를 삭제하시겠습니까?")
-                    .setPositiveButton("전체삭제", (dlg, which) -> {
+                    .setTitle("Delete All")
+                    .setMessage("Delete all conversations in the message box?")
+                    .setPositiveButton("Delete All", (dlg, which) -> {
                         for (MsgWithAddress item : mAllMsgs) {
                             msgViewModel.delete(item.getMsg());
                         }
                         exitCheckMode();
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton("Cancel", null)
                     .show();
         });
 
@@ -293,52 +297,62 @@ public class MsgBoxFragment extends Fragment {
             @Override public void onRequestDisallowInterceptTouchEvent(boolean b) {}
         });
 
-        // ── 메시지 전송 ──
+        // ⭐⭐⭐ 메시지 전송 (모든 미전송 메시지 전송) ⭐⭐⭐
         binding.buttonMsgSend.setOnClickListener(view -> {
 
-            List<MsgWithAddress> msgs = new ArrayList<>(mAllMsgs);
-            Collections.reverse(msgs);
-
-            if (msgs.isEmpty()) {
-                Log.v(TAG, "보내야 할 메시지가 없음.");
+            // ✅ mAllMsgs (각 연락처 1개씩) → mAllUnsentMsgs (모든 미전송 메시지) 사용!
+            if (mAllUnsentMsgs.isEmpty()) {
+                Log.v(TAG, "No messages to send.");
+                Toast.makeText(getContext(), "No pending messages.", Toast.LENGTH_SHORT).show();
                 return;
             }
+
+            // 오래된 순서대로 정렬 (createAt 오름차순)
+            List<MsgEntity> unsentMsgsSorted = new ArrayList<>(mAllUnsentMsgs);
+            unsentMsgsSorted.sort((a, b) -> {
+                if (a.getCreateAt() == null) return 1;
+                if (b.getCreateAt() == null) return -1;
+                return a.getCreateAt().compareTo(b.getCreateAt());
+            });
 
             dialog = new ProgressDialog(MsgBoxFragment.this.getContext());
             dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
             dialog.setCancelable(false);
-            dialog.setMessage("sendding messages......");
+            dialog.setMessage("Sending " + unsentMsgsSorted.size() + " messages...");
 
             List<String> msgList = new ArrayList<>();
-            for (MsgWithAddress msg : msgs) {
-                if (msg.getMsg().isSendMsg() && !msg.getMsg().isSend()) {
-                    String codeNum  = msg.getMsg().getCodeNum();
-                    String title    = msg.getMsg().getTitle();
-                    String message  = msg.getMsg().getMsg();
-                    Log.v(TAG, codeNum + "---:---" + message);
+            for (MsgEntity msg : unsentMsgsSorted) {
+                String codeNum = msg.getCodeNum() != null ? msg.getCodeNum() : "";
+                String title   = msg.getTitle() != null ? msg.getTitle() : "";
+                String message = msg.getMsg() != null ? msg.getMsg() : "";
 
-                    ByteBuf buffer = Unpooled.buffer();
-                    buffer.writeByte(0x07);
-                    buffer.writeByte(codeNum.getBytes(StandardCharsets.US_ASCII).length);
-                    buffer.writeCharSequence(codeNum, StandardCharsets.US_ASCII);
-                    buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
-                    buffer.writeCharSequence(title, StandardCharsets.UTF_8);
-                    buffer.writeByte(message.getBytes(StandardCharsets.UTF_8).length);
-                    buffer.writeCharSequence(message, StandardCharsets.UTF_8);
+                Log.v(TAG, "Prep: id=" + msg.getId() + " to=" + codeNum + " msg=" + message);
 
-                    Log.v(TAG, "Size: " + buffer.readableBytes() + "   " + ByteBufUtil.hexDump(buffer));
-                    byte[] body = new byte[buffer.readableBytes()];
-                    buffer.readBytes(body);
-                    String sms = String.format("SENDING=%d,%s",
-                            msg.getMsg().getId(), Base64.encodeToString(body, Base64.NO_WRAP));
-                    msgList.add(sms);
-                }
+                ByteBuf buffer = Unpooled.buffer();
+                buffer.writeByte(0x07);
+                buffer.writeByte(codeNum.getBytes(StandardCharsets.US_ASCII).length);
+                buffer.writeCharSequence(codeNum, StandardCharsets.US_ASCII);
+                buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+                buffer.writeCharSequence(title, StandardCharsets.UTF_8);
+                buffer.writeByte(message.getBytes(StandardCharsets.UTF_8).length);
+                buffer.writeCharSequence(message, StandardCharsets.UTF_8);
+
+                byte[] body = new byte[buffer.readableBytes()];
+                buffer.readBytes(body);
+                String sms = String.format("SENDING=%d,%s",
+                        msg.getId(), Base64.encodeToString(body, Base64.NO_WRAP));
+                msgList.add(sms);
             }
 
-            if (msgList.isEmpty()) return;
+            if (msgList.isEmpty()) {
+                Log.v(TAG, "No messages to encode.");
+                return;
+            }
+
+            Log.v(TAG, "Total messages to send: " + msgList.size());
 
             BleDevice bleDevice = BLE.INSTANCE.getSelectedDevice().getValue();
-            if (bleDevice != null || BleManager.getInstance().isConnected(bleDevice)) {
+            if (bleDevice != null && BleManager.getInstance().isConnected(bleDevice)) {
                 dialog.show();
                 binding.progressSendBar.setVisibility(View.VISIBLE);
                 binding.progressSendBar.setMax(msgList.size());
@@ -358,7 +372,7 @@ public class MsgBoxFragment extends Fragment {
         mAdapter.setCheckMode(true);
         binding.buttonCheckDelete.setVisibility(View.VISIBLE);
         binding.buttonMsgNew.setVisibility(View.GONE);
-        binding.buttonSelectMode.setText("취소");
+        binding.buttonSelectMode.setText("Cancel");
         binding.buttonSelectMode.setTextColor(0xFFFF5252);
     }
 
@@ -366,8 +380,8 @@ public class MsgBoxFragment extends Fragment {
         mAdapter.setCheckMode(false);
         binding.buttonCheckDelete.setVisibility(View.GONE);
         binding.buttonMsgNew.setVisibility(View.VISIBLE);
-        binding.buttonSelectMode.setText("선택");
-        binding.buttonSelectMode.setTextColor(0xFF8899AA);
+        binding.buttonSelectMode.setText("Select");
+        binding.buttonSelectMode.setTextColor(0xFFB8CEE8);
     }
 
     // ── 페이지 업데이트 ──
@@ -383,7 +397,6 @@ public class MsgBoxFragment extends Fragment {
         List<MsgWithAddress> pageData = mAllMsgs.subList(from, to);
         mAdapter.submitList(new ArrayList<>(pageData));
 
-        // 페이저 표시 (20개 초과 시만)
         if (total > PAGE_SIZE) {
             binding.layoutPager.setVisibility(View.VISIBLE);
             binding.textPageInfo.setText((mCurrentPage + 1) + " / " + totalPages);
@@ -401,26 +414,34 @@ public class MsgBoxFragment extends Fragment {
             mAllMsgs = msgs != null ? msgs : new ArrayList<>();
             mCurrentPage = 0;
             updatePage();
-            updateUnsentCount();
         });
 
-        // 전체 메시지 변화 감지 → 미전송 카운트 업데이트
+        // ⭐ 전체 메시지 변화 감지 → 미전송 리스트 + 카운트 업데이트
         msgViewModel.getAllMsgs().observe(getViewLifecycleOwner(), allMsgs -> {
+            updateUnsentList(allMsgs);
             updateUnsentCount(allMsgs);
         });
     }
 
-    private void updateUnsentCount() {
-        msgViewModel.getAllMsgs().observe(getViewLifecycleOwner(), this::updateUnsentCount);
+    /** ⭐ 미전송 메시지 전체 리스트 업데이트 */
+    private void updateUnsentList(List<MsgEntity> allMsgs) {
+        mAllUnsentMsgs.clear();
+        if (allMsgs != null) {
+            for (MsgEntity msg : allMsgs) {
+                if (msg.isSendMsg() && !msg.isSend()) {
+                    mAllUnsentMsgs.add(msg);
+                }
+            }
+        }
+        Log.v(TAG, "Unsent messages count: " + mAllUnsentMsgs.size());
     }
 
-    private void updateUnsentCount(List<com.ah.acr.messagebox.database.MsgEntity> allMsgs) {
+    private void updateUnsentCount(List<MsgEntity> allMsgs) {
         if (allMsgs == null) return;
 
-        // 연락처별 미전송 카운트 계산
         java.util.Map<String, Integer> unsentMap = new java.util.HashMap<>();
         int totalUnsent = 0;
-        for (com.ah.acr.messagebox.database.MsgEntity msg : allMsgs) {
+        for (MsgEntity msg : allMsgs) {
             if (msg.isSendMsg() && !msg.isSend()) {
                 String code = msg.getCodeNum();
                 unsentMap.put(code, unsentMap.containsKey(code)
@@ -429,10 +450,8 @@ public class MsgBoxFragment extends Fragment {
             }
         }
 
-        // 어댑터에 전달 → 각 항목 배지 표시
         mAdapter.setUnsentMap(unsentMap);
 
-        // 하단 전체 미전송 수 표시
         if (totalUnsent > 0) {
             binding.layoutUnsentInfo.setVisibility(View.VISIBLE);
             binding.textUnsentCount.setText(String.valueOf(totalUnsent));

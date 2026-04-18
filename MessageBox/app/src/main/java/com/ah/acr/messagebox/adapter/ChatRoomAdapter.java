@@ -3,6 +3,7 @@ package com.ah.acr.messagebox.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -62,22 +63,34 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
         private final TextView textSender;
         private final TextView textTitle;
         private final TextView textMsg;
+
+        // ⭐ 좌측 시간 영역 (모래시계 + 시간을 담는 LinearLayout)
+        private final LinearLayout layoutTimeLeft;
+        private final ImageView imgPendingLeft;
         private final TextView textTimeLeft;
+
+        // 우측 시간 (수신 메시지용)
         private final TextView textTimeRight;
+
         private final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
         BubbleViewHolder(View view) {
             super(view);
-            layoutRoot    = view.findViewById(R.id.layout_bubble_root);
-            layoutContent = view.findViewById(R.id.layout_bubble_content);
-            layoutRow     = view.findViewById(R.id.layout_bubble_row);
-            layoutBox     = view.findViewById(R.id.layout_bubble_box);
-            textAvatar    = view.findViewById(R.id.text_bubble_avatar);
-            textSender    = view.findViewById(R.id.text_bubble_sender);
-            textTitle     = view.findViewById(R.id.text_bubble_title);
-            textMsg       = view.findViewById(R.id.text_bubble_msg);
-            textTimeLeft  = view.findViewById(R.id.text_bubble_time_left);
-            textTimeRight = view.findViewById(R.id.text_bubble_time_right);
+            layoutRoot     = view.findViewById(R.id.layout_bubble_root);
+            layoutContent  = view.findViewById(R.id.layout_bubble_content);
+            layoutRow      = view.findViewById(R.id.layout_bubble_row);
+            layoutBox      = view.findViewById(R.id.layout_bubble_box);
+            textAvatar     = view.findViewById(R.id.text_bubble_avatar);
+            textSender     = view.findViewById(R.id.text_bubble_sender);
+            textTitle      = view.findViewById(R.id.text_bubble_title);
+            textMsg        = view.findViewById(R.id.text_bubble_msg);
+
+            // ⭐ 좌측 시간 영역 (LinearLayout으로 변경됨)
+            layoutTimeLeft = view.findViewById(R.id.layout_bubble_time_left);
+            imgPendingLeft = view.findViewById(R.id.img_bubble_pending_left);
+            textTimeLeft   = view.findViewById(R.id.text_bubble_time_left);
+
+            textTimeRight  = view.findViewById(R.id.text_bubble_time_right);
         }
 
         void bind(MsgWithAddress item) {
@@ -102,15 +115,19 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
                 textSender.setVisibility(View.GONE);
                 layoutBox.setBackgroundColor(0xFF003D3A); // 어두운 청록색
                 textMsg.setTextColor(0xFF00E5D1);
-                textTimeLeft.setVisibility(View.VISIBLE);
+
+                // 좌측 시간 영역 표시
+                layoutTimeLeft.setVisibility(View.VISIBLE);
                 textTimeLeft.setText(time);
                 textTimeRight.setVisibility(View.GONE);
-                // 미전송 표시
+
+                // ⭐ 미전송 시 모래시계 ImageView 표시
                 if (!item.getMsg().isSend()) {
-                    textTimeLeft.setText(time + "\n⏳");
-                    textTimeLeft.setTextColor(0xFFFFB300);
+                    imgPendingLeft.setVisibility(View.VISIBLE);     // 모래시계 ON
+                    textTimeLeft.setTextColor(0xFFFFB300);          // 시간도 주황색
                 } else {
-                    textTimeLeft.setTextColor(0xFF4A5F78);
+                    imgPendingLeft.setVisibility(View.GONE);        // 모래시계 OFF
+                    textTimeLeft.setTextColor(0xFF4A5F78);          // 기본 회색
                 }
 
             } else {
@@ -122,7 +139,12 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
                 textSender.setText(name);
                 layoutBox.setBackgroundColor(0xFF1A2F50); // 어두운 파란색
                 textMsg.setTextColor(0xFFFFFFFF);
-                textTimeLeft.setVisibility(View.GONE);
+
+                // 좌측 시간 영역 숨김 (모래시계 + 시간 둘 다)
+                layoutTimeLeft.setVisibility(View.GONE);
+                imgPendingLeft.setVisibility(View.GONE);
+
+                // 우측 시간만 표시
                 textTimeRight.setVisibility(View.VISIBLE);
                 textTimeRight.setText(time);
                 textTimeRight.setTextColor(0xFF4A5F78);

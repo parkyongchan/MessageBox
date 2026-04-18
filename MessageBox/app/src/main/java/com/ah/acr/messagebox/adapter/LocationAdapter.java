@@ -1,6 +1,5 @@
 package com.ah.acr.messagebox.adapter;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,11 +12,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationWithAddress;
-import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.databinding.AdapterLocationBinding;
-import com.ah.acr.messagebox.databinding.AdapterMsgboxBinding;
 
 import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 public class LocationAdapter extends ListAdapter<LocationWithAddress, LocationAdapter.LocationViewHolder> {
 
@@ -52,8 +50,8 @@ public class LocationAdapter extends ListAdapter<LocationWithAddress, LocationAd
 
     public static class LocationViewHolder extends RecyclerView.ViewHolder {
         private final AdapterLocationBinding binding;
-        private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
+        private final SimpleDateFormat sdfTime =
+                new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
 
         public LocationViewHolder(AdapterLocationBinding binding) {
             super(binding.getRoot());
@@ -62,41 +60,120 @@ public class LocationAdapter extends ListAdapter<LocationWithAddress, LocationAd
 
         public void bind(LocationWithAddress locationAddr, OnLocationClickListener onLocationClickListener) {
             LocationEntity location = locationAddr.getLocation();
-            //receive location
-            if (location.isIncomeLoc()) {
-                binding.tvDatetime.setText( sdf.format(location.getCreateAt()));
-                binding.tvSender.setText(locationAddr.getAddress()==null?location.getCodeNum(): locationAddr.getAddress().getNumbersNic());
-                binding.tvLatitude.setText(location.getLatitude().toString());
-                binding.tvLongitude.setText(location.getLongitude().toString());
-                binding.tvAltitude.setText(location.getAltitude()==null?"0":location.getAltitude().toString());
-                binding.tvDirection.setText(location.getDirection()==null?"0":location.getDirection().toString());
-                binding.tvSpeed.setText(location.getSpeed()==null?"0":location.getSpeed().toString());
 
-                if (locationAddr.getLocation().getTrackMode() == 0x10) {
-                    binding.layAltitude.setVisibility(View.GONE);
-                    binding.layDirection.setVisibility(View.GONE);
-                    binding.laySpeed.setVisibility(View.GONE);
-//                    binding.tvAltitude.setVisibility(View.GONE);
-//                    binding.tvDirection.setVisibility(View.GONE);
-//                    binding.tvSpeed.setVisibility(View.GONE);
-
-                    binding.tvSender.setBackgroundColor(Color.RED);
-
-                } else if (locationAddr.getLocation().getTrackMode() == 0x11) {
-                    binding.layAltitude.setVisibility(View.GONE);
-                    binding.layDirection.setVisibility(View.GONE);
-                    binding.laySpeed.setVisibility(View.GONE);
-//                    binding.tvAltitude.setVisibility(View.GONE);
-//                    binding.tvDirection.setVisibility(View.GONE);
-//                    binding.tvSpeed.setVisibility(View.GONE);
-                }
+            // 이름 처리 (주소록 > IMEI)
+            String displayName;
+            if (locationAddr.getAddress() != null && locationAddr.getAddress().getNumbersNic() != null) {
+                displayName = locationAddr.getAddress().getNumbersNic();
+            } else {
+                displayName = location.getCodeNum() != null ? location.getCodeNum() : "Unknown";
             }
 
-            binding.getRoot().setOnClickListener(v -> onLocationClickListener.onLocationClick(location));
-            binding.btnDel.setOnClickListener(v -> onLocationClickListener.onLocationDeleteClick(location));
-            binding.btnCopy.setOnClickListener(v->onLocationClickListener.onLocationCopyClick(location));
-            binding.btnMap.setOnClickListener(v->onLocationClickListener.onLocationMapClick(location));
-            binding.btnAddressEdit.setOnClickListener(v-> onLocationClickListener.onAddressClick(locationAddr));
+            binding.tvSender.setText(displayName);
+            binding.tvImei.setText(location.getCodeNum() != null ? location.getCodeNum() : "");
+
+            // ⭐ 이니셜 아바타
+            String initial = !displayName.isEmpty()
+                    ? displayName.substring(0, 1).toUpperCase()
+                    : "?";
+            binding.textAvatarInitial.setText(initial);
+
+            // 시간
+            if (location.getCreateAt() != null) {
+                binding.tvDatetime.setText(sdfTime.format(location.getCreateAt()));
+            } else {
+                binding.tvDatetime.setText("--:--");
+            }
+
+            // 좌표
+            binding.tvLatitude.setText(formatCoord(location.getLatitude()));
+            binding.tvLongitude.setText(formatCoord(location.getLongitude()));
+
+            // ⭐ Track Mode에 따른 배지 처리
+            int trackMode = location.getTrackMode();
+            if (trackMode == 0x10 || trackMode == 4) {
+                // SOS 모드
+                binding.badgeType.setText("SOS");
+                binding.badgeType.setBackgroundResource(R.drawable.bg_badge_sos);
+                binding.badgeType.setTextColor(0xFFFF5252);
+                binding.layDetail.setVisibility(View.GONE);
+            } else if (trackMode == 0x11 || trackMode == 5) {
+                // SOS Stop
+                binding.badgeType.setText("SOS END");
+                binding.badgeType.setBackgroundResource(R.drawable.bg_badge_sos);
+                binding.badgeType.setTextColor(0xFFFF5252);
+                binding.layDetail.setVisibility(View.GONE);
+            } else if (trackMode == 2) {
+                // Track 모드
+                binding.badgeType.setText("TRACK");
+                binding.badgeType.setBackgroundResource(R.drawable.bg_badge_track);
+                binding.badgeType.setTextColor(0xFF00E5D1);
+                // 상세 정보 표시
+                showDetailInfo(location);
+            } else {
+                // 일반 데이터
+                binding.badgeType.setText("DATA");
+                binding.badgeType.setBackgroundResource(R.drawable.bg_badge_data);
+                binding.badgeType.setTextColor(0xFF95B0D4);
+                // 상세 정보 조건부 표시
+                showDetailInfo(location);
+            }
+
+            // 클릭 리스너
+            binding.getRoot().setOnClickListener(v ->
+                    onLocationClickListener.onLocationClick(location));
+            binding.btnDel.setOnClickListener(v ->
+                    onLocationClickListener.onLocationDeleteClick(location));
+            binding.btnCopy.setOnClickListener(v ->
+                    onLocationClickListener.onLocationCopyClick(location));
+            binding.btnMap.setOnClickListener(v ->
+                    onLocationClickListener.onLocationMapClick(location));
+            binding.btnAddressEdit.setOnClickListener(v ->
+                    onLocationClickListener.onAddressClick(locationAddr));
+        }
+
+        /** 상세 정보 (고도/방향/속도) 표시 */
+        private void showDetailInfo(LocationEntity location) {
+            boolean hasDetail = location.getAltitude() != null
+                    || location.getDirection() != null
+                    || location.getSpeed() != null;
+
+            if (hasDetail) {
+                binding.layDetail.setVisibility(View.VISIBLE);
+
+                // 고도
+                if (location.getAltitude() != null) {
+                    binding.tvAltitude.setText(location.getAltitude() + "m");
+                    binding.layAltitude.setVisibility(View.VISIBLE);
+                } else {
+                    binding.layAltitude.setVisibility(View.GONE);
+                }
+
+                // 방향
+                if (location.getDirection() != null) {
+                    binding.tvDirection.setText(location.getDirection() + "°");
+                    binding.layDirection.setVisibility(View.VISIBLE);
+                } else {
+                    binding.layDirection.setVisibility(View.GONE);
+                }
+
+                // 속도
+                if (location.getSpeed() != null) {
+                    binding.tvSpeed.setText(location.getSpeed() + "km/h");
+                    binding.laySpeed.setVisibility(View.VISIBLE);
+                } else {
+                    binding.laySpeed.setVisibility(View.GONE);
+                }
+            } else {
+                binding.layDetail.setVisibility(View.GONE);
+            }
+        }
+
+        /** 좌표 포맷 (소수점 6자리) */
+        private String formatCoord(Double coord) {
+            return coord != null
+                    ? String.format(Locale.US, "%.6f", coord)
+                    : "0.000000";
         }
 
     }

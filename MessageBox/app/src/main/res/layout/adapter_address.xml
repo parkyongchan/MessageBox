@@ -1,63 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="8dp"
-    android:background="@drawable/dialog_background">
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    app:cardBackgroundColor="#152A4A"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp">
 
-<!--    &lt;!&ndash; 받은 아이콘 &ndash;&gt;-->
-<!--    <ImageView-->
-<!--        android:id="@+id/image_received"-->
-<!--        android:layout_width="40dp"-->
-<!--        android:layout_height="40dp"-->
-<!--        android:layout_gravity="center_vertical"-->
-<!--        android:src="@drawable/ic_received"-->
-<!--        android:contentDescription="받은 아이콘" />-->
-
-    <TextView
-        android:id="@+id/text_name"
-        android:layout_width="150dp"
-        android:layout_height="match_parent"
-        android:text="Name"
-        android:textStyle="bold"
-        android:textSize="18sp" />
-
-    <!-- 사용자 정보 및 메시지 -->
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:gravity="center_vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp">
 
-        <TextView
-            android:id="@+id/text_numbers"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textStyle="bold"
-            android:hint="numbers"
-            android:background="@android:drawable/editbox_background"
-            android:padding="4dp"
-            android:textSize="16sp" />
+        <!-- ⭐ 아바타 박스 (클릭 가능 - 이미지 편집용) -->
+        <FrameLayout
+            android:id="@+id/frame_avatar"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_avatar_box"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="12dp">
 
-        <TextView
-            android:id="@+id/text_time"
-            android:layout_width="wrap_content"
+            <!-- 이니셜 텍스트 (기본 표시) -->
+            <TextView
+                android:id="@+id/text_avatar_initial"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="?"
+                android:textColor="#00E5D1"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <!-- 이미지 (나중에 사용 - 현재 숨김) -->
+            <ImageView
+                android:id="@+id/img_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:contentDescription="Avatar" />
+
+            <!-- 작은 카메라 아이콘 (우측 하단 - 편집 힌트) -->
+            <View
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_gravity="bottom|end"
+                android:background="#0A1628" />
+
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="1dp"
+                android:layout_marginBottom="1dp"
+                android:src="@drawable/ic_camera"
+                app:tint="#00E5D1"
+                android:contentDescription="Edit" />
+
+        </FrameLayout>
+
+        <!-- 이름 + 번호 + 시간 -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:text="Time"
-            android:textSize="14sp"
-            android:textColor="#666666" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Name"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/text_numbers"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Number"
+                android:textColor="#8899AA"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/text_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#4A5F78"
+                android:textSize="10sp"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <!-- 삭제 버튼 (아이콘) -->
+        <ImageButton
+            android:id="@+id/button_delete"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_delete_all"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:layout_marginStart="6dp"
+            android:contentDescription="Delete" />
+
     </LinearLayout>
 
-    <!-- 삭제 버튼 -->
-    <Button
-        android:id="@+id/button_delete"
-        android:layout_width="60dp"
-        android:layout_height="50dp"
-        android:text="del"
-        android:textSize="12sp"
-        android:layout_gravity="center_vertical" />
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

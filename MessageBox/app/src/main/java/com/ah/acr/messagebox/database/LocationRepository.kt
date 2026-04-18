@@ -2,6 +2,7 @@ package com.ah.acr.messagebox.database
 
 import androidx.lifecycle.LiveData
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 class LocationRepository(private val locationDao: LocationDao) {
 
@@ -39,8 +40,36 @@ class LocationRepository(private val locationDao: LocationDao) {
     }
 
 
-
     suspend fun deleteById(msgId: Int) {
         locationDao.deleteLocationById(msgId)
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    // ⭐ 신규: 조회/필터/트랙 메서드
+    // ═══════════════════════════════════════════════════════
+
+    fun getLatestByDevice(
+        startDate: Date,
+        endDate: Date
+    ): LiveData<List<LocationWithAddress>> {
+        return locationDao.getLatestByDevice(startDate, endDate)
+    }
+
+    fun getFilteredLatest(
+        startDate: Date,
+        endDate: Date,
+        trackMode: Int,
+        search: String
+    ): LiveData<List<LocationWithAddress>> {
+        return locationDao.getFilteredLatest(startDate, endDate, trackMode, search)
+    }
+
+    fun getTrackByDevice(
+        codeNum: String,
+        startDate: Date,
+        endDate: Date
+    ): LiveData<List<LocationWithAddress>> {
+        return locationDao.getTrackByDevice(codeNum, startDate, endDate)
     }
 }

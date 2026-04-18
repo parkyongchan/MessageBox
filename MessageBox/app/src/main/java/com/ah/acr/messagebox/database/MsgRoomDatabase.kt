@@ -12,13 +12,24 @@ import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 import java.util.Date
 
-@Database(entities = [MsgEntity::class, LocationEntity::class, AddressEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [
+        MsgEntity::class,
+        LocationEntity::class,
+        AddressEntity::class,
+        MyTrackEntity::class,        // ⭐ 내 위치 트랙 세션
+        MyTrackPointEntity::class    // ⭐ 내 위치 트랙 포인트
+    ],
+    version = 2,                     // ⭐ 1 -> 2로 업데이트
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class MsgRoomDatabase : RoomDatabase() {
 
     abstract fun msgDao(): MsgDao
     abstract fun locationDao(): LocationDao
     abstract fun addressDao(): AddressDao
+    abstract fun myTrackDao(): MyTrackDao    // ⭐ 새 DAO
 
     companion object {
         @Volatile

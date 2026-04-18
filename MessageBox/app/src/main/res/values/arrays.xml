@@ -5,4 +5,10 @@
         <item>UAV</item>
         <item>UAT</item>
     </string-array>
+
+    <string-array name="unit_type_display">
+        <item>CAR - Vehicle (Lat, Lon)</item>
+        <item>UAV - Aircraft (Lat, Lon, Dir, Speed, Alt)</item>
+        <item>UAT - Full (Lat, Lon, Dir, Speed, Alt, GMT)</item>
+    </string-array>
 </resources>

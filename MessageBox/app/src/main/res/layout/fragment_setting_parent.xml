@@ -1,16 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#0A1628">
 
+    <!-- 탭 레이아웃 -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_layout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:background="#0D1F3C"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabInlineLabel="false"
+        app:tabIndicatorColor="#00E5D1"
+        app:tabIndicatorHeight="3dp"
+        app:tabIndicatorFullWidth="false"
+        app:tabTextColor="#8899AA"
+        app:tabSelectedTextColor="#00E5D1"
+        app:tabIconTint="@color/tab_icon_color"
+        app:tabIconTintMode="src_in"
+        app:tabPaddingTop="10dp"
+        app:tabPaddingBottom="10dp"
+        app:tabTextAppearance="@style/SettingTabTextStyle"
+        app:tabRippleColor="#1500E5D1" />
 
+    <!-- ViewPager -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
 </LinearLayout>

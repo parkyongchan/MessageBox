@@ -50,43 +50,51 @@ public class SettingParentFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_setting_parent, container, false);
 
-
         tabLayout = view.findViewById(R.id.tab_layout);
         viewPager = view.findViewById(R.id.view_pager);
 
         SettingViewPagerAdapter adapter = new SettingViewPagerAdapter(this);
         viewPager.setAdapter(adapter);
 
+        // ⭐ TabLayoutMediator에 아이콘 + 텍스트 설정
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> {
-                    if (position == 0) tab.setText("Address");
-                    else if (position == 1) tab.setText("Location");
-                    else if (position == 2) tab.setText("SOS");
-                    else if (position == 3) tab.setText("Firmware Update");
-                    else tab.setText("Address");
+                    if (position == 0) {
+                        tab.setText("Address");
+                        tab.setIcon(R.drawable.ic_tab_address);
+                    } else if (position == 1) {
+                        tab.setText("Location");
+                        tab.setIcon(R.drawable.ic_tab_location);
+                    } else if (position == 2) {
+                        tab.setText("SOS");
+                        tab.setIcon(R.drawable.ic_tab_sos);
+                    } else if (position == 3) {
+                        tab.setText("Firmware");
+                        tab.setIcon(R.drawable.ic_tab_firmware);
+                    } else {
+                        tab.setText("Address");
+                        tab.setIcon(R.drawable.ic_tab_address);
+                    }
                 }).attach();
 
         return view;
     }
 
 
-//    public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
-//        super.onViewCreated(view, savedInstanceState);
-//
-//
-//        BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
-//            if (device != null) {
-//                BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
-//            }
-//        });
-//
-//    }
-
-
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        BLE.INSTANCE.getWriteQueue().offer("BROAD=0");
+
+        // ⭐ 중요: 이전 "BROAD=0" 명령 제거!
+        // 이유: 설정 탭 나갈 때 장비의 BROAD 송출을 중지시켜서
+        //       다른 화면에서 배터리/신호/송신대기 실시간 업데이트가 안 되는 문제 발생
+        //
+        // 기존 코드 (문제):
+        //   BLE.INSTANCE.getWriteQueue().offer("BROAD=0");
+        //
+        // 대신: "BROAD=5"로 유지 (5초 주기 송출 계속)
+        BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+
         binding = null;
     }
 

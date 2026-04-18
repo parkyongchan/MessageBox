@@ -9,6 +9,13 @@
         <item name="android:statusBarColor">@color/nav_background</item>
     </style>
 
+    <style name="SettingTabTextStyle" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
     <style name="Theme.MessageBox.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
