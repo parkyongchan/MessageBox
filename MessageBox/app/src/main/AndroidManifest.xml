@@ -10,17 +10,17 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- ⭐ 백그라운드 위치 권한 (Android 10+, 앱 닫혀도 추적) -->
+    <!-- 백그라운드 위치 권한 (Android 10+) -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- ⭐ 알림 권한 (Android 13+) -->
+    <!-- 알림 권한 (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- ⭐ 포그라운드 서비스 권한 -->
+    <!-- 포그라운드 서비스 권한 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- ⭐ 배터리 최적화 제외 (선택, 안정적 추적용) -->
+    <!-- 배터리 최적화 제외 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
         tools:ignore="BatteryLife" />
 
@@ -43,8 +43,6 @@
         tools:replace="android:label,android:icon,android:name,android:allowBackup,android:fullBackupOnly,android:fullBackupContent"
         tools:targetApi="36">
 
-        <!-- Google Maps API 키 제거됨 -->
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,12 +55,23 @@
             </intent-filter>
         </activity>
 
-        <!-- ⭐ 위치 추적 포그라운드 서비스 -->
+        <!-- 위치 추적 포그라운드 서비스 -->
         <service
             android:name=".service.LocationTrackingService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- ⭐ 파일 공유용 FileProvider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

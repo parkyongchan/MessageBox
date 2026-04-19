@@ -30,12 +30,14 @@ import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationViewModel;
 import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgViewModel;
+import com.ah.acr.messagebox.database.SatTrackStateHolder;
 import com.ah.acr.messagebox.databinding.ActivityMainBinding;
 import com.ah.acr.messagebox.tabs.BleTabFragment;
 import com.ah.acr.messagebox.tabs.ChatTabFragment;
 import com.ah.acr.messagebox.tabs.DevicesTabFragment;
 import com.ah.acr.messagebox.tabs.MapTabFragment;
 import com.ah.acr.messagebox.tabs.SettingsTabFragment;
+import com.ah.acr.messagebox.util.ImeiStorage;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 import com.clj.fastble.BleManager;
 import com.clj.fastble.callback.BleNotifyCallback;
@@ -66,7 +68,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_ACCESS_FINE_LOCATION = 2;
     private static final int PERMISSION_ACCESS_COARSE_LOCATION = 1;
 
-    // Test data IMEIs
     private static final String TEST_IMEI_TRACK = "TEST-001";
     private static final String TEST_IMEI_SOS = "TEST-002";
 
@@ -86,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Permission check
+        // Permission checks (unchanged)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -186,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
         BLE.INSTANCE.getDeviceInfo().observe(this, info -> {
             if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
                 binding.headerArea.textHeaderSub.setText("IMEI  " + info.getImei());
+                ImeiStorage.save(this, info.getImei());
             } else {
                 binding.headerArea.textHeaderSub.setText("IMEI  -");
             }
@@ -305,10 +307,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** Test mode toggle - inject/delete location data */
     private void toggleTestMode() {
         if (mIsTestMode) {
-            // ═══ OFF ═══
             mIsTestMode = false;
             binding.statusArea.textBleStatusMain.setText("Disconnected");
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
@@ -323,7 +323,6 @@ public class MainActivity extends AppCompatActivity {
             deleteTestLocationData();
             Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
         } else {
-            // ═══ ON ═══
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
             test.setBattery(85);
@@ -338,6 +337,8 @@ public class MainActivity extends AppCompatActivity {
             binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
             binding.headerArea.textHeaderSub.setText("IMEI  300434061000001");
 
+            ImeiStorage.save(this, "300434061000001");
+
             insertTestLocationData();
             Toast.makeText(this, "🧪 Test data injected (20 points)", Toast.LENGTH_SHORT).show();
         }
@@ -348,40 +349,23 @@ public class MainActivity extends AppCompatActivity {
     //   Test Location Data
     // ═════════════════════════════════════════════════════════════
 
-    /** Inject test location data near Yeongdeungpo */
     private void insertTestLocationData() {
-        // TRACK x10 (movement around Yeongdeungpo Station)
         double[][] trackCoords = {
-                {37.5264, 126.8960},
-                {37.5270, 126.8975},
-                {37.5280, 126.8990},
-                {37.5290, 126.9005},
-                {37.5300, 126.9020},
-                {37.5310, 126.9035},
-                {37.5305, 126.9050},
-                {37.5295, 126.9060},
-                {37.5285, 126.9055},
+                {37.5264, 126.8960}, {37.5270, 126.8975}, {37.5280, 126.8990},
+                {37.5290, 126.9005}, {37.5300, 126.9020}, {37.5310, 126.9035},
+                {37.5305, 126.9050}, {37.5295, 126.9060}, {37.5285, 126.9055},
                 {37.5275, 126.9050}
         };
-
-        // SOS x10 (clustered near Yeongdeungpo Park)
         double[][] sosCoords = {
-                {37.5240, 126.8930},
-                {37.5245, 126.8935},
-                {37.5235, 126.8925},
-                {37.5242, 126.8940},
-                {37.5238, 126.8928},
-                {37.5244, 126.8932},
-                {37.5236, 126.8938},
-                {37.5241, 126.8926},
-                {37.5239, 126.8936},
+                {37.5240, 126.8930}, {37.5245, 126.8935}, {37.5235, 126.8925},
+                {37.5242, 126.8940}, {37.5238, 126.8928}, {37.5244, 126.8932},
+                {37.5236, 126.8938}, {37.5241, 126.8926}, {37.5239, 126.8936},
                 {37.5243, 126.8929}
         };
 
         Calendar cal = Calendar.getInstance();
         Date now = cal.getTime();
 
-        // TRACK (past, 10-min intervals)
         for (int i = 0; i < trackCoords.length; i++) {
             cal.setTime(now);
             cal.add(Calendar.MINUTE, -(10 * (trackCoords.length - i)));
@@ -397,7 +381,6 @@ public class MainActivity extends AppCompatActivity {
             locationViewModel.insert(entity);
         }
 
-        // SOS (past, 5-min intervals)
         for (int i = 0; i < sosCoords.length; i++) {
             cal.setTime(now);
             cal.add(Calendar.MINUTE, -(5 * (sosCoords.length - i) + 5));
@@ -417,7 +400,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    /** Delete test location data (match by IMEI) */
     private void deleteTestLocationData() {
         locationViewModel.getAllLocations().observe(this, new androidx.lifecycle.Observer<List<LocationEntity>>() {
             @Override
@@ -469,8 +451,9 @@ public class MainActivity extends AppCompatActivity {
                 .commitAllowingStateLoss();
     }
 
+
     // ═════════════════════════════════════════════════════════════
-    //   Existing methods (kept as-is)
+    //   Existing methods
     // ═════════════════════════════════════════════════════════════
 
     @Override
@@ -652,6 +635,12 @@ public class MainActivity extends AppCompatActivity {
                         else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
+
+                    // ⭐ Record to active sat track session
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, 0.0, 0.0, 0.0, null, ver
+                    );
+
                 } else if (ver == 0x12) {
                     int senderLen = buffer.readableBytes() - 14;
                     buffer.readByte();
@@ -681,6 +670,13 @@ public class MainActivity extends AppCompatActivity {
                         else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
+
+                    // ⭐ Record to active sat track session
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, (double) alt, (double) speed,
+                            (double) dir, null, ver
+                    );
+
                 } else if (ver == 0x13) {
                     int senderLen = buffer.readableBytes() - 21;
                     buffer.readByte();
@@ -721,6 +717,13 @@ public class MainActivity extends AppCompatActivity {
                         else Log.v("Location ADD", "Location save failed");
                         return null;
                     });
+
+                    // ⭐ Record to active sat track session
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, (double) alt, (double) speed,
+                            (double) dir, date, ver
+                    );
+
                 } else if (ver == 0x16) {
                     byte[] header = new byte[21];
                     byte[] body = new byte[data.length - 22];

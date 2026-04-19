@@ -34,8 +34,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.adapter.MyTrackAdapter;
+import com.ah.acr.messagebox.adapter.SatTrackAdapter;
+import com.ah.acr.messagebox.ble.BLE;
+import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.database.MyTrackEntity;
 import com.ah.acr.messagebox.database.MyTrackViewModel;
+import com.ah.acr.messagebox.database.SatTrackEntity;
+import com.ah.acr.messagebox.database.SatTrackStateHolder;
+import com.ah.acr.messagebox.database.SatTrackViewModel;
 import com.ah.acr.messagebox.service.LocationPermissionHelper;
 import com.ah.acr.messagebox.service.LocationTrackingService;
 
@@ -55,15 +61,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Devices Tab - Step 6 Implementation
- *
- * Adds:
- *   - Compact tracking UI (bigger map)
- *   - Saved tracks RecyclerView with adapter
- *   - Track detail dialog
- *   - Track deletion
- */
 public class DevicesTabFragment extends Fragment {
 
     private static final String TAG = "DevicesTabFragment";
@@ -80,7 +77,7 @@ public class DevicesTabFragment extends Fragment {
     private View containerMyLocation;
     private View containerSatellite;
 
-    // State: Not Tracking
+    // ─── Tab 1: My Location ───
     private View stateNotTracking;
     private Spinner spinnerInterval;
     private Spinner spinnerDistance;
@@ -89,7 +86,6 @@ public class DevicesTabFragment extends Fragment {
     private TextView tvTrackCount;
     private TextView tvEmptyTracks;
 
-    // State: Tracking
     private View stateTracking;
     private TextView tvElapsed;
     private TextView tvDistance;
@@ -99,31 +95,55 @@ public class DevicesTabFragment extends Fragment {
     private MapView mapViewTracking;
     private Button btnStopTracking;
 
-    // Satellite tab
-    private TextView tvSatelliteStatus;
+    // ─── Tab 2: Satellite TRACK ───
+    private View satStateNotTracking;
+    private TextView tvSatConnectedImei;
+    private Button btnSatStart;
     private RecyclerView rvSatTracks;
     private TextView tvSatTrackCount;
     private TextView tvEmptySatTracks;
 
+    private View satStateTracking;
+    private TextView tvSatElapsed;
+    private TextView tvSatDistance;
+    private TextView tvSatPoints;
+    private TextView tvSatWaitingGps;
+    private MapView mapViewSatTracking;
+    private Button btnSatStop;
 
+
+    // ViewModels & state
     private MyTrackViewModel myTrackViewModel;
     private MyTrackAdapter trackAdapter;
     private int currentTrackId = -1;
     private long trackingStartTime = 0;
 
+    private SatTrackViewModel satTrackViewModel;
+    private SatTrackAdapter satTrackAdapter;
+    private int currentSatTrackId = -1;
+    private long satTrackingStartTime = 0;
+    private String connectedImei = null;
+
+    // Map overlays (my location)
     private Polyline pathPolyline;
     private Marker currentLocationMarker;
     private List<GeoPoint> pathPoints = new ArrayList<>();
 
+    // Map overlays (satellite)
+    private Polyline satPolyline;
+    private Marker satCurrentMarker;
+    private List<GeoPoint> satPathPoints = new ArrayList<>();
+
     private Handler uiHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
+    private Runnable satTimerRunnable;
 
     private final int[] INTERVAL_SECONDS = {10, 30, 60, 120, 300, 600};
     private final int[] MIN_DISTANCES = {5, 10, 20, 50, 100};
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   BROADCAST RECEIVER
+    //   BROADCAST RECEIVER (My Location)
     // ═══════════════════════════════════════════════════════════════
 
     private final BroadcastReceiver locationReceiver = new BroadcastReceiver() {
@@ -167,16 +187,27 @@ public class DevicesTabFragment extends Fragment {
         setupSpinners();
         setupRecyclerViews();
         setupButtons();
-        setupViewModel();
+        setupViewModels();
         setupMap();
+        setupSatMap();
+        observeBleStatus();
 
         updateSegmentVisuals(TAB_MY_LOCATION);
 
+        // My Location state restore
         if (LocationTrackingService.isServiceRunning) {
             currentTrackId = LocationTrackingService.currentTrackId;
             switchToTrackingState();
         } else {
             switchToNotTrackingState();
+        }
+
+        // Satellite state restore
+        if (SatTrackStateHolder.isSessionActive()) {
+            currentSatTrackId = SatTrackStateHolder.activeTrackId;
+            switchToSatTrackingState();
+        } else {
+            switchToSatNotTrackingState();
         }
 
         return root;
@@ -193,14 +224,19 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .registerReceiver(locationReceiver, filter);
 
-        if (mapViewTracking != null) {
-            mapViewTracking.onResume();
-        }
+        if (mapViewTracking != null) mapViewTracking.onResume();
+        if (mapViewSatTracking != null) mapViewSatTracking.onResume();
 
         if (LocationTrackingService.isServiceRunning) {
             currentTrackId = LocationTrackingService.currentTrackId;
             switchToTrackingState();
             reloadPathFromDb();
+        }
+
+        if (SatTrackStateHolder.isSessionActive()) {
+            currentSatTrackId = SatTrackStateHolder.activeTrackId;
+            switchToSatTrackingState();
+            reloadSatPathFromDb();
         }
     }
 
@@ -212,11 +248,11 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .unregisterReceiver(locationReceiver);
 
-        if (mapViewTracking != null) {
-            mapViewTracking.onPause();
-        }
+        if (mapViewTracking != null) mapViewTracking.onPause();
+        if (mapViewSatTracking != null) mapViewSatTracking.onPause();
 
         stopElapsedTimer();
+        stopSatElapsedTimer();
     }
 
 
@@ -224,9 +260,14 @@ public class DevicesTabFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         stopElapsedTimer();
+        stopSatElapsedTimer();
         if (mapViewTracking != null) {
             mapViewTracking.onDetach();
             mapViewTracking = null;
+        }
+        if (mapViewSatTracking != null) {
+            mapViewSatTracking.onDetach();
+            mapViewSatTracking = null;
         }
     }
 
@@ -241,6 +282,7 @@ public class DevicesTabFragment extends Fragment {
         containerMyLocation = root.findViewById(R.id.containerMyLocation);
         containerSatellite = root.findViewById(R.id.containerSatellite);
 
+        // My Location
         stateNotTracking = root.findViewById(R.id.stateNotTracking);
         spinnerInterval = root.findViewById(R.id.spinnerInterval);
         spinnerDistance = root.findViewById(R.id.spinnerDistance);
@@ -258,10 +300,21 @@ public class DevicesTabFragment extends Fragment {
         mapViewTracking = root.findViewById(R.id.mapViewTracking);
         btnStopTracking = root.findViewById(R.id.btnStopTracking);
 
-        tvSatelliteStatus = root.findViewById(R.id.tvSatelliteStatus);
+        // Satellite
+        satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
+        tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
+        btnSatStart = root.findViewById(R.id.btnSatStart);
         rvSatTracks = root.findViewById(R.id.rvSatTracks);
         tvSatTrackCount = root.findViewById(R.id.tvSatTrackCount);
         tvEmptySatTracks = root.findViewById(R.id.tvEmptySatTracks);
+
+        satStateTracking = root.findViewById(R.id.satStateTracking);
+        tvSatElapsed = root.findViewById(R.id.tvSatElapsed);
+        tvSatDistance = root.findViewById(R.id.tvSatDistance);
+        tvSatPoints = root.findViewById(R.id.tvSatPoints);
+        tvSatWaitingGps = root.findViewById(R.id.tvSatWaitingGps);
+        mapViewSatTracking = root.findViewById(R.id.mapViewSatTracking);
+        btnSatStop = root.findViewById(R.id.btnSatStop);
     }
 
 
@@ -300,20 +353,14 @@ public class DevicesTabFragment extends Fragment {
     private void setupSpinners() {
         String[] intervals = {"10s", "30s", "1m", "2m", "5m", "10m"};
         ArrayAdapter<String> intervalAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_spinner_item,
-                intervals
-        );
+                requireContext(), android.R.layout.simple_spinner_item, intervals);
         intervalAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerInterval.setAdapter(intervalAdapter);
         spinnerInterval.setSelection(1);
 
         String[] distances = {"5m", "10m", "20m", "50m", "100m"};
         ArrayAdapter<String> distanceAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_spinner_item,
-                distances
-        );
+                requireContext(), android.R.layout.simple_spinner_item, distances);
         distanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerDistance.setAdapter(distanceAdapter);
         spinnerDistance.setSelection(2);
@@ -321,35 +368,46 @@ public class DevicesTabFragment extends Fragment {
 
 
     private void setupRecyclerViews() {
-        // ⭐ Saved tracks adapter
+        // My Location adapter
         trackAdapter = new MyTrackAdapter(new MyTrackAdapter.OnTrackActionListener() {
-            @Override
-            public void onTrackClick(MyTrackEntity track) {
+            @Override public void onTrackClick(MyTrackEntity track) { openTrackDetail(track); }
+            @Override public void onTrackDelete(MyTrackEntity track) { confirmDeleteTrack(track); }
+            @Override public void onTrackExport(MyTrackEntity track) {
+                Toast.makeText(requireContext(), "Tap 📤 in the header to export",
+                        Toast.LENGTH_SHORT).show();
                 openTrackDetail(track);
             }
-
-            @Override
-            public void onTrackDelete(MyTrackEntity track) {
-                confirmDeleteTrack(track);
-            }
         });
-
         rvTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvTracks.setAdapter(trackAdapter);
         rvTracks.setNestedScrollingEnabled(false);
 
-        // Satellite tracks (Step 7 later)
+        // Satellite adapter
+        satTrackAdapter = new SatTrackAdapter(new SatTrackAdapter.OnTrackActionListener() {
+            @Override public void onTrackClick(SatTrackEntity track) { openSatTrackDetail(track); }
+            @Override public void onTrackDelete(SatTrackEntity track) { confirmDeleteSatTrack(track); }
+            @Override public void onTrackExport(SatTrackEntity track) {
+                Toast.makeText(requireContext(), "Tap 📤 in the header to export",
+                        Toast.LENGTH_SHORT).show();
+                openSatTrackDetail(track);
+            }
+        });
         rvSatTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rvSatTracks.setAdapter(satTrackAdapter);
+        rvSatTracks.setNestedScrollingEnabled(false);
     }
 
 
     private void setupButtons() {
         btnStartTracking.setOnClickListener(v -> onStartClicked());
         btnStopTracking.setOnClickListener(v -> onStopClicked());
+
+        btnSatStart.setOnClickListener(v -> onSatStartClicked());
+        btnSatStop.setOnClickListener(v -> onSatStopClicked());
     }
 
 
-    private void setupViewModel() {
+    private void setupViewModels() {
         myTrackViewModel = new ViewModelProvider(this).get(MyTrackViewModel.class);
 
         myTrackViewModel.getCompletedTracks().observe(getViewLifecycleOwner(), tracks -> {
@@ -365,11 +423,51 @@ public class DevicesTabFragment extends Fragment {
                 trackAdapter.submitList(tracks);
             }
         });
+
+        satTrackViewModel = new ViewModelProvider(this).get(SatTrackViewModel.class);
+
+        satTrackViewModel.getCompletedTracks().observe(getViewLifecycleOwner(), tracks -> {
+            int count = tracks != null ? tracks.size() : 0;
+            tvSatTrackCount.setText(String.valueOf(count));
+
+            if (count == 0) {
+                tvEmptySatTracks.setVisibility(View.VISIBLE);
+                rvSatTracks.setVisibility(View.GONE);
+            } else {
+                tvEmptySatTracks.setVisibility(View.GONE);
+                rvSatTracks.setVisibility(View.VISIBLE);
+                satTrackAdapter.submitList(tracks);
+            }
+        });
+    }
+
+
+    /** Observe BLE connection & device info to show IMEI on Satellite tab */
+    private void observeBleStatus() {
+        BLE.INSTANCE.getDeviceInfo().observe(getViewLifecycleOwner(), info -> {
+            if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
+                connectedImei = info.getImei();
+                tvSatConnectedImei.setText(connectedImei);
+                tvSatConnectedImei.setTextColor(0xFF00E5D1);
+            } else {
+                connectedImei = null;
+                tvSatConnectedImei.setText("Not connected");
+                tvSatConnectedImei.setTextColor(0xFFFF5252);
+            }
+        });
+
+        BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
+            if (device == null) {
+                connectedImei = null;
+                tvSatConnectedImei.setText("Not connected");
+                tvSatConnectedImei.setTextColor(0xFFFF5252);
+            }
+        });
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   TRACK DETAIL & DELETE
+    //   TRACK ACTIONS (My Location)
     // ═══════════════════════════════════════════════════════════════
 
     private void openTrackDetail(MyTrackEntity track) {
@@ -384,9 +482,7 @@ public class DevicesTabFragment extends Fragment {
                 .setMessage("Delete \"" + track.getName() + "\"?\nThis cannot be undone.")
                 .setPositiveButton("Delete", (d, w) -> {
                     myTrackViewModel.deleteTrack(track);
-                    Toast.makeText(requireContext(),
-                            "✅ Track deleted",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "✅ Track deleted", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -394,7 +490,30 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   MAP SETUP (same as Map tab)
+    //   TRACK ACTIONS (Satellite)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void openSatTrackDetail(SatTrackEntity track) {
+        SatTrackDetailFragment dialog = SatTrackDetailFragment.newInstance(track.getId());
+        dialog.show(getParentFragmentManager(), "SatTrackDetail");
+    }
+
+
+    private void confirmDeleteSatTrack(SatTrackEntity track) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Satellite Track")
+                .setMessage("Delete \"" + track.getName() + "\"?\nThis cannot be undone.")
+                .setPositiveButton("Delete", (d, w) -> {
+                    satTrackViewModel.deleteTrack(track);
+                    Toast.makeText(requireContext(), "✅ Track deleted", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   MAP SETUP (My Location)
     // ═══════════════════════════════════════════════════════════════
 
     private void setupMap() {
@@ -402,7 +521,7 @@ public class DevicesTabFragment extends Fragment {
         mapViewTracking.setBuiltInZoomControls(false);
         mapViewTracking.setTilesScaledToDpi(true);
 
-        loadMapSource();
+        loadMapSource(mapViewTracking);
 
         mapViewTracking.getController().setZoom(16.0);
         mapViewTracking.getController().setCenter(DEFAULT_CENTER);
@@ -419,11 +538,36 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    private void loadMapSource() {
+    // ═══════════════════════════════════════════════════════════════
+    //   MAP SETUP (Satellite)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupSatMap() {
+        mapViewSatTracking.setMultiTouchControls(true);
+        mapViewSatTracking.setBuiltInZoomControls(false);
+        mapViewSatTracking.setTilesScaledToDpi(true);
+
+        loadMapSource(mapViewSatTracking);
+
+        mapViewSatTracking.getController().setZoom(14.0);
+        mapViewSatTracking.getController().setCenter(DEFAULT_CENTER);
+
+        satPolyline = new Polyline();
+        satPolyline.setColor(Color.parseColor("#378ADD"));  // Blue for satellite
+        satPolyline.setWidth(8.0f);
+        mapViewSatTracking.getOverlays().add(satPolyline);
+
+        satCurrentMarker = new Marker(mapViewSatTracking);
+        satCurrentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        satCurrentMarker.setTitle("Last Position");
+        mapViewSatTracking.getOverlays().add(satCurrentMarker);
+    }
+
+
+    private void loadMapSource(MapView mapView) {
         try {
             if (isNetworkAvailable()) {
-                mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
-                Log.v(TAG, "Map: ONLINE");
+                mapView.setTileSource(TileSourceFactory.MAPNIK);
                 return;
             }
 
@@ -442,19 +586,17 @@ public class DevicesTabFragment extends Fragment {
                         new SimpleRegisterReceiver(requireContext()),
                         mbtilesFiles
                 );
-                mapViewTracking.setTileProvider(tileProvider);
-                mapViewTracking.setTileSource(new XYTileSource(
+                mapView.setTileProvider(tileProvider);
+                mapView.setTileSource(new XYTileSource(
                         "offline", 0, 18, 256, ".png", new String[]{}
                 ));
-                Log.v(TAG, "Map: OFFLINE");
                 return;
             }
 
-            mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
-            Log.w(TAG, "Map: No network, no MBTiles");
+            mapView.setTileSource(TileSourceFactory.MAPNIK);
         } catch (Exception e) {
             Log.e(TAG, "Map source load failed: " + e.getMessage());
-            mapViewTracking.setTileSource(TileSourceFactory.MAPNIK);
+            mapView.setTileSource(TileSourceFactory.MAPNIK);
         }
     }
 
@@ -473,7 +615,7 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   START/STOP TRACKING
+    //   MY LOCATION - START/STOP
     // ═══════════════════════════════════════════════════════════════
 
     private void onStartClicked() {
@@ -481,23 +623,19 @@ public class DevicesTabFragment extends Fragment {
             requestLocationPermission();
             return;
         }
-
         if (!LocationPermissionHelper.isGpsEnabled(requireContext())) {
             showGpsDisabledDialog();
             return;
         }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && !LocationPermissionHelper.hasNotificationPermission(requireContext())) {
             requestNotificationPermission();
             return;
         }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                 && !LocationPermissionHelper.hasBackgroundLocationPermission(requireContext())) {
             requestBackgroundPermission();
         }
-
         startTracking();
     }
 
@@ -514,16 +652,11 @@ public class DevicesTabFragment extends Fragment {
             trackingStartTime = System.currentTimeMillis();
 
             LocationTrackingService.start(
-                    requireContext(),
-                    currentTrackId,
-                    intervalSec,
-                    minDist
-            );
+                    requireContext(), currentTrackId, intervalSec, minDist);
 
             requireActivity().runOnUiThread(() -> {
                 switchToTrackingState();
-                Toast.makeText(requireContext(),
-                        "🔴 Tracking started",
+                Toast.makeText(requireContext(), "🔴 Tracking started",
                         Toast.LENGTH_SHORT).show();
             });
             return null;
@@ -543,24 +676,102 @@ public class DevicesTabFragment extends Fragment {
 
     private void stopTracking() {
         LocationTrackingService.stop(requireContext());
-
         if (currentTrackId > 0) {
             myTrackViewModel.stopTrack(currentTrackId);
         }
-
-        Toast.makeText(requireContext(),
-                "✅ Track saved",
-                Toast.LENGTH_SHORT).show();
-
+        Toast.makeText(requireContext(), "✅ Track saved", Toast.LENGTH_SHORT).show();
         currentTrackId = -1;
         trackingStartTime = 0;
-
         switchToNotTrackingState();
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   UI STATE
+    //   SATELLITE - START/STOP
+    // ═══════════════════════════════════════════════════════════════
+
+    private void onSatStartClicked() {
+        // Check BLE connection
+        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            Toast.makeText(requireContext(),
+                    "❌ Please connect BLE device first",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (connectedImei == null || connectedImei.isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "⚠️ Waiting for device info...",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Start Satellite TRACK")
+                .setMessage("Send TRACK START command to device?\n\nIMEI: " + connectedImei)
+                .setPositiveButton("Start", (d, w) -> startSatTracking())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void startSatTracking() {
+        String trackName = "SatTrack " + android.text.format.DateFormat.format(
+                "MM/dd HH:mm", new Date()).toString();
+
+        satTrackViewModel.startNewTrack(trackName, connectedImei, trackId -> {
+            currentSatTrackId = trackId.intValue();
+            satTrackingStartTime = System.currentTimeMillis();
+
+            // Register active session
+            SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
+
+            // Send BLE command to start TRACK mode on device
+            BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
+
+            requireActivity().runOnUiThread(() -> {
+                switchToSatTrackingState();
+                Toast.makeText(requireContext(),
+                        "🛰 Satellite TRACK started",
+                        Toast.LENGTH_SHORT).show();
+            });
+            return null;
+        });
+    }
+
+
+    private void onSatStopClicked() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Stop Satellite TRACK")
+                .setMessage("Stop TRACK mode and save this session?")
+                .setPositiveButton("Stop & Save", (d, w) -> stopSatTracking())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void stopSatTracking() {
+        // Send BLE command to stop TRACK mode
+        BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
+
+        if (currentSatTrackId > 0) {
+            satTrackViewModel.stopTrack(currentSatTrackId);
+        }
+
+        SatTrackStateHolder.stopSession();
+
+        Toast.makeText(requireContext(),
+                "✅ Satellite TRACK saved",
+                Toast.LENGTH_SHORT).show();
+
+        currentSatTrackId = -1;
+        satTrackingStartTime = 0;
+        switchToSatNotTrackingState();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   UI STATE (My Location)
     // ═══════════════════════════════════════════════════════════════
 
     private void switchToTrackingState() {
@@ -574,12 +785,8 @@ public class DevicesTabFragment extends Fragment {
         tvWaitingGps.setVisibility(View.VISIBLE);
 
         pathPoints.clear();
-        if (pathPolyline != null) {
-            pathPolyline.setPoints(pathPoints);
-        }
-        if (mapViewTracking != null) {
-            mapViewTracking.invalidate();
-        }
+        if (pathPolyline != null) pathPolyline.setPoints(pathPoints);
+        if (mapViewTracking != null) mapViewTracking.invalidate();
 
         startElapsedTimer();
     }
@@ -593,7 +800,35 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   TIMER
+    //   UI STATE (Satellite)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void switchToSatTrackingState() {
+        satStateNotTracking.setVisibility(View.GONE);
+        satStateTracking.setVisibility(View.VISIBLE);
+
+        tvSatDistance.setText("0.00 km");
+        tvSatPoints.setText("0 pt");
+        tvSatElapsed.setText("00:00:00");
+        tvSatWaitingGps.setVisibility(View.VISIBLE);
+
+        satPathPoints.clear();
+        if (satPolyline != null) satPolyline.setPoints(satPathPoints);
+        if (mapViewSatTracking != null) mapViewSatTracking.invalidate();
+
+        startSatElapsedTimer();
+    }
+
+
+    private void switchToSatNotTrackingState() {
+        satStateTracking.setVisibility(View.GONE);
+        satStateNotTracking.setVisibility(View.VISIBLE);
+        stopSatElapsedTimer();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   TIMERS
     // ═══════════════════════════════════════════════════════════════
 
     private void startElapsedTimer() {
@@ -629,6 +864,39 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
+    private void startSatElapsedTimer() {
+        stopSatElapsedTimer();
+
+        if (satTrackingStartTime == 0 && currentSatTrackId > 0) {
+            satTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
+                if (track != null && satTrackingStartTime == 0) {
+                    satTrackingStartTime = track.getStartTime().getTime();
+                }
+            });
+        }
+
+        satTimerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (satTrackingStartTime > 0) {
+                    long elapsed = System.currentTimeMillis() - satTrackingStartTime;
+                    tvSatElapsed.setText(formatElapsed(elapsed));
+                }
+                uiHandler.postDelayed(this, 1000);
+            }
+        };
+        uiHandler.post(satTimerRunnable);
+    }
+
+
+    private void stopSatElapsedTimer() {
+        if (satTimerRunnable != null) {
+            uiHandler.removeCallbacks(satTimerRunnable);
+            satTimerRunnable = null;
+        }
+    }
+
+
     private String formatElapsed(long ms) {
         long seconds = ms / 1000;
         long hours = seconds / 3600;
@@ -639,7 +907,7 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   LOCATION UPDATE
+    //   LOCATION UPDATE (My Location)
     // ═══════════════════════════════════════════════════════════════
 
     private void handleLocationUpdate(Intent intent) {
@@ -663,15 +931,14 @@ public class DevicesTabFragment extends Fragment {
         }
 
         mapViewTracking.invalidate();
-
         tvSpeed.setText(String.format(Locale.US, "%.0f km/h", speed));
         updateStatsFromDb();
     }
 
 
     private void handleServiceStateChange(Intent intent) {
-        boolean isRunning = intent.getBooleanExtra(LocationTrackingService.EXTRA_IS_RUNNING, false);
-
+        boolean isRunning = intent.getBooleanExtra(
+                LocationTrackingService.EXTRA_IS_RUNNING, false);
         if (!isRunning && currentTrackId != -1) {
             switchToNotTrackingState();
             currentTrackId = -1;
@@ -681,14 +948,11 @@ public class DevicesTabFragment extends Fragment {
 
     private void updateStatsFromDb() {
         if (currentTrackId <= 0) return;
-
         myTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
             if (track == null) return;
-
             double distanceKm = track.getTotalDistance() / 1000.0;
             tvDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
             tvPoints.setText(String.format(Locale.US, "%d pt", track.getPointCount()));
-
             if (trackingStartTime == 0) {
                 trackingStartTime = track.getStartTime().getTime();
             }
@@ -698,26 +962,62 @@ public class DevicesTabFragment extends Fragment {
 
     private void reloadPathFromDb() {
         if (currentTrackId <= 0) return;
-
         myTrackViewModel.getPointsByTrack(currentTrackId)
                 .observe(getViewLifecycleOwner(), points -> {
                     if (points == null || points.isEmpty()) return;
-
                     pathPoints.clear();
                     for (com.ah.acr.messagebox.database.MyTrackPointEntity p : points) {
                         pathPoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
                     }
                     pathPolyline.setPoints(pathPoints);
-
                     if (!pathPoints.isEmpty()) {
                         GeoPoint last = pathPoints.get(pathPoints.size() - 1);
                         currentLocationMarker.setPosition(last);
                         mapViewTracking.getController().animateTo(last);
                         tvWaitingGps.setVisibility(View.GONE);
                     }
-
                     mapViewTracking.invalidate();
                 });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   SATELLITE POINT UPDATE (from DB observer)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void reloadSatPathFromDb() {
+        if (currentSatTrackId <= 0) return;
+
+        satTrackViewModel.getPointsByTrack(currentSatTrackId)
+                .observe(getViewLifecycleOwner(), points -> {
+                    if (points == null || points.isEmpty()) return;
+
+                    satPathPoints.clear();
+                    for (com.ah.acr.messagebox.database.SatTrackPointEntity p : points) {
+                        satPathPoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
+                    }
+                    satPolyline.setPoints(satPathPoints);
+
+                    if (!satPathPoints.isEmpty()) {
+                        GeoPoint last = satPathPoints.get(satPathPoints.size() - 1);
+                        satCurrentMarker.setPosition(last);
+                        mapViewSatTracking.getController().animateTo(last);
+                        tvSatWaitingGps.setVisibility(View.GONE);
+                    }
+
+                    mapViewSatTracking.invalidate();
+                });
+
+        // Also observe stats
+        satTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
+            if (track == null) return;
+            double distanceKm = track.getTotalDistance() / 1000.0;
+            tvSatDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
+            tvSatPoints.setText(String.format(Locale.US, "%d pt", track.getPointCount()));
+            if (satTrackingStartTime == 0) {
+                satTrackingStartTime = track.getStartTime().getTime();
+            }
+        });
     }
 
 
@@ -780,19 +1080,13 @@ public class DevicesTabFragment extends Fragment {
 
         switch (requestCode) {
             case LocationPermissionHelper.REQUEST_CODE_LOCATION:
-                if (granted) {
-                    onStartClicked();
-                } else {
-                    Toast.makeText(requireContext(),
-                            "Location permission denied",
-                            Toast.LENGTH_SHORT).show();
-                }
+                if (granted) onStartClicked();
+                else Toast.makeText(requireContext(),
+                        "Location permission denied", Toast.LENGTH_SHORT).show();
                 break;
-
             case LocationPermissionHelper.REQUEST_CODE_NOTIFICATIONS:
                 onStartClicked();
                 break;
-
             case LocationPermissionHelper.REQUEST_CODE_BACKGROUND_LOCATION:
                 startTracking();
                 break;
