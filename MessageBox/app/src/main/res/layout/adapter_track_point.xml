@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="24dp"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_track_row"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:gravity="center_vertical"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- # 순번 -->
+    <TextView
+        android:id="@+id/tv_index"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="#5A7090"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:gravity="start" />
+
+    <!-- Type 배지 -->
+    <TextView
+        android:id="@+id/tv_type"
+        android:layout_width="50dp"
+        android:layout_height="wrap_content"
+        android:text="TRACK"
+        android:textColor="#378ADD"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:gravity="start" />
+
+    <!-- 위도 -->
+    <TextView
+        android:id="@+id/tv_lat"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.3"
+        android:text="37.5590"
+        android:textColor="#E8F1FB"
+        android:textSize="10sp"
+        android:fontFamily="monospace" />
+
+    <!-- 경도 -->
+    <TextView
+        android:id="@+id/tv_lng"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.3"
+        android:text="127.0590"
+        android:textColor="#E8F1FB"
+        android:textSize="10sp"
+        android:fontFamily="monospace" />
+
+    <!-- 시간 -->
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="10:12"
+        android:textColor="#95B0D4"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:gravity="end" />
+
+</LinearLayout>

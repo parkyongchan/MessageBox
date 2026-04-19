@@ -1,0 +1,600 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A1628"
+    tools:context=".tabs.MapTabFragment">
+
+    <!-- ═══════ HEADER (컴팩트) ═══════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1F3C"
+        android:paddingStart="14dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:src="@drawable/ic_pin"
+            app:tint="#00E5D1"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="Location" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="RECEIVED DATA LIST"
+            android:textColor="#00E5D1"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/tv_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#00E5D1"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="6dp" />
+
+        <ImageButton
+            android:id="@+id/button_reflesh"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_refresh"
+            app:tint="#95B0D4"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:scaleType="centerInside"
+            android:padding="5dp"
+            android:contentDescription="Refresh" />
+
+    </LinearLayout>
+
+    <!-- ═══════ 필터 영역 (보라) - 비율 축소: 20 ═══════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="20"
+        android:orientation="vertical"
+        android:background="#0D1F3C"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+
+        <!-- 날짜 범위 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:id="@+id/btn_start_date"
+                android:layout_width="0dp"
+                android:layout_height="24dp"
+                android:layout_weight="1.2"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_input_card"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp">
+
+                <ImageView
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:src="@drawable/ic_calendar"
+                    app:tint="#95B0D4"
+                    android:layout_marginEnd="3dp"
+                    android:contentDescription="Start" />
+
+                <TextView
+                    android:id="@+id/tv_start_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2026-04-11"
+                    android:textColor="#E8F1FB"
+                    android:textSize="9sp"
+                    android:fontFamily="monospace" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="~"
+                android:textColor="#5A7090"
+                android:textSize="10sp"
+                android:layout_marginStart="1dp"
+                android:layout_marginEnd="1dp" />
+
+            <LinearLayout
+                android:id="@+id/btn_end_date"
+                android:layout_width="0dp"
+                android:layout_height="24dp"
+                android:layout_weight="1.2"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_input_card"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:src="@drawable/ic_calendar"
+                    app:tint="#95B0D4"
+                    android:layout_marginEnd="3dp"
+                    android:contentDescription="End" />
+
+                <TextView
+                    android:id="@+id/tv_end_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2026-04-18"
+                    android:textColor="#E8F1FB"
+                    android:textSize="9sp"
+                    android:fontFamily="monospace" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Quick 칩 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:id="@+id/chip_1h"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="1h"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_24h"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="24h"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_3d"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="3d"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_7d"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="7d"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_30d"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="30d"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <!-- 검색 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_input_card"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:gravity="center_vertical"
+            android:layout_marginTop="2dp">
+
+            <ImageView
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:src="@drawable/ic_search"
+                app:tint="#5A7090"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="Search" />
+
+            <EditText
+                android:id="@+id/edit_search"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:hint="Search IMEI or Alias..."
+                android:textColor="#FFFFFF"
+                android:textColorHint="#5A7090"
+                android:textSize="10sp"
+                android:background="@android:color/transparent"
+                android:singleLine="true"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:imeOptions="actionSearch"
+                android:inputType="text" />
+
+        </LinearLayout>
+
+        <!-- 타입 필터 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:id="@+id/chip_all"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="All"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_track"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Track"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+
+            <TextView
+                android:id="@+id/chip_sos"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="SOS"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ═══════ 장비 목록 (회색) - 비율 확대: 40 ⭐ ═══════ -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="40">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/list_location"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:clipToPadding="false"
+            android:scrollbars="vertical"
+            android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
+            android:scrollbarTrackVertical="@drawable/scrollbar_track"
+            android:scrollbarStyle="insideOverlay"
+            android:scrollbarFadeDuration="0"
+            android:scrollbarDefaultDelayBeforeFade="0"
+            android:scrollbarSize="5dp" />
+
+        <LinearLayout
+            android:id="@+id/empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_pin"
+                app:tint="#2A4570"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="No data" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No location data"
+                android:textColor="#5A7090"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- ═══════ 지도 (보라) - 100 ⭐ ═══════ -->
+    <FrameLayout
+        android:id="@+id/map_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="100"
+        android:background="#0D1F3C">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 지도 모드 배지 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#CC0A1628"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_margin="8dp"
+            android:layout_gravity="top|start">
+
+            <TextView
+                android:id="@+id/tv_map_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ONLINE"
+                android:textColor="#00E5D1"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/tv_map_zoom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ZOOM 10"
+                android:textColor="#95B0D4"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+        </LinearLayout>
+
+        <!-- 지도 컨트롤 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="right|center_vertical"
+            android:layout_marginEnd="10dp">
+
+            <ImageButton
+                android:id="@+id/btn_zoom_in"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_zoom_in"
+                app:tint="#FFFFFF"
+                android:background="@drawable/bg_map_button"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:layout_marginBottom="6dp"
+                android:contentDescription="Zoom in" />
+
+            <ImageButton
+                android:id="@+id/btn_zoom_out"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_zoom_out"
+                app:tint="#FFFFFF"
+                android:background="@drawable/bg_map_button"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="Zoom out" />
+
+            <ImageButton
+                android:id="@+id/btn_fit_all"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_fit_all"
+                app:tint="#00E5D1"
+                android:background="@drawable/bg_map_button"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:contentDescription="Fit all markers" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- ═══════ 상태 바 ═══════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0A1628"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:id="@+id/status_autoplay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="10dp">
+
+            <View
+                android:id="@+id/dot_autoplay"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:background="#4A5F78"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUTO"
+                android:textColor="#5A7090"
+                android:textSize="8sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1"
+                android:layout_marginEnd="3dp" />
+
+            <TextView
+                android:id="@+id/tv_autoplay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OFF"
+                android:textColor="#95B0D4"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="10dp"
+            android:background="#2A4570"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SAT"
+            android:textColor="#5A7090"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginEnd="3dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IRIDIUM"
+            android:textColor="#00E5D1"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="10dp" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="10dp"
+            android:background="#2A4570"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WGS84"
+            android:textColor="#95B0D4"
+            android:textSize="8sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PTS"
+            android:textColor="#5A7090"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginEnd="3dp" />
+
+        <TextView
+            android:id="@+id/tv_points"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#00E5D1"
+            android:textSize="8sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>
