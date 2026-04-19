@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MessageBox</string>
+    <string name="app_name">TYTO Connect</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="title_activity_main">Main</string>
     <string name="title_fragment_ble">BLE Set</string>

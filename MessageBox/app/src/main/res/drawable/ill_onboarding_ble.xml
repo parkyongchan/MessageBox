@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="400dp"
+    android:viewportWidth="320"
+    android:viewportHeight="400">
+
+    <!-- Background sky -->
+    <path
+        android:pathData="M0,0 L320,0 L320,400 L0,400 Z"
+        android:fillColor="#C7D2FE" />
+    <!-- Lower band -->
+    <path
+        android:pathData="M0,280 L320,280 L320,400 L0,400 Z"
+        android:fillColor="#A5B4FC" />
+    <!-- Horizon arc -->
+    <path
+        android:pathData="M0,280 Q160,260 320,285 L320,320 L0,320 Z"
+        android:fillColor="#818CF8"
+        android:fillAlpha="0.5" />
+
+    <!-- Decorative dots -->
+    <path android:pathData="M50,70 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" android:fillColor="#818CF8" android:fillAlpha="0.5" />
+    <path android:pathData="M260,110 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" android:fillColor="#818CF8" android:fillAlpha="0.4" />
+    <path android:pathData="M240,50 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" android:fillColor="#818CF8" android:fillAlpha="0.3" />
+    <path android:pathData="M70,180 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" android:fillColor="#818CF8" android:fillAlpha="0.4" />
+
+    <!-- ===== Phone on the left ===== -->
+    <!-- Outer frame -->
+    <path
+        android:pathData="M44,180 L124,180 Q132,180 132,188 L132,308 Q132,316 124,316 L44,316 Q36,316 36,308 L36,188 Q36,180 44,180 Z"
+        android:fillColor="#1E293B" />
+    <!-- Screen -->
+    <path
+        android:pathData="M44,188 L124,188 Q128,188 128,192 L128,304 Q128,308 124,308 L44,308 Q40,308 40,304 L40,192 Q40,188 44,188 Z"
+        android:fillColor="#3B82F6" />
+    <!-- Screen top bar -->
+    <path
+        android:pathData="M40,192 L128,192 L128,212 L40,212 Z"
+        android:fillColor="#1E40AF" />
+    <!-- BT icon bg on phone -->
+    <path
+        android:pathData="M62,236 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z"
+        android:fillColor="#FFFFFF" />
+    <!-- BT symbol on phone -->
+    <path
+        android:pathData="M78,224 L90,236 L78,248 L78,224 L90,236 L78,248"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M74,230 L90,242"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M74,242 L90,230"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <!-- Home indicator -->
+    <path
+        android:pathData="M80,298 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z"
+        android:fillColor="#334155" />
+
+    <!-- ===== TYTO Device on the right ===== -->
+    <!-- Body -->
+    <path
+        android:pathData="M216,194 L264,194 Q268,194 268,198 L268,302 Q268,306 264,306 L216,306 Q212,306 212,302 L212,198 Q212,194 216,194 Z"
+        android:fillColor="#1E293B" />
+    <!-- Antenna -->
+    <path
+        android:pathData="M236,178 L244,178 Q246,178 246,180 L246,194 L234,194 L234,180 Q234,178 236,178 Z"
+        android:fillColor="#1E293B" />
+    <!-- Screen frame -->
+    <path
+        android:pathData="M220,204 L260,204 Q262,204 262,206 L262,242 Q262,244 260,244 L220,244 Q218,244 218,242 L218,206 Q218,204 220,204 Z"
+        android:fillColor="#F97316" />
+    <!-- Screen display -->
+    <path
+        android:pathData="M222,208 L258,208 L258,240 L222,240 Z"
+        android:fillColor="#FED7AA" />
+    <!-- LED -->
+    <path
+        android:pathData="M236,258 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z"
+        android:fillColor="#22C55E" />
+    <!-- Button small -->
+    <path
+        android:pathData="M232,272 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"
+        android:fillColor="#475569" />
+    <path
+        android:pathData="M242,272 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"
+        android:fillColor="#475569" />
+    <!-- Button power -->
+    <path
+        android:pathData="M233,284 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z"
+        android:fillColor="#F97316" />
+
+    <!-- ===== BLE wave arcs between devices ===== -->
+    <!-- Left side waves -->
+    <path
+        android:pathData="M128,240 Q144,224 160,240"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M120,240 Q144,212 168,240"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.45"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <!-- Right side waves -->
+    <path
+        android:pathData="M180,240 Q196,224 212,240"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M172,240 Q196,212 220,240"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.45"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Center BT badge -->
+    <path
+        android:pathData="M152,222 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M152,222 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:fillColor="#00000000" />
+    <!-- BT glyph center -->
+    <path
+        android:pathData="M166,212 L174,222 L166,232 L166,212 L174,222 L166,232"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M162,217 L174,227"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M162,227 L174,217"
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+</vector>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="400dp"
+    android:viewportWidth="320"
+    android:viewportHeight="400">
+
+    <!-- Sky background -->
+    <path
+        android:pathData="M0,0 L320,0 L320,240 L0,240 Z"
+        android:fillColor="#FFEDD5" />
+
+    <!-- Sun (outer halo) -->
+    <path
+        android:pathData="M60,80 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0 Z"
+        android:fillColor="#FB923C" />
+    <!-- Sun core -->
+    <path
+        android:pathData="M70,80 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Mountain range (back) -->
+    <path
+        android:pathData="M0,220 L50,150 L110,200 L180,140 L240,190 L300,160 L320,180 L320,260 L0,260 Z"
+        android:fillColor="#7C8BAD" />
+    <!-- Mountain range (front) -->
+    <path
+        android:pathData="M0,260 L80,200 L150,240 L220,190 L320,230 L320,280 L0,280 Z"
+        android:fillColor="#5A6B8E" />
+
+    <!-- Ground -->
+    <path
+        android:pathData="M0,240 L320,240 L320,400 L0,400 Z"
+        android:fillColor="#E8DCC4" />
+    <path
+        android:pathData="M0,260 Q160,248 320,265 L320,300 L0,300 Z"
+        android:fillColor="#D4C5A0" />
+
+    <!-- Device shadow -->
+    <path
+        android:pathData="M120,360 a50,8 0 1,0 100,0 a50,8 0 1,0 -100,0 Z"
+        android:fillColor="#000000"
+        android:fillAlpha="0.12" />
+
+    <!-- TYTO Device body -->
+    <path
+        android:pathData="M140,200 L200,200 Q206,200 206,206 L206,352 Q206,358 200,358 L140,358 Q134,358 134,352 L134,206 Q134,200 140,200 Z"
+        android:fillColor="#1E293B" />
+
+    <!-- Device top cap -->
+    <path
+        android:pathData="M144,192 L196,192 Q198,192 198,194 L198,200 L142,200 L142,194 Q142,192 144,192 Z"
+        android:fillColor="#334155" />
+
+    <!-- Antenna -->
+    <path
+        android:pathData="M168,176 L172,176 Q174,176 174,178 L174,192 L166,192 L166,178 Q166,176 168,176 Z"
+        android:fillColor="#1E293B" />
+
+    <!-- Device screen (orange frame) -->
+    <path
+        android:pathData="M148,212 L192,212 Q194,212 194,214 L194,254 Q194,256 192,256 L148,256 Q146,256 146,254 L146,214 Q146,212 148,212 Z"
+        android:fillColor="#F97316" />
+    <!-- Screen display -->
+    <path
+        android:pathData="M151,216 L191,216 L191,252 L151,252 Z"
+        android:fillColor="#FED7AA" />
+
+    <!-- Green LED (power indicator) outer glow -->
+    <path
+        android:pathData="M156,282 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0 Z"
+        android:fillColor="#22C55E"
+        android:fillAlpha="0.15" />
+    <path
+        android:pathData="M160,282 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 Z"
+        android:fillColor="#22C55E"
+        android:fillAlpha="0.3" />
+    <!-- LED core -->
+    <path
+        android:pathData="M164,282 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z"
+        android:fillColor="#22C55E" />
+
+    <!-- Power button (orange) -->
+    <path
+        android:pathData="M158,308 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Power icon on button -->
+    <path
+        android:pathData="M170,302 L170,314"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M164,306 Q160,312 164,318 Q170,322 176,318 Q180,312 176,306"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Speaker grille lines -->
+    <path
+        android:pathData="M155,334 L185,334 M155,340 L185,340 M155,346 L185,346"
+        android:strokeColor="#334155"
+        android:strokeWidth="1" />
+
+    <!-- Finger pressing (right side) -->
+    <path
+        android:pathData="M220,300 a24,20 0 1,0 48,0 a24,20 0 1,0 -48,0 Z"
+        android:fillColor="#FCA5A5" />
+    <!-- Finger nail -->
+    <path
+        android:pathData="M230,294 a8,6 0 1,0 16,0 a8,6 0 1,0 -16,0 Z"
+        android:fillColor="#FECACA" />
+    <!-- Arm -->
+    <path
+        android:pathData="M262,294 Q296,298 300,320 Q296,338 276,340 L266,330 Q260,320 260,310 Z"
+        android:fillColor="#FCA5A5" />
+
+    <!-- Tap ripple rings -->
+    <path
+        android:pathData="M152,312 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z"
+        android:strokeColor="#22C55E"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.6"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M148,312 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z"
+        android:strokeColor="#22C55E"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.3"
+        android:fillColor="#00000000" />
+
+</vector>

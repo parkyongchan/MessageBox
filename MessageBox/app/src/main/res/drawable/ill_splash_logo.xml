@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="240dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+
+    <!-- Satellite solar panels (left) -->
+    <path
+        android:pathData="M60,100 L108,100 L108,120 L60,120 Z"
+        android:fillColor="#3A5BA0" />
+    <!-- Satellite solar panels (right) -->
+    <path
+        android:pathData="M132,100 L180,100 L180,120 L132,120 Z"
+        android:fillColor="#3A5BA0" />
+
+    <!-- Solar panel grid lines -->
+    <path
+        android:pathData="M84,100 L84,120 M132,100 L132,120"
+        android:strokeColor="#0B1B3D"
+        android:strokeWidth="1" />
+
+    <!-- Satellite body -->
+    <path
+        android:pathData="M108,96 L132,96 Q134,96 134,98 L134,122 Q134,124 132,124 L108,124 Q106,124 106,122 L106,98 Q106,96 108,96 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Satellite window strip -->
+    <path
+        android:pathData="M110,102 L130,102 L130,110 L110,110 Z"
+        android:fillColor="#FDBA74" />
+
+    <!-- Antenna -->
+    <path
+        android:pathData="M120,96 L120,82"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M118,80 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Signal wave 1 -->
+    <path
+        android:pathData="M120,130 Q100,150 100,170"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <!-- Signal wave 2 -->
+    <path
+        android:pathData="M120,130 Q140,150 140,170"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <!-- Signal wave 3 (outer) -->
+    <path
+        android:pathData="M120,130 Q90,160 90,190"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeAlpha="0.5"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M120,130 Q150,160 150,190"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeAlpha="0.5"
+        android:fillColor="#00000000" />
+
+    <!-- Stars (decorative dots around satellite) -->
+    <path android:pathData="M40,40 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.8" />
+    <path android:pathData="M200,50 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M60,70 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.6" />
+    <path android:pathData="M180,30 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M30,120 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.5" />
+    <path android:pathData="M210,110 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.6" />
+
+</vector>

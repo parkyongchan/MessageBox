@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="400dp"
+    android:viewportWidth="320"
+    android:viewportHeight="400">
+
+    <!-- Sky -->
+    <path
+        android:pathData="M0,0 L320,0 L320,260 L0,260 Z"
+        android:fillColor="#BFDBFE" />
+
+    <!-- Clouds (far, wispy) -->
+    <path
+        android:pathData="M40,50 a30,10 0 1,0 60,0 a30,10 0 1,0 -60,0 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.8" />
+    <path
+        android:pathData="M220,70 a38,12 0 1,0 76,0 a38,12 0 1,0 -76,0 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.7" />
+    <path
+        android:pathData="M140,35 a24,8 0 1,0 48,0 a24,8 0 1,0 -48,0 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.6" />
+
+    <!-- Satellite in the sky -->
+    <!-- Solar panels -->
+    <path
+        android:pathData="M218,100 L238,100 L238,114 L218,114 Z"
+        android:fillColor="#475569" />
+    <path
+        android:pathData="M254,100 L274,100 L274,114 L254,114 Z"
+        android:fillColor="#475569" />
+    <!-- Body -->
+    <path
+        android:pathData="M238,98 L254,98 Q256,98 256,100 L256,116 Q256,118 254,118 L238,118 Q236,118 236,116 L236,100 Q236,98 238,98 Z"
+        android:fillColor="#F97316" />
+    <!-- Antenna -->
+    <path
+        android:pathData="M245,90 L247,90 L247,98 L245,98 Z"
+        android:fillColor="#1E293B" />
+
+    <!-- Satellite signal beam (dashed) -->
+    <path
+        android:pathData="M246,120 Q200,180 160,240"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.85"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Distant low hills (soft, not obstructing) -->
+    <path
+        android:pathData="M0,230 L40,200 L90,220 L140,195 L190,215 L240,190 L290,212 L320,205 L320,260 L0,260 Z"
+        android:fillColor="#93C5FD"
+        android:fillAlpha="0.7" />
+
+    <!-- Open grassy field -->
+    <path
+        android:pathData="M0,260 L320,260 L320,400 L0,400 Z"
+        android:fillColor="#BBF7D0" />
+    <path
+        android:pathData="M0,265 Q160,252 320,270 L320,310 L0,310 Z"
+        android:fillColor="#86EFAC" />
+    <path
+        android:pathData="M0,305 Q160,295 320,310 L320,340 L0,340 Z"
+        android:fillColor="#4ADE80"
+        android:fillAlpha="0.5" />
+
+    <!-- Small grass tufts (decorative, not blocking) -->
+    <path android:pathData="M30,305 L30,298" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M33,305 L36,297" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M90,320 L90,312" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M94,320 L97,312" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M230,315 L230,307" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M275,325 L275,317" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+    <path android:pathData="M279,325 L282,317" android:strokeColor="#16A34A" android:strokeWidth="1.2" android:strokeLineCap="round" />
+
+    <!-- Device shadow -->
+    <path
+        android:pathData="M134,340 a26,4 0 1,0 52,0 a26,4 0 1,0 -52,0 Z"
+        android:fillColor="#000000"
+        android:fillAlpha="0.15" />
+
+    <!-- TYTO Device (standing in field) -->
+    <path
+        android:pathData="M144,252 L176,252 Q180,252 180,256 L180,334 Q180,338 176,338 L144,338 Q140,338 140,334 L140,256 Q140,252 144,252 Z"
+        android:fillColor="#1E293B" />
+    <!-- Antenna -->
+    <path
+        android:pathData="M157,240 L163,240 Q165,240 165,242 L165,252 L155,252 L155,242 Q155,240 157,240 Z"
+        android:fillColor="#1E293B" />
+    <!-- Screen -->
+    <path
+        android:pathData="M146,258 L174,258 Q176,258 176,260 L176,282 Q176,284 174,284 L146,284 Q144,284 144,282 L144,260 Q144,258 146,258 Z"
+        android:fillColor="#F97316" />
+    <path
+        android:pathData="M148,261 L172,261 L172,281 L148,281 Z"
+        android:fillColor="#FED7AA" />
+    <!-- LED -->
+    <path
+        android:pathData="M156,298 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z"
+        android:fillColor="#22C55E" />
+    <!-- Power button -->
+    <path
+        android:pathData="M155,316 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Upward signal from device to satellite -->
+    <path
+        android:pathData="M160,248 Q190,190 238,120"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.65"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M162,248 Q200,200 246,124"
+        android:strokeColor="#F97316"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.35"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Green check badge (confirming clear view) -->
+    <path
+        android:pathData="M48,310 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z"
+        android:fillColor="#22C55E" />
+    <path
+        android:pathData="M60,310 L68,318 L82,302"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+</vector>

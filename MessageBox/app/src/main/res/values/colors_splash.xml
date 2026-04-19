@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ==================== SPLASH ==================== -->
+    <color name="splash_bg">#0B1B3D</color>
+    <color name="splash_text_primary">#FFFFFF</color>
+    <color name="splash_text_secondary">#93C5FD</color>
+    <color name="splash_text_muted">#64748B</color>
+
+    <!-- ==================== ONBOARDING ==================== -->
+    <!-- Per-page illustration background color -->
+    <color name="onboarding_bg_power">#FFEDD5</color>     <!-- warm cream -->
+    <color name="onboarding_bg_ble">#C7D2FE</color>       <!-- soft indigo -->
+    <color name="onboarding_bg_clearsky">#BFDBFE</color>  <!-- day sky -->
+    <color name="onboarding_bg_highplace">#1E3A8A</color> <!-- deep night -->
+
+    <!-- Text -->
+    <color name="onboarding_text_primary">#0F172A</color>
+    <color name="onboarding_text_secondary">#64748B</color>
+
+    <!-- Brand accent (also used for button + active dot) -->
+    <color name="brand_orange">#F97316</color>
+    <color name="brand_orange_pressed">#EA580C</color>
+
+    <!-- Dots -->
+    <color name="dot_active">#F97316</color>
+    <color name="dot_inactive">#CBD5E1</color>
+
+</resources>

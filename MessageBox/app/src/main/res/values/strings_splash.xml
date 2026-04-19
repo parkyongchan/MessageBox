@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App identity -->
+    <string name="app_name_full">TYTO Connect</string>
+    <string name="splash_tagline">SATELLITE MESSAGING</string>
+    <string name="splash_manufacturer">© Arion Communication</string>
+
+    <!-- Onboarding — page 1: Power on -->
+    <string name="onboarding_title_power">Power on your device</string>
+    <string name="onboarding_desc_power">Press and hold the power button until the green indicator lights up.</string>
+
+    <!-- Onboarding — page 2: BLE pairing -->
+    <string name="onboarding_title_ble">Pair via Bluetooth</string>
+    <string name="onboarding_desc_ble">Enable Bluetooth on your phone and select your TYTO device to pair.</string>
+
+    <!-- Onboarding — page 3: Clear sky -->
+    <string name="onboarding_title_clearsky">Find an open sky view</string>
+    <string name="onboarding_desc_clearsky">Keep the TYTO device clear of buildings, trees and heavy obstructions so it can reach the satellite.</string>
+
+    <!-- Onboarding — page 4: High placement -->
+    <string name="onboarding_title_highplace">Place device up high</string>
+    <string name="onboarding_desc_highplace">Higher elevation improves satellite reception and message reliability.</string>
+
+    <!-- Buttons -->
+    <string name="onboarding_btn_next">Next</string>
+    <string name="onboarding_btn_done">Get Started</string>
+
+</resources>

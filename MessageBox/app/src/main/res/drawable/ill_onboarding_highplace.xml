@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="400dp"
+    android:viewportWidth="320"
+    android:viewportHeight="400">
+
+    <!-- Night sky (layered color to fake gradient) -->
+    <path
+        android:pathData="M0,0 L320,0 L320,400 L0,400 Z"
+        android:fillColor="#1E3A8A" />
+    <path
+        android:pathData="M0,0 L320,0 L320,140 L0,140 Z"
+        android:fillColor="#312E81" />
+    <path
+        android:pathData="M0,120 L320,120 L320,170 L0,170 Z"
+        android:fillColor="#3730A3" />
+    <path
+        android:pathData="M0,160 L320,160 L320,200 L0,200 Z"
+        android:fillColor="#4338CA" />
+    <path
+        android:pathData="M0,195 L320,195 L320,230 L0,230 Z"
+        android:fillColor="#6366F1"
+        android:fillAlpha="0.55" />
+
+    <!-- Stars -->
+    <path android:pathData="M40,35 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.85" />
+    <path android:pathData="M280,55 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M95,20 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.65" />
+    <path android:pathData="M230,25 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.75" />
+    <path android:pathData="M150,65 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.55" />
+    <path android:pathData="M295,100 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.6" />
+    <path android:pathData="M60,90 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.55" />
+    <path android:pathData="M200,90 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.5" />
+
+    <!-- Moon (crescent via two circles) -->
+    <path
+        android:pathData="M55,85 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0 Z"
+        android:fillColor="#FEF3C7" />
+    <path
+        android:pathData="M65,80 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0 Z"
+        android:fillColor="#1E3A8A" />
+
+    <!-- Satellite in sky -->
+    <path
+        android:pathData="M218,130 L232,130 L232,142 L218,142 Z"
+        android:fillColor="#475569" />
+    <path
+        android:pathData="M250,130 L264,130 L264,142 L250,142 Z"
+        android:fillColor="#475569" />
+    <path
+        android:pathData="M232,128 L250,128 Q252,128 252,130 L252,144 Q252,146 250,146 L232,146 Q230,146 230,144 L230,130 Q230,128 232,128 Z"
+        android:fillColor="#F97316" />
+    <path
+        android:pathData="M241,120 L243,120 L243,128 L241,128 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Satellite signal beam (cone) -->
+    <path
+        android:pathData="M241,146 L220,230 L262,230 Z"
+        android:fillColor="#F97316"
+        android:fillAlpha="0.18" />
+
+    <!-- Mountain range (silhouette, back) -->
+    <path
+        android:pathData="M0,400 L0,280 L30,250 L70,295 L110,240 L150,195 L180,150 L215,220 L250,195 L285,245 L320,230 L320,400 Z"
+        android:fillColor="#1E293B" />
+
+    <!-- Darker highlight on main peak -->
+    <path
+        android:pathData="M110,240 L150,195 L180,150 L215,220 L170,230 Z"
+        android:fillColor="#0F172A" />
+
+    <!-- Snow cap on main peak -->
+    <path
+        android:pathData="M170,175 L180,150 L195,185 L210,210 L198,210 L188,200 L178,205 Z"
+        android:fillColor="#E0E7FF" />
+
+    <!-- Smaller hills / tree line on lower slopes -->
+    <path android:pathData="M25,315 L31,300 L37,315 Z" android:fillColor="#0F172A" />
+    <path android:pathData="M45,325 L51,308 L57,325 Z" android:fillColor="#0F172A" />
+    <path android:pathData="M263,330 L269,315 L275,330 Z" android:fillColor="#0F172A" />
+    <path android:pathData="M283,335 L289,320 L295,335 Z" android:fillColor="#0F172A" />
+
+    <!-- TYTO Device placed on peak -->
+    <path
+        android:pathData="M174,150 L190,150 Q192,150 192,152 L192,184 Q192,186 190,186 L174,186 Q172,186 172,184 L172,152 Q172,150 174,150 Z"
+        android:fillColor="#1E293B" />
+    <!-- Device screen orange -->
+    <path
+        android:pathData="M175,154 L189,154 Q191,154 191,156 L191,172 Q191,174 189,174 L175,174 Q173,174 173,172 L173,156 Q173,154 175,154 Z"
+        android:fillColor="#F97316" />
+    <path
+        android:pathData="M176,157 L188,157 L188,171 L176,171 Z"
+        android:fillColor="#FED7AA" />
+    <!-- Antenna -->
+    <path
+        android:pathData="M181,144 L183,144 L183,150 L181,150 Z"
+        android:fillColor="#F97316" />
+    <!-- LED -->
+    <path
+        android:pathData="M180,178 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z"
+        android:fillColor="#22C55E" />
+
+    <!-- Signal beams from device upward to satellite -->
+    <path
+        android:pathData="M185,148 Q210,138 238,130"
+        android:strokeColor="#F97316"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.85"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M185,152 Q215,144 244,136"
+        android:strokeColor="#F97316"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Up-arrow badge (place high hint) -->
+    <path
+        android:pathData="M254,294 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z"
+        android:fillColor="#F97316" />
+    <path
+        android:pathData="M276,286 L276,302"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M269,292 L276,285 L283,292"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <!-- Elevation contour lines (decorative) -->
+    <path
+        android:pathData="M70,290 Q160,270 255,290"
+        android:strokeColor="#F97316"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.35"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M88,320 Q160,300 230,320"
+        android:strokeColor="#F97316"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+</vector>
