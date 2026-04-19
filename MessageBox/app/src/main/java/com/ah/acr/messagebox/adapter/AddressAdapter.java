@@ -1,8 +1,9 @@
 package com.ah.acr.messagebox.adapter;
 
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
@@ -11,15 +12,20 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.ah.acr.messagebox.database.AddressEntity;
 import com.ah.acr.messagebox.databinding.AdapterAddressBinding;
+import com.ah.acr.messagebox.util.AvatarHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 public class AddressAdapter extends ListAdapter<AddressEntity, AddressAdapter.AddressViewHolder> {
 
+    private static final int AVATAR_SIZE_DP = 48;
+
     public interface OnAddressClickListener {
         void onAddressClick(AddressEntity msg);
         void onAddressDeleteClick(AddressEntity msg);
+        // ⭐ NEW: Avatar edit callback
+        void onAvatarEditClick(AddressEntity addr);
     }
 
     private final OnAddressClickListener onAddressClickListener;
@@ -54,25 +60,47 @@ public class AddressAdapter extends ListAdapter<AddressEntity, AddressAdapter.Ad
         }
 
         public void bind(AddressEntity addr, OnAddressClickListener onAddressClickListener) {
-            String name = addr.getNumbersNic() != null ? addr.getNumbersNic() : "?";
+            String imei = addr.getNumbers();
+            String nickname = addr.getNumbersNic();
+            String avatarPath = addr.getAvatarPath();
+
+            String displayName = (nickname != null && !nickname.trim().isEmpty())
+                    ? nickname
+                    : (imei != null ? imei : "?");
 
             // 이름, 번호, 시간
-            binding.textName.setText(name);
-            binding.textNumbers.setText(addr.getNumbers());
+            binding.textName.setText(displayName);
+            binding.textNumbers.setText(imei);
             binding.textTime.setText(addr.getCreateAt() != null
                     ? sdf.format(addr.getCreateAt()) : "");
 
-            // ⭐ 이니셜 아바타 (첫 글자 대문자)
-            String initial = !name.isEmpty()
-                    ? name.substring(0, 1).toUpperCase() : "?";
-            binding.textAvatarInitial.setText(initial);
+            // 아바타 생성 (AvatarHelper 사용)
+            try {
+                Bitmap avatarBitmap = AvatarHelper.loadOrCreate(
+                        binding.getRoot().getContext(),
+                        imei,
+                        nickname,
+                        avatarPath,
+                        AVATAR_SIZE_DP
+                );
+                binding.imgAvatar.setImageBitmap(avatarBitmap);
+                binding.imgAvatar.setVisibility(View.VISIBLE);
+                binding.textAvatarInitial.setVisibility(View.GONE);
+            } catch (Exception e) {
+                // Fallback: TextView with initial
+                binding.imgAvatar.setImageDrawable(null);
+                binding.imgAvatar.setVisibility(View.GONE);
+                binding.textAvatarInitial.setVisibility(View.VISIBLE);
+                binding.textAvatarInitial.setText(
+                        AvatarHelper.getInitial(imei, nickname)
+                );
+            }
 
-            // ⭐ 아바타 박스 클릭 리스너 (이미지 편집 - 향후 구현)
+            // ⭐ 아바타 박스 클릭 → Fragment로 전달
             binding.frameAvatar.setOnClickListener(v -> {
-                // TODO: 이미지 편집/업로드 기능 구현 예정
-                Toast.makeText(v.getContext(),
-                        "Image upload coming soon",
-                        Toast.LENGTH_SHORT).show();
+                if (onAddressClickListener != null) {
+                    onAddressClickListener.onAvatarEditClick(addr);
+                }
             });
 
             // 아이템 클릭 (편집 다이얼로그)

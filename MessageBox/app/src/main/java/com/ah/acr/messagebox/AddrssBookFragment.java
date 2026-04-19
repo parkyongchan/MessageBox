@@ -2,6 +2,8 @@ package com.ah.acr.messagebox;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,6 +14,8 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
@@ -28,6 +32,8 @@ import com.ah.acr.messagebox.database.AddressEntity;
 import com.ah.acr.messagebox.database.AddressViewModel;
 import com.ah.acr.messagebox.databinding.FragmentAddressBookBinding;
 import com.ah.acr.messagebox.packet.security.SharedUtil;
+import com.ah.acr.messagebox.util.AvatarHelper;
+import com.ah.acr.messagebox.util.AvatarPickerHelper;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 
 import java.util.Date;
@@ -36,6 +42,7 @@ import java.util.List;
 
 public class AddrssBookFragment extends Fragment {
     private static final String TAG = AddrssBookFragment.class.getSimpleName();
+    private static final int MY_AVATAR_SIZE_DP = 60;
 
     private FragmentAddressBookBinding binding;
     private KeyViewModel mKeyViewModel;
@@ -43,10 +50,29 @@ public class AddrssBookFragment extends Fragment {
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
+    // My Profile state
+    private String myImei = null;
+    private String myNickname = null;
+    private String myAvatarPath = null;
+
+    // ⭐ Avatar edit state: which IMEI is currently being edited
+    private String targetAvatarImei = null;
+
+    // ⭐ Gallery launcher
+    private ActivityResultLauncher<String> pickImageLauncher;
+
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // ⭐ Register gallery launcher (must be in onCreate, not onCreateView)
+        pickImageLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> handleImagePicked(uri)
+        );
     }
+
 
     @Override
     public View onCreateView(
@@ -66,24 +92,25 @@ public class AddrssBookFragment extends Fragment {
         // Edit 버튼 (My Profile 편집)
         binding.buttonEdit.setOnClickListener(view -> showMeAddressDialog());
 
-        // ⭐ My Profile 아바타 박스 클릭 (이미지 편집 - 향후 구현)
+        // ⭐ My Profile 아바타 박스 클릭 → 아바타 편집 메뉴
         binding.frameMyAvatar.setOnClickListener(view -> {
-            // TODO: My Profile 이미지 편집/업로드 기능 구현 예정
-            Toast.makeText(getContext(),
-                    "Image upload coming soon",
-                    Toast.LENGTH_SHORT).show();
+            if (myImei == null || myImei.isEmpty()) {
+                Toast.makeText(getContext(),
+                        "Please connect to a device first",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            showAvatarMenu(myImei);
         });
 
-        // ⭐ 🔑 Password 변경 버튼 (BLE 미연결 시 경고)
+        // 🔑 Password 변경 버튼
         binding.buttonPassword.setOnClickListener(view -> {
             if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-                // BLE 미연결
                 Toast.makeText(getContext(),
                         "Please connect to a device first.",
                         Toast.LENGTH_SHORT).show();
                 return;
             }
-            // BLE 연결됨 → Password 변경 화면으로 이동
             try {
                 NavHostFragment.findNavController(AddrssBookFragment.this)
                         .navigate(R.id.action_main_setting_fragment_to_main_ble_login_change_fragment);
@@ -95,13 +122,14 @@ public class AddrssBookFragment extends Fragment {
             }
         });
 
-        // BLE Device Info observer - 자물쇠 버튼 시각적 상태
+        // BLE Device Info observer
         BLE.INSTANCE.getDeviceInfo().observe(getViewLifecycleOwner(), new Observer<DeviceInfo>() {
             @Override
             public void onChanged(DeviceInfo deviceInfo) {
                 Log.v(TAG, deviceInfo.toString());
 
                 String unitNum = deviceInfo.getImei();
+                myImei = unitNum;
                 binding.textNumber.setText(unitNum);
 
                 addressViewModel.getAddressByNumbers(unitNum).observe(getViewLifecycleOwner(), new Observer<AddressEntity>() {
@@ -111,10 +139,17 @@ public class AddrssBookFragment extends Fragment {
                             SharedUtil shared = mKeyViewModel.getSharedUtil().getValue();
                             String nicName = shared.getString("nicName");
                             if (nicName.isEmpty()) shared.putAny("nicName", "My Name");
-                            binding.textName.setText(nicName.isEmpty() ? "My Name" : nicName);
+                            String displayName = nicName.isEmpty() ? "My Name" : nicName;
+                            binding.textName.setText(displayName);
+                            myNickname = displayName;
+                            myAvatarPath = null;
                         } else {
                             binding.textName.setText(addressEntity.getNumbersNic());
+                            myNickname = addressEntity.getNumbersNic();
+                            myAvatarPath = addressEntity.getAvatarPath();
                         }
+
+                        updateMyAvatar();
                     }
                 });
 
@@ -123,18 +158,178 @@ public class AddrssBookFragment extends Fragment {
             }
         });
 
-        // ⭐ BLE 연결 상태에 따라 자물쇠 버튼 시각 효과
+        // BLE 연결 상태에 따라 자물쇠 버튼 시각 효과
         BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
             if (device != null) {
-                binding.buttonPassword.setAlpha(1.0f);        // 선명하게
+                binding.buttonPassword.setAlpha(1.0f);
             } else {
-                binding.buttonPassword.setAlpha(0.4f);        // 흐리게 (연결 필요)
+                binding.buttonPassword.setAlpha(0.4f);
             }
         });
+
+        updateMyAvatar();
 
         return binding.getRoot();
     }
 
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ AVATAR EDIT (NEW)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * ⭐ Show avatar edit menu (gallery / reset / cancel)
+     */
+    private void showAvatarMenu(String imei) {
+        if (imei == null || imei.isEmpty()) {
+            Toast.makeText(getContext(),
+                    "IMEI not available",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        targetAvatarImei = imei;
+
+        String[] options = {
+                "📷 Choose from Gallery",
+                "🔤 Use Initial Avatar"
+        };
+
+        new AlertDialog.Builder(getContext())
+                .setTitle("Avatar")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        // Gallery
+                        openGallery();
+                    } else {
+                        // Reset to initial
+                        resetAvatar(imei);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    /**
+     * ⭐ Open gallery to pick image
+     */
+    private void openGallery() {
+        try {
+            pickImageLauncher.launch("image/*");
+        } catch (Exception e) {
+            Log.e(TAG, "Gallery launch failed: " + e.getMessage());
+            Toast.makeText(getContext(),
+                    "Cannot open gallery",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    /**
+     * ⭐ Handle image picked from gallery
+     */
+    private void handleImagePicked(Uri uri) {
+        if (uri == null) {
+            Log.v(TAG, "User cancelled image picker");
+            return;
+        }
+
+        if (targetAvatarImei == null || targetAvatarImei.isEmpty()) {
+            Log.e(TAG, "targetAvatarImei is null");
+            return;
+        }
+
+        final String imei = targetAvatarImei;
+        targetAvatarImei = null;  // Clear state
+
+        // Save on background thread
+        new Thread(() -> {
+            String savedPath = AvatarPickerHelper.saveAvatarFromUri(
+                    getContext(), uri, imei);
+
+            // Update UI on main thread
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(() -> {
+                if (savedPath != null) {
+                    // Update DB
+                    addressViewModel.updateAvatarPath(imei, savedPath);
+
+                    // If this is My Profile, update local state and UI
+                    if (imei.equals(myImei)) {
+                        myAvatarPath = savedPath;
+                        updateMyAvatar();
+                    }
+
+                    Toast.makeText(getContext(),
+                            "✅ Avatar updated",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(),
+                            "❌ Failed to save avatar",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
+
+    /**
+     * ⭐ Reset avatar to initial (delete custom image)
+     */
+    private void resetAvatar(String imei) {
+        if (imei == null || imei.isEmpty()) return;
+
+        // Delete file
+        AvatarPickerHelper.deleteAvatar(getContext(), imei);
+
+        // Update DB (set avatarPath = null)
+        addressViewModel.updateAvatarPath(imei, null);
+
+        // If this is My Profile, update local state and UI
+        if (imei.equals(myImei)) {
+            myAvatarPath = null;
+            updateMyAvatar();
+        }
+
+        Toast.makeText(getContext(),
+                "✅ Avatar reset to initial",
+                Toast.LENGTH_SHORT).show();
+    }
+
+
+    /**
+     * My Profile 아바타 업데이트 (AvatarHelper 사용)
+     */
+    private void updateMyAvatar() {
+        if (binding == null) return;
+
+        try {
+            Bitmap avatarBitmap = AvatarHelper.loadOrCreate(
+                    getContext(),
+                    myImei,
+                    myNickname,
+                    myAvatarPath,
+                    MY_AVATAR_SIZE_DP
+            );
+            binding.imgMyAvatar.setImageBitmap(avatarBitmap);
+            binding.imgMyAvatar.setVisibility(View.VISIBLE);
+            binding.textMyAvatarInitial.setVisibility(View.GONE);
+        } catch (Exception e) {
+            Log.e(TAG, "My avatar update failed: " + e.getMessage());
+            binding.imgMyAvatar.setImageDrawable(null);
+            binding.imgMyAvatar.setVisibility(View.GONE);
+            binding.textMyAvatarInitial.setVisibility(View.VISIBLE);
+            binding.textMyAvatarInitial.setText(
+                    AvatarHelper.getInitial(myImei, myNickname)
+            );
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   EXISTING METHODS
+    // ═══════════════════════════════════════════════════════════════
 
     private void setupViewModel() {
         mBleViewModel = new ViewModelProvider(this).get(BleViewModel.class);
@@ -164,6 +359,12 @@ public class AddrssBookFragment extends Fragment {
             public void onAddressDeleteClick(AddressEntity addr) {
                 handleAddressDelClick(addr);
             }
+
+            @Override
+            public void onAvatarEditClick(AddressEntity addr) {
+                // ⭐ 주소록 아이템 아바타 편집
+                showAvatarMenu(addr.getNumbers());
+            }
         });
 
         RecyclerView recyclerView = binding.listAddress;
@@ -184,6 +385,10 @@ public class AddrssBookFragment extends Fragment {
                 .setTitle("Delete contact")
                 .setMessage("Are you sure you want to delete this contact?")
                 .setPositiveButton("Delete", (dialog, which) -> {
+                    // Also delete avatar file if exists
+                    if (addr.getNumbers() != null) {
+                        AvatarPickerHelper.deleteAvatar(getContext(), addr.getNumbers());
+                    }
                     addressViewModel.delete(addr);
                 })
                 .setNegativeButton("Cancel", null)
@@ -278,6 +483,9 @@ public class AddrssBookFragment extends Fragment {
 
             shared.putAny("nicName", name);
             binding.textName.setText(name);
+
+            myNickname = name;
+            updateMyAvatar();
 
             dialog.dismiss();
             Toast.makeText(getContext(), "Saved.", Toast.LENGTH_SHORT).show();

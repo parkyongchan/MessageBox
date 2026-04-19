@@ -1,6 +1,20 @@
 package com.ah.acr.messagebox;
 
+import android.app.AlertDialog;
+import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -9,16 +23,6 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
-
-import android.content.Context;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
-import android.widget.Toast;
 
 import com.ah.acr.messagebox.ble.BLE;
 import com.ah.acr.messagebox.ble.BleViewModel;
@@ -29,15 +33,18 @@ import com.ah.acr.messagebox.packet.security.SharedUtil;
 import com.ah.acr.messagebox.search.SearchDialogFragment;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 
+import java.util.Locale;
+
 
 public class SettingFragment extends Fragment {
     private static final String TAG = SettingFragment.class.getSimpleName();
+
     private FragmentSettingBinding binding;
     private KeyViewModel mKeyViewModel;
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
-    // ⭐ 장비 전송용 코드 배열 (고정)
+    // 장비 전송용 코드 배열
     private static final String[] UNIT_TYPE_CODES = {"CAR", "UAV", "UAT"};
 
     // 다크 테마 색상
@@ -61,9 +68,8 @@ public class SettingFragment extends Fragment {
                              Bundle savedInstanceState) {
 
         binding = FragmentSettingBinding.inflate(inflater, container, false);
-        SharedUtil shared = mKeyViewModel.getSharedUtil().getValue();
 
-        // ⭐ Unit Type 스피너 - 화면 표시용 배열 사용 (긴 설명)
+        // Unit Type 스피너
         ArrayAdapter<CharSequence> displayAdapter = ArrayAdapter.createFromResource(
                 getContext(),
                 R.array.unit_type_display,
@@ -73,13 +79,10 @@ public class SettingFragment extends Fragment {
 
         binding.getRoot().setOnClickListener(v -> hideKeyboard());
 
-        // 검색 버튼
-        binding.buttonSearch.setOnClickListener(v -> {
-            setupFragmentResultListener();
-            showSearchDialog();
-        });
+        // ⭐ Receiver 버튼 클릭 → 다이얼로그
+        binding.layoutReceiverDisplay.setOnClickListener(v -> showReceiverMenu());
 
-        // 장비 상태 관찰 (Tracking 모드 표시)
+        // 장비 상태 관찰
         mBleViewModel.getDeviceStatus().observe(getViewLifecycleOwner(), new Observer<DeviceStatus>() {
             @Override
             public void onChanged(@Nullable final DeviceStatus status) {
@@ -89,7 +92,7 @@ public class SettingFragment extends Fragment {
             }
         });
 
-        // 장비 설정 수신
+        // 장비 설정 수신 (기존 로직)
         BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
@@ -103,33 +106,39 @@ public class SettingFragment extends Fragment {
                     return;
                 }
 
-                String type = vals[0];   // CAR, UAV, UAT
+                String type = vals[0];
                 String time = vals[1].replaceAll("[^0-9]", "");
                 String dist = vals[2].replaceAll("[^0-9]", "");
 
                 try {
-                    if (Integer.parseInt(time) != 0) binding.chkTime.setChecked(true);
-                    if (Integer.parseInt(dist) != 0) binding.chkDist.setChecked(true);
-                    binding.textDist.setText(String.valueOf(Integer.parseInt(dist)));
-                    binding.textTime.setText(String.valueOf(Integer.parseInt(time)));
+                    int timeVal = Integer.parseInt(time);
+                    int distVal = Integer.parseInt(dist);
+
+                    if (timeVal != 0) binding.chkTime.setChecked(true);
+                    if (distVal != 0) binding.chkDist.setChecked(true);
+
+                    if (timeVal > 0) setTimeValue(timeVal, false);
+                    if (distVal > 0) setDistValue(distVal, false);
                 } catch (NumberFormatException e) {
                     Log.e(TAG, "parse error: " + e);
                 }
 
+                // Receiver 처리
                 if (vals.length > 3) {
                     String receiver = vals[3];
                     if (!receiver.equals("0")) {
                         addressViewModel.getAddressByNumbers(receiver).observe(getViewLifecycleOwner(), addressEntity -> {
                             if (addressEntity != null) {
-                                binding.textReceiver.setText(addressEntity.getNumbersNic());
+                                setReceiverFromContact(receiver, addressEntity.getNumbersNic());
                             } else {
-                                binding.textReceiver.setText(receiver);
+                                setReceiverManual(receiver);
                             }
                         });
+                    } else {
+                        setReceiverWeb();
                     }
                 }
 
-                // ⭐ 코드(CAR/UAV/UAT)를 인덱스로 변환해서 스피너 선택
                 int position = findCodeIndex(type);
                 if (position >= 0) {
                     binding.spinnerUnitType.setSelection(position);
@@ -140,17 +149,14 @@ public class SettingFragment extends Fragment {
         return binding.getRoot();
     }
 
-    /** 코드 문자열을 배열 인덱스로 변환 */
+
     private int findCodeIndex(String code) {
         for (int i = 0; i < UNIT_TYPE_CODES.length; i++) {
-            if (UNIT_TYPE_CODES[i].equals(code)) {
-                return i;
-            }
+            if (UNIT_TYPE_CODES[i].equals(code)) return i;
         }
-        return 0;  // 기본: CAR
+        return 0;
     }
 
-    /** Start/Stop 버튼 시각 상태 업데이트 */
     private void updateStartStopButtonState(boolean isTracking) {
         if (binding == null) return;
 
@@ -163,6 +169,8 @@ public class SettingFragment extends Fragment {
         }
     }
 
+
+    @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
@@ -172,103 +180,366 @@ public class SettingFragment extends Fragment {
             }
         });
 
-        // Distance 체크박스
-        binding.chkDist.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                binding.textDist.setText("10");
-            } else {
-                binding.textDist.setText("0");
-            }
-        });
+        setupTimePresets();
+        setupDistPresets();
+        setupCheckBoxes();
+        setupTextListeners();
 
-        // Time 체크박스
-        binding.chkTime.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                binding.textTime.setText("3");
-            } else {
-                binding.textTime.setText("0");
-            }
-        });
-
-        // Start / Stop 버튼
+        // Start / Stop
         binding.buttonSetStart.setOnClickListener(v -> BLE.INSTANCE.getWriteQueue().offer("LOCATION=2"));
         binding.buttonSetStop.setOnClickListener(v -> BLE.INSTANCE.getWriteQueue().offer("LOCATION=3"));
 
         // Save 버튼
-        binding.buttonSetSave.setOnClickListener(v -> {
-            String nicName = binding.textReceiver.getText().toString().trim();
+        binding.buttonSetSave.setOnClickListener(v -> handleSave());
 
+        // 초기값 설정
+        setTimeValue(3, false);
+        setDistValue(10, false);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ RECEIVER MENU
+    // ═══════════════════════════════════════════════════════════════
+
+    private void showReceiverMenu() {
+        String[] options = {
+                "📧 Web Server (default)",
+                "📇 From Address Book",
+                "⌨ Type Number Manually"
+        };
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Receiver")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: setReceiverWeb(); break;
+                        case 1: showAddressBookPicker(); break;
+                        case 2: showManualInputDialog(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void setReceiverWeb() {
+        binding.textReceiver.setText("");
+        binding.textReceiverIcon.setText("📧");
+        binding.textReceiverLabel.setText("Web Server");
+        binding.textReceiverSub.setText("Default (no specific receiver)");
+    }
+
+
+    private void setReceiverFromContact(String number, String nickname) {
+        binding.textReceiver.setText(nickname != null ? nickname : number);
+        binding.textReceiverIcon.setText("📇");
+        binding.textReceiverLabel.setText(nickname != null ? nickname : number);
+        binding.textReceiverSub.setText(number);
+    }
+
+
+    private void setReceiverManual(String number) {
+        binding.textReceiver.setText(number);
+        binding.textReceiverIcon.setText("⌨");
+        binding.textReceiverLabel.setText(number);
+        binding.textReceiverSub.setText("Manual entry");
+    }
+
+
+    private void showAddressBookPicker() {
+        setupFragmentResultListener();
+        SearchDialogFragment searchDialog = new SearchDialogFragment();
+        searchDialog.show(getParentFragmentManager(), "SearchDialog");
+    }
+
+
+    private void showManualInputDialog() {
+        EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setHint("Enter IMEI number");
+        input.setPadding(40, 30, 40, 30);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Enter Receiver IMEI")
+                .setView(input)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    String number = input.getText().toString().trim();
+                    if (!number.isEmpty() && number.matches("\\d+")) {
+                        setReceiverManual(number);
+                    } else if (!number.isEmpty()) {
+                        Toast.makeText(getContext(),
+                                "IMEI must be digits only",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ TIME PRESETS
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupTimePresets() {
+        binding.presetTime3.setOnClickListener(v -> setTimeValue(3, true));
+        binding.presetTime5.setOnClickListener(v -> setTimeValue(5, true));
+        binding.presetTime10.setOnClickListener(v -> setTimeValue(10, true));
+        binding.presetTime15.setOnClickListener(v -> setTimeValue(15, true));
+        binding.presetTime30.setOnClickListener(v -> setTimeValue(30, true));
+        binding.presetTime60.setOnClickListener(v -> setTimeValue(60, true));
+    }
+
+
+    private void setTimeValue(int minutes, boolean autoEnable) {
+        if (minutes < 3) minutes = 3;
+        if (minutes > 9999) minutes = 9999;
+
+        // EditText (재진입 방지)
+        String currentText = binding.textTime.getText().toString().trim();
+        String newText = String.valueOf(minutes);
+        if (!currentText.equals(newText)) {
+            binding.textTime.setText(newText);
+        }
+
+        // 프리셋 버튼 selected 상태
+        updateTimePresetSelection(minutes);
+
+        // 자동 체크
+        if (autoEnable && !binding.chkTime.isChecked()) {
+            binding.chkTime.setChecked(true);
+        }
+    }
+
+
+    private void updateTimePresetSelection(int minutes) {
+        binding.presetTime3.setSelected(minutes == 3);
+        binding.presetTime5.setSelected(minutes == 5);
+        binding.presetTime10.setSelected(minutes == 10);
+        binding.presetTime15.setSelected(minutes == 15);
+        binding.presetTime30.setSelected(minutes == 30);
+        binding.presetTime60.setSelected(minutes == 60);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ DISTANCE PRESETS
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupDistPresets() {
+        binding.presetDist2.setOnClickListener(v -> setDistValue(2, true));
+        binding.presetDist5.setOnClickListener(v -> setDistValue(5, true));
+        binding.presetDist10.setOnClickListener(v -> setDistValue(10, true));
+        binding.presetDist50.setOnClickListener(v -> setDistValue(50, true));
+        binding.presetDist100.setOnClickListener(v -> setDistValue(100, true));
+        binding.presetDist200.setOnClickListener(v -> setDistValue(200, true));
+    }
+
+
+    private void setDistValue(int x10m, boolean autoEnable) {
+        if (x10m < 2) x10m = 2;
+        if (x10m > 9999) x10m = 9999;
+
+        // EditText (재진입 방지)
+        String currentText = binding.textDist.getText().toString().trim();
+        String newText = String.valueOf(x10m);
+        if (!currentText.equals(newText)) {
+            binding.textDist.setText(newText);
+        }
+
+        // 표시 업데이트
+        updateDistDisplay(x10m);
+
+        // 프리셋 버튼 selected 상태
+        updateDistPresetSelection(x10m);
+
+        // 자동 체크
+        if (autoEnable && !binding.chkDist.isChecked()) {
+            binding.chkDist.setChecked(true);
+        }
+    }
+
+
+    private void updateDistDisplay(int x10m) {
+        int meters = x10m * 10;
+        String display;
+        if (meters >= 1000) {
+            if (meters % 1000 == 0) {
+                display = String.format(Locale.US, "(%dkm)", meters / 1000);
+            } else {
+                display = String.format(Locale.US, "(%.1fkm)", meters / 1000.0);
+            }
+        } else {
+            display = String.format(Locale.US, "(%dm)", meters);
+        }
+        binding.textDistDisplay.setText(display);
+    }
+
+
+    private void updateDistPresetSelection(int x10m) {
+        binding.presetDist2.setSelected(x10m == 2);
+        binding.presetDist5.setSelected(x10m == 5);
+        binding.presetDist10.setSelected(x10m == 10);
+        binding.presetDist50.setSelected(x10m == 50);
+        binding.presetDist100.setSelected(x10m == 100);
+        binding.presetDist200.setSelected(x10m == 200);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   CHECK BOXES
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupCheckBoxes() {
+        binding.chkDist.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                String cur = binding.textDist.getText().toString().trim();
+                if (cur.isEmpty() || cur.equals("0")) {
+                    setDistValue(10, false);
+                }
+            }
+        });
+
+        binding.chkTime.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                String cur = binding.textTime.getText().toString().trim();
+                if (cur.isEmpty() || cur.equals("0")) {
+                    setTimeValue(3, false);
+                }
+            }
+        });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ TEXT LISTENERS (수동 입력 → 프리셋 동기화)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupTextListeners() {
+        // Time EditText
+        binding.textTime.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (!binding.textTime.hasFocus()) return;
+                try {
+                    int val = Integer.parseInt(s.toString());
+                    updateTimePresetSelection(val);
+                    if (val >= 3 && !binding.chkTime.isChecked()) {
+                        binding.chkTime.setChecked(true);
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        });
+
+        // Distance EditText
+        binding.textDist.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (!binding.textDist.hasFocus()) return;
+                try {
+                    int val = Integer.parseInt(s.toString());
+                    updateDistDisplay(val);
+                    updateDistPresetSelection(val);
+                    if (val >= 2 && !binding.chkDist.isChecked()) {
+                        binding.chkDist.setChecked(true);
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   SAVE LOGIC
+    // ═══════════════════════════════════════════════════════════════
+
+    private void handleSave() {
+        String nicName = binding.textReceiver.getText().toString().trim();
+
+        if (nicName.isEmpty()) {
+            buildAndSendSetting("0");
+        } else {
             addressViewModel.getAddressByNicName(nicName).observe(getViewLifecycleOwner(), addressEntity -> {
                 String codeNum = nicName;
                 if (addressEntity != null) {
                     codeNum = addressEntity.getNumbers();
                 }
 
-                if (nicName.isEmpty()) codeNum = "0";
-
                 if (!codeNum.matches("\\d+")) {
-                    Toast.makeText(getContext(), "The recipient's number must contain only numbers.", Toast.LENGTH_LONG).show();
-                    codeNum = "0";
+                    Toast.makeText(getContext(),
+                            "The recipient's number must contain only numbers.",
+                            Toast.LENGTH_LONG).show();
+                    return;
                 }
 
-                StringBuilder setting = new StringBuilder();
-                setting.append("SET=");
-
-                // ⭐ 선택된 인덱스 → 코드 값(CAR/UAV/UAT)으로 변환
-                int selectedIdx = binding.spinnerUnitType.getSelectedItemPosition();
-                String unitCode = (selectedIdx >= 0 && selectedIdx < UNIT_TYPE_CODES.length)
-                        ? UNIT_TYPE_CODES[selectedIdx]
-                        : UNIT_TYPE_CODES[0];
-                setting.append(unitCode);
-
-                setting.append(",");
-
-                // Time
-                if (binding.chkTime.isChecked()) {
-                    String time = binding.textTime.getText().toString().trim();
-                    int timeValue = 0;
-                    try {
-                        timeValue = Integer.parseInt(time);
-                    } catch (NumberFormatException e) {
-                        timeValue = 0;
-                    }
-                    if (timeValue < 3) timeValue = 3;
-                    setting.append(String.format("T%04d", timeValue));
-                } else {
-                    setting.append("T0000");
-                }
-
-                setting.append(",");
-
-                // Distance
-                if (binding.chkDist.isChecked()) {
-                    String dist = binding.textDist.getText().toString().trim();
-                    int distValue = 0;
-                    try {
-                        distValue = Integer.parseInt(dist);
-                    } catch (NumberFormatException e) {
-                        distValue = 0;
-                    }
-                    if (distValue < 2) distValue = 2;
-                    setting.append(String.format("D%04d", distValue));
-                } else {
-                    setting.append("D0000");
-                }
-
-                setting.append(",");
-                setting.append(codeNum);
-
-                Log.v(TAG, setting.toString());
-                BLE.INSTANCE.getWriteQueue().offer(setting.toString());
+                buildAndSendSetting(codeNum);
             });
-        });
+        }
     }
 
 
-    private void showSearchDialog() {
-        SearchDialogFragment searchDialog = new SearchDialogFragment();
-        searchDialog.show(getParentFragmentManager(), "SearchDialog");
+    private void buildAndSendSetting(String codeNum) {
+        StringBuilder setting = new StringBuilder();
+        setting.append("SET=");
+
+        int selectedIdx = binding.spinnerUnitType.getSelectedItemPosition();
+        String unitCode = (selectedIdx >= 0 && selectedIdx < UNIT_TYPE_CODES.length)
+                ? UNIT_TYPE_CODES[selectedIdx]
+                : UNIT_TYPE_CODES[0];
+        setting.append(unitCode);
+
+        setting.append(",");
+
+        // Time
+        if (binding.chkTime.isChecked()) {
+            String time = binding.textTime.getText().toString().trim();
+            int timeValue = 0;
+            try {
+                timeValue = Integer.parseInt(time);
+            } catch (NumberFormatException e) {
+                timeValue = 0;
+            }
+            if (timeValue < 3) timeValue = 3;
+            setting.append(String.format("T%04d", timeValue));
+        } else {
+            setting.append("T0000");
+        }
+
+        setting.append(",");
+
+        // Distance
+        if (binding.chkDist.isChecked()) {
+            String dist = binding.textDist.getText().toString().trim();
+            int distValue = 0;
+            try {
+                distValue = Integer.parseInt(dist);
+            } catch (NumberFormatException e) {
+                distValue = 0;
+            }
+            if (distValue < 2) distValue = 2;
+            setting.append(String.format("D%04d", distValue));
+        } else {
+            setting.append("D0000");
+        }
+
+        setting.append(",");
+        setting.append(codeNum);
+
+        Log.v(TAG, setting.toString());
+        BLE.INSTANCE.getWriteQueue().offer(setting.toString());
+
+        Toast.makeText(getContext(), "Settings sent to device", Toast.LENGTH_SHORT).show();
     }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   SEARCH DIALOG
+    // ═══════════════════════════════════════════════════════════════
 
     private void setupFragmentResultListener() {
         getParentFragmentManager().setFragmentResultListener("search_result", this,
@@ -287,30 +558,18 @@ public class SettingFragment extends Fragment {
     private void handleSearchResult(int id, String title, String code) {
         if (getContext() != null) {
             Toast.makeText(getContext(), "Selected: " + title, Toast.LENGTH_SHORT).show();
-            binding.textReceiver.setText(title);
+            setReceiverFromContact(code, title);
         }
     }
 
-
-    private void navigateBack() {
-        try {
-            NavController navController = Navigation.findNavController(requireView());
-            navController.navigateUp();
-        } catch (Exception e) {
-            closeFragment();
-        }
-    }
-
-    private void closeFragment() {
-        if (getParentFragmentManager() != null) {
-            getParentFragmentManager().popBackStack();
-        }
-    }
 
     private void hideKeyboard() {
         if (getActivity() != null && requireActivity().getCurrentFocus() != null) {
-            InputMethodManager imm = (InputMethodManager) requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(requireActivity().getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+            InputMethodManager imm = (InputMethodManager)
+                    requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(
+                    requireActivity().getCurrentFocus().getWindowToken(),
+                    InputMethodManager.HIDE_NOT_ALWAYS);
         }
     }
 
@@ -320,5 +579,4 @@ public class SettingFragment extends Fragment {
         super.onDestroyView();
         binding = null;
     }
-
 }

@@ -179,7 +179,7 @@ public class TrackExporter {
 
         StringBuilder sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        sb.append("<gpx version=\"1.1\" creator=\"TYTO MessageBox\" ")
+        sb.append("<gpx version=\"1.1\" creator=\"TYTO Connect\" ")
                 .append("xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
 
         sb.append("  <metadata>\n");

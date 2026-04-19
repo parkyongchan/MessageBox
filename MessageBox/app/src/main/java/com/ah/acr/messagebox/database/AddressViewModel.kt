@@ -3,10 +3,8 @@ package com.ah.acr.messagebox.database
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.*
-import androidx.room.ColumnInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.ArrayList
 
 class AddressViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -85,6 +83,15 @@ class AddressViewModel(application: Application) : AndroidViewModel(application)
             repository.updateNumbersNic(numbers, numbersNic)
         } catch (e: Exception) {
             Log.e("AddressViewModel", "메세지 Read update 실패", e)
+        }
+    }
+
+    // ⭐ NEW: Update avatar path for a contact
+    fun updateAvatarPath(numbers: String, path: String?) = viewModelScope.launch {
+        try {
+            repository.updateAvatarPath(numbers, path)
+        } catch (e: Exception) {
+            Log.e("AddressViewModel", "avatar path update 실패", e)
         }
     }
 

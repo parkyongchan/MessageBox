@@ -7,18 +7,36 @@
     android:padding="6dp"
     android:gravity="start">
 
-    <!-- 상대방 아바타 (수신 시만 표시) -->
-    <TextView
-        android:id="@+id/text_bubble_avatar"
+    <!-- ⭐ 상대방 아바타 (수신 시만 표시) -->
+    <!-- FrameLayout으로 ImageView + TextView 중첩 -->
+    <FrameLayout
+        android:id="@+id/layout_bubble_avatar"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:gravity="center"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:background="#1A2F50"
         android:layout_marginEnd="8dp"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="2dp">
+
+        <!-- 아바타 이미지 (AvatarHelper가 생성한 Bitmap) -->
+        <ImageView
+            android:id="@+id/img_bubble_avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="Avatar" />
+
+        <!-- Fallback TextView (AvatarHelper 실패 시만 표시) -->
+        <TextView
+            android:id="@+id/text_bubble_avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="#1A2F50"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <!-- 말풍선 컨테이너 -->
     <LinearLayout

@@ -16,13 +16,13 @@
         android:background="#0D1F3C"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
         android:gravity="center_vertical">
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:src="@drawable/ic_tab_location"
             app:tint="#00E5D1"
             android:layout_marginEnd="8dp"
@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:text="Location Report Setting"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
     </LinearLayout>
@@ -51,20 +51,20 @@
             android:orientation="vertical"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:paddingTop="16dp"
+            android:paddingTop="12dp"
             android:paddingBottom="16dp">
 
-            <!-- ═══════ RECEIVER ═══════ -->
+            <!-- ═══════ SEND TO ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="6dp">
+                android:layout_marginBottom="4dp">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
                     android:src="@drawable/ic_person"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
@@ -73,7 +73,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="RECEIVER"
+                    android:text="SEND TO"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -83,53 +83,91 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/layout_receiver_display"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:background="@drawable/bg_input_card"
-                android:paddingStart="12dp"
-                android:paddingEnd="6dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="18dp">
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="12dp">
 
-                <EditText
-                    android:id="@+id/text_receiver"
+                <TextView
+                    android:id="@+id/text_receiver_icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📧"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="10dp" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:hint="Enter number or nickname"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#5A7090"
-                    android:textSize="14sp"
-                    android:background="@android:color/transparent"
-                    android:singleLine="true"
-                    android:paddingStart="0dp"
-                    android:paddingEnd="8dp" />
+                    android:orientation="vertical">
 
-                <ImageButton
-                    android:id="@+id/button_search"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_search"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Search"
-                    android:scaleType="centerInside" />
+                    <TextView
+                        android:id="@+id/text_receiver_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Web Server"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/text_receiver_sub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Default (no specific receiver)"
+                        android:textColor="#5A7090"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▼"
+                    android:textColor="#5A7090"
+                    android:textSize="12sp"
+                    android:layout_marginStart="8dp" />
 
             </LinearLayout>
 
-            <!-- ═══════ MODE ═══════ -->
+            <!-- 숨겨진 기존 필드 (기존 로직 호환) -->
+            <EditText
+                android:id="@+id/text_receiver"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"
+                android:singleLine="true" />
+
+            <ImageButton
+                android:id="@+id/button_search"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"
+                android:src="@drawable/ic_search"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Search" />
+
+            <!-- ═══════ TRACKING MODE ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="6dp">
+                android:layout_marginBottom="4dp">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
                     android:src="@drawable/ic_mode_car"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
@@ -147,7 +185,6 @@
 
             </LinearLayout>
 
-            <!-- Spinner 컨테이너 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -156,15 +193,43 @@
                 android:gravity="center_vertical"
                 android:paddingStart="0dp"
                 android:paddingEnd="12dp"
-                android:layout_marginBottom="18dp">
+                android:layout_marginBottom="12dp">
 
                 <Spinner
                     android:id="@+id/spinner_unit_type"
                     android:layout_width="0dp"
                     android:layout_weight="1"
-                    android:layout_height="48dp"
+                    android:layout_height="44dp"
                     android:popupBackground="@drawable/bg_spinner_popup"
                     android:backgroundTint="#8899AA" />
+
+            </LinearLayout>
+
+            <!-- ⭐ OR 안내 박스 (컴팩트) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_or_info"
+                android:padding="10dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💡"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Reports location when EITHER time OR distance condition below is met"
+                    android:textColor="#B3F0EA"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="1dp" />
 
             </LinearLayout>
 
@@ -174,19 +239,20 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="6dp">
+                android:layout_marginBottom="4dp">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
                     android:src="@drawable/ic_clock"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
                     android:contentDescription="Time" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="TIME INTERVAL"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
@@ -194,48 +260,173 @@
                     android:textAllCaps="true"
                     android:letterSpacing="0.08" />
 
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@drawable/bg_input_card"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="18dp">
-
                 <CheckBox
                     android:id="@+id/chk_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="Enable"
+                    android:textColor="#E8F1FB"
+                    android:textSize="12sp"
                     android:buttonTint="#00E5D1"
-                    android:layout_marginEnd="8dp" />
+                    android:paddingStart="4dp" />
 
-                <EditText
-                    android:id="@+id/text_time"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_weight="1"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#5A7090"
-                    android:textSize="16sp"
-                    android:background="@android:color/transparent"
-                    android:inputType="number"
-                    android:maxLength="4"
-                    android:singleLine="true"
-                    android:gravity="center" />
+            </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/layout_time_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_input_card"
+                android:padding="10dp"
+                android:layout_marginBottom="12dp">
+
+                <!-- 프리셋 Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="minutes"
-                    android:textColor="#8899AA"
-                    android:textSize="13sp"
-                    android:layout_marginStart="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/preset_time_3"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="3m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_time_5"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="5m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_time_10"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="10m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_time_15"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="15m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_time_30"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="30m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_time_60"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="60m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp" />
+
+                </LinearLayout>
+
+                <!-- ⭐ EditText 수동 입력 (SeekBar 대신) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <EditText
+                        android:id="@+id/text_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="3"
+                        android:textColor="#00E5D1"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:inputType="number"
+                        android:maxLength="4"
+                        android:background="@android:color/transparent"
+                        android:gravity="center"
+                        android:minWidth="60dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="minutes"
+                        android:textColor="#95B0D4"
+                        android:textSize="13sp"
+                        android:layout_marginStart="6dp"
+                        android:layout_gravity="center_vertical" />
+
+                </LinearLayout>
+
+                <!-- 숨겨진 SeekBar (호환성) -->
+                <SeekBar
+                    android:id="@+id/seek_time"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone"
+                    android:min="3"
+                    android:max="120"
+                    android:progress="3" />
 
             </LinearLayout>
 
@@ -245,19 +436,20 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="6dp">
+                android:layout_marginBottom="4dp">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
                     android:src="@drawable/ic_distance"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
                     android:contentDescription="Distance" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="DISTANCE"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
@@ -265,48 +457,183 @@
                     android:textAllCaps="true"
                     android:letterSpacing="0.08" />
 
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@drawable/bg_input_card"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="24dp">
-
                 <CheckBox
                     android:id="@+id/chk_dist"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="Enable"
+                    android:textColor="#E8F1FB"
+                    android:textSize="12sp"
                     android:buttonTint="#00E5D1"
-                    android:layout_marginEnd="8dp" />
+                    android:paddingStart="4dp" />
 
-                <EditText
-                    android:id="@+id/text_dist"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_weight="1"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#5A7090"
-                    android:textSize="16sp"
-                    android:background="@android:color/transparent"
-                    android:inputType="number"
-                    android:maxLength="4"
-                    android:singleLine="true"
-                    android:gravity="center" />
+            </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/layout_dist_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_input_card"
+                android:padding="10dp"
+                android:layout_marginBottom="16dp">
+
+                <!-- 프리셋 Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="× 10 meters"
-                    android:textColor="#8899AA"
-                    android:textSize="13sp"
-                    android:layout_marginStart="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/preset_dist_2"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="20m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_dist_5"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="50m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_dist_10"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="100m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_dist_50"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="500m"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_dist_100"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="1km"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp"
+                        android:layout_marginEnd="3dp" />
+
+                    <TextView
+                        android:id="@+id/preset_dist_200"
+                        android:layout_width="0dp"
+                        android:layout_height="30dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="2km"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_preset_button"
+                        android:textColor="@color/preset_button_text_color"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginStart="3dp" />
+
+                </LinearLayout>
+
+                <!-- ⭐ EditText 수동 입력 (SeekBar 대신) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <EditText
+                        android:id="@+id/text_dist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="10"
+                        android:textColor="#00E5D1"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:inputType="number"
+                        android:maxLength="4"
+                        android:background="@android:color/transparent"
+                        android:gravity="center"
+                        android:minWidth="60dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="× 10 meters"
+                        android:textColor="#95B0D4"
+                        android:textSize="13sp"
+                        android:layout_marginStart="6dp"
+                        android:layout_gravity="center_vertical" />
+
+                    <TextView
+                        android:id="@+id/text_dist_display"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="(100m)"
+                        android:textColor="#5A7090"
+                        android:textSize="11sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_gravity="center_vertical" />
+
+                </LinearLayout>
+
+                <!-- 숨겨진 SeekBar (호환성) -->
+                <SeekBar
+                    android:id="@+id/seek_dist"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone"
+                    android:min="2"
+                    android:max="500"
+                    android:progress="10" />
 
             </LinearLayout>
 
@@ -315,14 +642,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#00E5D1"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="10dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="24dp">
+                android:layout_marginBottom="10dp">
 
                 <LinearLayout
                     android:id="@+id/button_set_save"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="48dp"
                     android:orientation="horizontal"
                     android:gravity="center"
                     android:clickable="true"
@@ -330,8 +657,8 @@
                     android:background="?android:attr/selectableItemBackground">
 
                     <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
                         android:src="@drawable/ic_save"
                         app:tint="#0A1628"
                         android:layout_marginEnd="10dp"
@@ -342,7 +669,7 @@
                         android:layout_height="wrap_content"
                         android:text="Save Settings"
                         android:textColor="#0A1628"
-                        android:textSize="15sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textAllCaps="false" />
 
@@ -358,11 +685,11 @@
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="50dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
                     app:cardBackgroundColor="#00E5D1"
-                    app:cardCornerRadius="12dp"
+                    app:cardCornerRadius="10dp"
                     app:cardElevation="2dp">
 
                     <LinearLayout
@@ -376,8 +703,8 @@
                         android:background="?android:attr/selectableItemBackground">
 
                         <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
                             android:src="@drawable/ic_play"
                             app:tint="#0A1628"
                             android:layout_marginEnd="8dp"
@@ -388,7 +715,7 @@
                             android:layout_height="wrap_content"
                             android:text="Start"
                             android:textColor="#0A1628"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             android:textAllCaps="false" />
 
@@ -398,11 +725,11 @@
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="50dp"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
                     app:cardBackgroundColor="#15FF5252"
-                    app:cardCornerRadius="12dp"
+                    app:cardCornerRadius="10dp"
                     app:cardElevation="0dp">
 
                     <LinearLayout
@@ -416,8 +743,8 @@
                         android:background="@drawable/bg_btn_stop">
 
                         <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
                             android:src="@drawable/ic_stop"
                             app:tint="#FF5252"
                             android:layout_marginEnd="8dp"
@@ -428,7 +755,7 @@
                             android:layout_height="wrap_content"
                             android:text="Stop"
                             android:textColor="#FF5252"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             android:textAllCaps="false" />
 

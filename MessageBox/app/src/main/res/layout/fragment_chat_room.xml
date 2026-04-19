@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -17,16 +18,51 @@
         android:paddingBottom="12dp"
         android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/text_chat_room_avatar"
+        <!-- ⭐ 헤더 아바타 - FrameLayout + ImageView + TextView fallback -->
+        <FrameLayout
+            android:id="@+id/frame_chat_room_avatar"
             android:layout_width="38dp"
             android:layout_height="38dp"
-            android:gravity="center"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:background="#1A2F50"
-            android:layout_marginEnd="12dp" />
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="12dp">
+
+            <!-- 아바타 이미지 (AvatarHelper Bitmap 또는 업로드 이미지) -->
+            <ImageView
+                android:id="@+id/img_chat_room_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="Avatar" />
+
+            <!-- Fallback TextView (AvatarHelper 실패 시만 표시) -->
+            <TextView
+                android:id="@+id/text_chat_room_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="#1A2F50"
+                android:visibility="gone" />
+
+            <!-- 카메라 편집 힌트 (우측 하단) -->
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|end"
+                android:background="#0D1F3C" />
+
+            <ImageView
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_gravity="bottom|end"
+                android:src="@drawable/ic_camera"
+                app:tint="#00E5D1"
+                android:contentDescription="Edit avatar" />
+
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"

@@ -21,38 +21,39 @@
             android:id="@+id/frame_avatar"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/bg_avatar_box"
             android:clickable="true"
             android:focusable="true"
             android:layout_marginEnd="12dp">
 
-            <!-- 이니셜 텍스트 (기본 표시) -->
-            <TextView
-                android:id="@+id/text_avatar_initial"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="?"
-                android:textColor="#00E5D1"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <!-- 이미지 (나중에 사용 - 현재 숨김) -->
+            <!-- ⭐ 아바타 이미지 (AvatarHelper Bitmap - 기본 표시) -->
             <ImageView
                 android:id="@+id/img_avatar"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:visibility="gone"
                 android:contentDescription="Avatar" />
 
-            <!-- 작은 카메라 아이콘 (우측 하단 - 편집 힌트) -->
+            <!-- 이니셜 텍스트 (Fallback - AvatarHelper 실패 시) -->
+            <TextView
+                android:id="@+id/text_avatar_initial"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_avatar_box"
+                android:gravity="center"
+                android:text="?"
+                android:textColor="#00E5D1"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <!-- 카메라 아이콘 배경 (우측 하단) -->
             <View
                 android:layout_width="14dp"
                 android:layout_height="14dp"
                 android:layout_gravity="bottom|end"
                 android:background="#0A1628" />
 
+            <!-- 카메라 아이콘 (편집 힌트) -->
             <ImageView
                 android:layout_width="12dp"
                 android:layout_height="12dp"

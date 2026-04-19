@@ -18,16 +18,34 @@
         android:buttonTint="#00E5D1" />
 
 
-    <!-- 아바타 원형 -->
-    <TextView
-        android:id="@+id/text_chat_avatar"
+    <!-- ⭐ 아바타 원형 - FrameLayout + ImageView + TextView fallback -->
+    <FrameLayout
+        android:id="@+id/layout_chat_avatar"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:text="👤"
-        android:textSize="24sp"
-        android:gravity="center"
-        android:background="#1A2F50"
-        android:layout_marginEnd="12dp" />
+        android:layout_marginEnd="12dp">
+
+        <!-- 아바타 이미지 (AvatarHelper Bitmap 또는 업로드 이미지) -->
+        <ImageView
+            android:id="@+id/img_chat_avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="Avatar" />
+
+        <!-- Fallback TextView (AvatarHelper 실패 시) -->
+        <TextView
+            android:id="@+id/text_chat_avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="#1A2F50"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <!-- 이름 + 마지막 메시지 -->
     <LinearLayout

@@ -40,6 +40,10 @@ class AddressRepository(private val addressDao: AddressDao) {
         addressDao.updateNumbersNic(numbers, numbersNic)
     }
 
+    // ⭐ NEW: Update avatar path
+    suspend fun updateAvatarPath(numbers: String, path: String?) {
+        addressDao.updateAvatarPath(numbers, path)
+    }
 
     suspend fun deleteAddressByNumbers(numbers: String) {
         addressDao.deleteAddressByNumbers(numbers)

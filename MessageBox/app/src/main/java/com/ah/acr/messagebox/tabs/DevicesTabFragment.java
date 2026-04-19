@@ -36,7 +36,6 @@ import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.adapter.MyTrackAdapter;
 import com.ah.acr.messagebox.adapter.SatTrackAdapter;
 import com.ah.acr.messagebox.ble.BLE;
-import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.database.MyTrackEntity;
 import com.ah.acr.messagebox.database.MyTrackViewModel;
 import com.ah.acr.messagebox.database.SatTrackEntity;
@@ -44,6 +43,7 @@ import com.ah.acr.messagebox.database.SatTrackStateHolder;
 import com.ah.acr.messagebox.database.SatTrackViewModel;
 import com.ah.acr.messagebox.service.LocationPermissionHelper;
 import com.ah.acr.messagebox.service.LocationTrackingService;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.modules.OfflineTileProvider;
@@ -97,6 +97,7 @@ public class DevicesTabFragment extends Fragment {
 
     // ─── Tab 2: Satellite TRACK ───
     private View satStateNotTracking;
+    private View linkSettings;  // ⭐ NEW: Settings link
     private TextView tvSatConnectedImei;
     private Button btnSatStart;
     private RecyclerView rvSatTracks;
@@ -302,6 +303,7 @@ public class DevicesTabFragment extends Fragment {
 
         // Satellite
         satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
+        linkSettings = root.findViewById(R.id.linkSettings);  // ⭐ NEW
         tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
         btnSatStart = root.findViewById(R.id.btnSatStart);
         rvSatTracks = root.findViewById(R.id.rvSatTracks);
@@ -404,6 +406,35 @@ public class DevicesTabFragment extends Fragment {
 
         btnSatStart.setOnClickListener(v -> onSatStartClicked());
         btnSatStop.setOnClickListener(v -> onSatStopClicked());
+
+        // ⭐ NEW: Settings link → navigate to Settings tab
+        if (linkSettings != null) {
+            linkSettings.setOnClickListener(v -> navigateToSettings());
+        }
+    }
+
+
+    /**
+     * ⭐ NEW: Navigate to Settings tab by programmatically selecting
+     * it in the MainActivity's BottomNavigationView.
+     */
+    private void navigateToSettings() {
+        try {
+            View bottomNav = requireActivity().findViewById(R.id.bottom_nav);
+            if (bottomNav instanceof BottomNavigationView) {
+                ((BottomNavigationView) bottomNav)
+                        .setSelectedItemId(R.id.tab_settings);
+            } else {
+                Toast.makeText(requireContext(),
+                        "Please open Settings tab manually",
+                        Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Navigate to settings failed: " + e.getMessage());
+            Toast.makeText(requireContext(),
+                    "Please open Settings tab manually",
+                    Toast.LENGTH_SHORT).show();
+        }
     }
 
 
@@ -442,7 +473,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /** Observe BLE connection & device info to show IMEI on Satellite tab */
     private void observeBleStatus() {
         BLE.INSTANCE.getDeviceInfo().observe(getViewLifecycleOwner(), info -> {
             if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
@@ -538,10 +568,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   MAP SETUP (Satellite)
-    // ═══════════════════════════════════════════════════════════════
-
     private void setupSatMap() {
         mapViewSatTracking.setMultiTouchControls(true);
         mapViewSatTracking.setBuiltInZoomControls(false);
@@ -553,7 +579,7 @@ public class DevicesTabFragment extends Fragment {
         mapViewSatTracking.getController().setCenter(DEFAULT_CENTER);
 
         satPolyline = new Polyline();
-        satPolyline.setColor(Color.parseColor("#378ADD"));  // Blue for satellite
+        satPolyline.setColor(Color.parseColor("#378ADD"));
         satPolyline.setWidth(8.0f);
         mapViewSatTracking.getOverlays().add(satPolyline);
 
@@ -691,7 +717,6 @@ public class DevicesTabFragment extends Fragment {
     // ═══════════════════════════════════════════════════════════════
 
     private void onSatStartClicked() {
-        // Check BLE connection
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
             Toast.makeText(requireContext(),
                     "❌ Please connect BLE device first",
@@ -723,10 +748,8 @@ public class DevicesTabFragment extends Fragment {
             currentSatTrackId = trackId.intValue();
             satTrackingStartTime = System.currentTimeMillis();
 
-            // Register active session
             SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
 
-            // Send BLE command to start TRACK mode on device
             BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
 
             requireActivity().runOnUiThread(() -> {
@@ -751,7 +774,6 @@ public class DevicesTabFragment extends Fragment {
 
 
     private void stopSatTracking() {
-        // Send BLE command to stop TRACK mode
         BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
 
         if (currentSatTrackId > 0) {
@@ -982,7 +1004,7 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   SATELLITE POINT UPDATE (from DB observer)
+    //   SATELLITE POINT UPDATE
     // ═══════════════════════════════════════════════════════════════
 
     private void reloadSatPathFromDb() {
@@ -1008,7 +1030,6 @@ public class DevicesTabFragment extends Fragment {
                     mapViewSatTracking.invalidate();
                 });
 
-        // Also observe stats
         satTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
             if (track == null) return;
             double distanceKm = track.getTotalDistance() / 1000.0;

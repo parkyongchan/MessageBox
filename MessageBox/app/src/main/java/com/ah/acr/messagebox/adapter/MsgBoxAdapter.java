@@ -1,9 +1,12 @@
 package com.ah.acr.messagebox.adapter;
 
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgWithAddress;
+import com.ah.acr.messagebox.util.AvatarHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -23,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.MsgViewHolder> {
+
+    private static final int AVATAR_SIZE_DP = 48;
 
     public interface OnMsgClickListener {
         void onMessageClick(MsgEntity msg);
@@ -40,13 +46,11 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
         this.onMsgClickListener = onMsgClickListener;
     }
 
-    // 미전송 카운트 맵 업데이트
     public void setUnsentMap(Map<String, Integer> unsentMap) {
         this.mUnsentMap = unsentMap != null ? unsentMap : new HashMap<>();
         notifyDataSetChanged();
     }
 
-    // 체크모드 토글
     public void setCheckMode(boolean checkMode) {
         this.isCheckMode = checkMode;
         if (!checkMode) checkedIds.clear();
@@ -55,10 +59,8 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
 
     public boolean isCheckMode() { return isCheckMode; }
 
-    // 체크된 ID 목록 반환
     public Set<Integer> getCheckedIds() { return checkedIds; }
 
-    // 전체 선택
     public void checkAll() {
         for (int i = 0; i < getCurrentList().size(); i++) {
             checkedIds.add(getCurrentList().get(i).getMsg().getId());
@@ -81,7 +83,12 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
 
     public static class MsgViewHolder extends RecyclerView.ViewHolder {
         private final CheckBox checkBox;
+
+        // ⭐ Avatar: FrameLayout + ImageView + TextView fallback
+        private final FrameLayout layoutAvatar;
+        private final ImageView imgAvatar;
         private final TextView textAvatar;
+
         private final TextView textName;
         private final TextView textLastMsg;
         private final TextView textTime;
@@ -91,13 +98,18 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
 
         public MsgViewHolder(View itemView) {
             super(itemView);
-            checkBox     = itemView.findViewById(R.id.checkbox_msg);
-            textAvatar   = itemView.findViewById(R.id.text_chat_avatar);
-            textName     = itemView.findViewById(R.id.text_chat_name);
-            textLastMsg  = itemView.findViewById(R.id.text_chat_last_msg);
-            textTime     = itemView.findViewById(R.id.text_chat_time);
+            checkBox      = itemView.findViewById(R.id.checkbox_msg);
+
+            // Avatar views
+            layoutAvatar  = itemView.findViewById(R.id.layout_chat_avatar);
+            imgAvatar     = itemView.findViewById(R.id.img_chat_avatar);
+            textAvatar    = itemView.findViewById(R.id.text_chat_avatar);
+
+            textName      = itemView.findViewById(R.id.text_chat_name);
+            textLastMsg   = itemView.findViewById(R.id.text_chat_last_msg);
+            textTime      = itemView.findViewById(R.id.text_chat_time);
             textDirection = itemView.findViewById(R.id.text_chat_direction);
-            unsentBadge  = itemView.findViewById(R.id.text_unsent_badge);
+            unsentBadge   = itemView.findViewById(R.id.text_unsent_badge);
         }
 
         public void bind(MsgWithAddress item, OnMsgClickListener listener,
@@ -105,7 +117,7 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
                          Map<String, Integer> unsentMap) {
             int msgId = item.getMsg().getId();
 
-            // 체크박스 표시/숨김
+            // 체크박스
             checkBox.setVisibility(isCheckMode ? View.VISIBLE : View.GONE);
             checkBox.setOnCheckedChangeListener(null);
             checkBox.setChecked(checkedIds.contains(msgId));
@@ -114,16 +126,46 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
                 else checkedIds.remove(msgId);
             });
 
-            // 연락처 이름
-            String name = item.getAddress() != null && item.getAddress().getNumbersNic() != null
-                    ? item.getAddress().getNumbersNic()
-                    : item.getMsg().getCodeNum();
-            textName.setText(name);
+            // 연락처 정보
+            String imei = item.getMsg().getCodeNum();
+            String nickname = null;
+            String avatarPath = null;
 
-            // 이니셜 아바타
-            String initial = (name != null && name.length() > 0)
-                    ? name.substring(0, 1).toUpperCase() : "?";
-            textAvatar.setText(initial);
+            if (item.getAddress() != null) {
+                nickname = item.getAddress().getNumbersNic();
+                avatarPath = item.getAddress().getAvatarPath();  // ⭐ NEW
+            }
+
+            // 표시 이름
+            String displayName;
+            if (nickname != null && !nickname.trim().isEmpty()) {
+                displayName = nickname;
+            } else if (imei != null && !imei.trim().isEmpty()) {
+                displayName = imei;
+            } else {
+                displayName = "?";
+            }
+            textName.setText(displayName);
+
+            // ⭐ 아바타 생성 (AvatarHelper 사용)
+            try {
+                Bitmap avatarBitmap = AvatarHelper.loadOrCreate(
+                        itemView.getContext(),
+                        imei,
+                        nickname,
+                        avatarPath,
+                        AVATAR_SIZE_DP
+                );
+                imgAvatar.setImageBitmap(avatarBitmap);
+                textAvatar.setVisibility(View.GONE);
+            } catch (Exception e) {
+                // Fallback: TextView with initial
+                imgAvatar.setImageDrawable(null);
+                textAvatar.setVisibility(View.VISIBLE);
+                textAvatar.setText(
+                        AvatarHelper.getInitial(imei, nickname)
+                );
+            }
 
             // 마지막 메시지
             String lastMsg = item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "";

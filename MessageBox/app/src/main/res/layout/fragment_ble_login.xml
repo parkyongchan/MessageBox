@@ -131,20 +131,57 @@
                 android:checked="false"
                 android:layout_marginBottom="20dp" />
 
-            <!-- 연결 버튼 -->
-            <Button
-                android:id="@+id/button_login"
-                style="?android:attr/borderlessButtonStyle"
+            <!-- ⭐ 연결 버튼 (CardView - 눈에 띄게) -->
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="BLE Connect"
-                android:textColor="#0A1628"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textAllCaps="false"
-                android:background="@drawable/bg_btn_primary"
-                android:insetTop="0dp"
-                android:insetBottom="0dp" />
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#00E5D1"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="6dp">
+
+                <LinearLayout
+                    android:id="@+id/button_login"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?android:attr/selectableItemBackground">
+
+                    <ImageView
+                        android:id="@+id/img_login_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_tab_ble"
+                        app:tint="#0A1628"
+                        android:layout_marginEnd="12dp"
+                        android:contentDescription="Bluetooth" />
+
+                    <TextView
+                        android:id="@+id/text_login_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Connect to TYTO2"
+                        android:textColor="#0A1628"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        android:letterSpacing="0.02" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <!-- 상태 힌트 -->
+            <TextView
+                android:id="@+id/text_status_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="👆 Tap above to connect"
+                android:textColor="#5A7090"
+                android:textSize="11sp"
+                android:layout_marginTop="12dp" />
 
         </LinearLayout>
 

@@ -41,13 +41,14 @@ interface AddressDao {
     @Query("Update address SET numbers_nic = :numbersNic WHERE numbers = :numbers")
     suspend fun updateNumbersNic(numbers: String, numbersNic: String)
 
+    // ⭐ NEW: Update avatar path for given IMEI (numbers)
+    @Query("UPDATE address SET avatar_path = :path WHERE numbers = :numbers")
+    suspend fun updateAvatarPath(numbers: String, path: String?)
+
     @Query("DELETE FROM address WHERE id = :id")
     suspend fun deleteAddressById(id: Int)
 
     @Query("DELETE FROM address WHERE numbers = :numbers")
     suspend fun deleteAddressByNumbers(numbers: String)
-
-
-
 
 }

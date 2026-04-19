@@ -68,8 +68,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_ACCESS_FINE_LOCATION = 2;
     private static final int PERMISSION_ACCESS_COARSE_LOCATION = 1;
 
+    // Test data IMEIs
     private static final String TEST_IMEI_TRACK = "TEST-001";
     private static final String TEST_IMEI_SOS = "TEST-002";
+    private static final String TEST_IMEI_MSG = "1111111111111111";  // ⭐ NEW
 
     private ActivityMainBinding binding;
 
@@ -87,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Permission checks (unchanged)
+        // Permission checks
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -307,8 +309,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Test mode toggle - inject/delete locations + messages */
     private void toggleTestMode() {
         if (mIsTestMode) {
+            // ═══ OFF ═══
             mIsTestMode = false;
             binding.statusArea.textBleStatusMain.setText("Disconnected");
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
@@ -321,13 +325,15 @@ public class MainActivity extends AppCompatActivity {
             updateLocationStatus(0);
 
             deleteTestLocationData();
+            deleteTestMessages();  // ⭐ NEW
             Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
         } else {
+            // ═══ ON ═══
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
             test.setBattery(85);
             test.setSignal(3);
-            test.setInBox(2);
+            test.setInBox(10);  // ⭐ 10 test messages
             test.setOutBox(1);
             test.setTrackingMode(true);
             test.setSosMode(false);
@@ -340,7 +346,9 @@ public class MainActivity extends AppCompatActivity {
             ImeiStorage.save(this, "300434061000001");
 
             insertTestLocationData();
-            Toast.makeText(this, "🧪 Test data injected (20 points)", Toast.LENGTH_SHORT).show();
+            insertTestMessages();  // ⭐ NEW
+            Toast.makeText(this, "🧪 Test data injected (20 locations + 10 messages)",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -416,6 +424,88 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 Log.v("TEST_MODE", "Deleted " + deleted + " test locations");
+            }
+        });
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ Test Messages (NEW)
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * Insert 10 test messages from external IMEI 1111111111111111.
+     * Mix of Korean + English, varied titles/bodies, spread over past 12 hours.
+     */
+    private void insertTestMessages() {
+        String[][] testMsgs = {
+                // {title, body}
+                {"안녕하세요",         "오늘도 좋은 하루 보내세요! 😊"},
+                {"날씨 확인",           "서울 현재 맑음, 기온 15도입니다."},
+                {"미팅 변경 안내",      "내일 오후 2시 미팅이 3시로 변경되었습니다. 확인 부탁드려요."},
+                {"Status OK",          "Base camp check-in at 10:30. All systems green."},
+                {"복귀 예정",           "오늘 18시경 베이스캠프 복귀 예정입니다."},
+                {"좌표 수신 확인",      "전송해주신 GPS 좌표 정상 수신했습니다."},
+                {"Weather Alert",      "Heavy rain expected in your area after 16:00. Stay safe."},
+                {"저녁 식사",           "7시에 저녁 준비 완료됩니다. 시간 맞춰 오세요."},
+                {"Signal Test",        "통신 테스트 - 신호 양호, 응답 부탁드립니다."},
+                {"작전 브리핑",         "내일 08시 작전 브리핑 예정. 참석 필수입니다."}
+        };
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+
+        // Hours back from now for each message
+        int[] hoursBack = {0, 1, 2, 3, 4, 5, 6, 8, 10, 12};
+
+        for (int i = 0; i < testMsgs.length; i++) {
+            cal.setTime(now);
+            cal.add(Calendar.HOUR_OF_DAY, -hoursBack[i]);
+            cal.add(Calendar.MINUTE, -(i * 7));  // Add some minute variation
+            Date sentTime = cal.getTime();
+
+            // First 3 messages = unread, rest = read (for UI variety)
+            boolean isRead = i >= 3;
+
+            MsgEntity msg = new MsgEntity(
+                    0,                          // id (auto-gen)
+                    false,                      // isSendMsg = false (received)
+                    TEST_IMEI_MSG,              // codeNum = sender IMEI
+                    testMsgs[i][0],             // title
+                    testMsgs[i][1],             // msg body
+                    sentTime,                   // createAt
+                    sentTime,                   // receiveAt
+                    sentTime,                   // sendDeviceAt
+                    isRead,                     // isRead
+                    false,                      // isSend
+                    false                       // isDeviceSend
+            );
+            msgViewModel.insert(msg, success -> {
+                if (success) Log.v("TEST_MSG", "Test message " + (testMsgs.length) + " saved");
+                return null;
+            });
+        }
+
+        Log.v("TEST_MODE", "Inserted 10 test messages from " + TEST_IMEI_MSG);
+    }
+
+
+    /** Delete test messages (match by IMEI) */
+    private void deleteTestMessages() {
+        msgViewModel.getAllMsgs().observe(this, new androidx.lifecycle.Observer<List<MsgEntity>>() {
+            @Override
+            public void onChanged(List<MsgEntity> allMsgs) {
+                if (allMsgs == null) return;
+                msgViewModel.getAllMsgs().removeObserver(this);
+
+                int deleted = 0;
+                for (MsgEntity m : allMsgs) {
+                    if (TEST_IMEI_MSG.equals(m.getCodeNum())) {
+                        msgViewModel.delete(m);
+                        deleted++;
+                    }
+                }
+                Log.v("TEST_MODE", "Deleted " + deleted + " test messages");
             }
         });
     }
@@ -636,7 +726,6 @@ public class MainActivity extends AppCompatActivity {
                         return null;
                     });
 
-                    // ⭐ Record to active sat track session
                     SatTrackStateHolder.recordPoint(
                             this, lat, lng, 0.0, 0.0, 0.0, null, ver
                     );
@@ -671,7 +760,6 @@ public class MainActivity extends AppCompatActivity {
                         return null;
                     });
 
-                    // ⭐ Record to active sat track session
                     SatTrackStateHolder.recordPoint(
                             this, lat, lng, (double) alt, (double) speed,
                             (double) dir, null, ver
@@ -718,7 +806,6 @@ public class MainActivity extends AppCompatActivity {
                         return null;
                     });
 
-                    // ⭐ Record to active sat track session
                     SatTrackStateHolder.recordPoint(
                             this, lat, lng, (double) alt, (double) speed,
                             (double) dir, date, ver
