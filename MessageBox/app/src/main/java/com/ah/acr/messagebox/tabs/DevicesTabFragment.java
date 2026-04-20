@@ -7,8 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -43,13 +41,11 @@ import com.ah.acr.messagebox.database.SatTrackStateHolder;
 import com.ah.acr.messagebox.database.SatTrackViewModel;
 import com.ah.acr.messagebox.service.LocationPermissionHelper;
 import com.ah.acr.messagebox.service.LocationTrackingService;
+import com.ah.acr.messagebox.util.MapModeManager;
+import com.ah.acr.messagebox.util.MapModeToggleHelper;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.modules.OfflineTileProvider;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.tileprovider.tilesource.XYTileSource;
-import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
@@ -64,7 +60,6 @@ import java.util.Locale;
 public class DevicesTabFragment extends Fragment {
 
     private static final String TAG = "DevicesTabFragment";
-    private static final String MBTILES_SUBDIR = "mbtiles";
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
 
     private static final int TAB_MY_LOCATION = 0;
@@ -95,9 +90,11 @@ public class DevicesTabFragment extends Fragment {
     private MapView mapViewTracking;
     private Button btnStopTracking;
 
+    private View mapModeToggleMyLoc;
+
     // ─── Tab 2: Satellite TRACK ───
     private View satStateNotTracking;
-    private View linkSettings;  // ⭐ NEW: Settings link
+    private View linkSettings;
     private TextView tvSatConnectedImei;
     private Button btnSatStart;
     private RecyclerView rvSatTracks;
@@ -111,6 +108,8 @@ public class DevicesTabFragment extends Fragment {
     private TextView tvSatWaitingGps;
     private MapView mapViewSatTracking;
     private Button btnSatStop;
+
+    private View mapModeToggleSat;
 
 
     // ViewModels & state
@@ -191,11 +190,11 @@ public class DevicesTabFragment extends Fragment {
         setupViewModels();
         setupMap();
         setupSatMap();
+        setupMapModeToggles(root);
         observeBleStatus();
 
         updateSegmentVisuals(TAB_MY_LOCATION);
 
-        // My Location state restore
         if (LocationTrackingService.isServiceRunning) {
             currentTrackId = LocationTrackingService.currentTrackId;
             switchToTrackingState();
@@ -203,7 +202,6 @@ public class DevicesTabFragment extends Fragment {
             switchToNotTrackingState();
         }
 
-        // Satellite state restore
         if (SatTrackStateHolder.isSessionActive()) {
             currentSatTrackId = SatTrackStateHolder.activeTrackId;
             switchToSatTrackingState();
@@ -274,6 +272,58 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
+    //   ⭐ 지도 모드 토글 설정 (2개 지도 공통)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void setupMapModeToggles(View root) {
+        // My Location 지도 토글
+        if (mapModeToggleMyLoc != null) {
+            MapModeToggleHelper.setup(
+                    mapModeToggleMyLoc,
+                    requireContext(),
+                    newMode -> {
+                        Log.v(TAG, "My Location 지도 모드 변경: " + newMode);
+                        applyMapSourceToAllMaps();
+                        syncOtherToggleUI(mapModeToggleSat);
+                    }
+            );
+        }
+
+        // Satellite 지도 토글
+        if (mapModeToggleSat != null) {
+            MapModeToggleHelper.setup(
+                    mapModeToggleSat,
+                    requireContext(),
+                    newMode -> {
+                        Log.v(TAG, "Satellite 지도 모드 변경: " + newMode);
+                        applyMapSourceToAllMaps();
+                        syncOtherToggleUI(mapModeToggleMyLoc);
+                    }
+            );
+        }
+    }
+
+
+    /** 2개 지도 모두 현재 모드로 업데이트 */
+    private void applyMapSourceToAllMaps() {
+        if (mapViewTracking != null) {
+            MapModeManager.applyToMapView(requireContext(), mapViewTracking);
+        }
+        if (mapViewSatTracking != null) {
+            MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
+        }
+    }
+
+
+    /** 다른 쪽 토글 UI 동기화 */
+    private void syncOtherToggleUI(View toggleRoot) {
+        if (toggleRoot != null) {
+            MapModeToggleHelper.setup(toggleRoot, requireContext(), null);
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
     //   SETUP
     // ═══════════════════════════════════════════════════════════════
 
@@ -283,7 +333,6 @@ public class DevicesTabFragment extends Fragment {
         containerMyLocation = root.findViewById(R.id.containerMyLocation);
         containerSatellite = root.findViewById(R.id.containerSatellite);
 
-        // My Location
         stateNotTracking = root.findViewById(R.id.stateNotTracking);
         spinnerInterval = root.findViewById(R.id.spinnerInterval);
         spinnerDistance = root.findViewById(R.id.spinnerDistance);
@@ -301,9 +350,10 @@ public class DevicesTabFragment extends Fragment {
         mapViewTracking = root.findViewById(R.id.mapViewTracking);
         btnStopTracking = root.findViewById(R.id.btnStopTracking);
 
-        // Satellite
+        mapModeToggleMyLoc = root.findViewById(R.id.mapModeToggleMyLoc);
+
         satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
-        linkSettings = root.findViewById(R.id.linkSettings);  // ⭐ NEW
+        linkSettings = root.findViewById(R.id.linkSettings);
         tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
         btnSatStart = root.findViewById(R.id.btnSatStart);
         rvSatTracks = root.findViewById(R.id.rvSatTracks);
@@ -317,6 +367,8 @@ public class DevicesTabFragment extends Fragment {
         tvSatWaitingGps = root.findViewById(R.id.tvSatWaitingGps);
         mapViewSatTracking = root.findViewById(R.id.mapViewSatTracking);
         btnSatStop = root.findViewById(R.id.btnSatStop);
+
+        mapModeToggleSat = root.findViewById(R.id.mapModeToggleSat);
     }
 
 
@@ -370,7 +422,6 @@ public class DevicesTabFragment extends Fragment {
 
 
     private void setupRecyclerViews() {
-        // My Location adapter
         trackAdapter = new MyTrackAdapter(new MyTrackAdapter.OnTrackActionListener() {
             @Override public void onTrackClick(MyTrackEntity track) { openTrackDetail(track); }
             @Override public void onTrackDelete(MyTrackEntity track) { confirmDeleteTrack(track); }
@@ -384,7 +435,6 @@ public class DevicesTabFragment extends Fragment {
         rvTracks.setAdapter(trackAdapter);
         rvTracks.setNestedScrollingEnabled(false);
 
-        // Satellite adapter
         satTrackAdapter = new SatTrackAdapter(new SatTrackAdapter.OnTrackActionListener() {
             @Override public void onTrackClick(SatTrackEntity track) { openSatTrackDetail(track); }
             @Override public void onTrackDelete(SatTrackEntity track) { confirmDeleteSatTrack(track); }
@@ -407,17 +457,12 @@ public class DevicesTabFragment extends Fragment {
         btnSatStart.setOnClickListener(v -> onSatStartClicked());
         btnSatStop.setOnClickListener(v -> onSatStopClicked());
 
-        // ⭐ NEW: Settings link → navigate to Settings tab
         if (linkSettings != null) {
             linkSettings.setOnClickListener(v -> navigateToSettings());
         }
     }
 
 
-    /**
-     * ⭐ NEW: Navigate to Settings tab by programmatically selecting
-     * it in the MainActivity's BottomNavigationView.
-     */
     private void navigateToSettings() {
         try {
             View bottomNav = requireActivity().findViewById(R.id.bottom_nav);
@@ -496,10 +541,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   TRACK ACTIONS (My Location)
-    // ═══════════════════════════════════════════════════════════════
-
     private void openTrackDetail(MyTrackEntity track) {
         MyTrackDetailFragment dialog = MyTrackDetailFragment.newInstance(track.getId());
         dialog.show(getParentFragmentManager(), "MyTrackDetail");
@@ -518,10 +559,6 @@ public class DevicesTabFragment extends Fragment {
                 .show();
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   TRACK ACTIONS (Satellite)
-    // ═══════════════════════════════════════════════════════════════
 
     private void openSatTrackDetail(SatTrackEntity track) {
         SatTrackDetailFragment dialog = SatTrackDetailFragment.newInstance(track.getId());
@@ -543,7 +580,7 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   MAP SETUP (My Location)
+    //   MAP SETUP
     // ═══════════════════════════════════════════════════════════════
 
     private void setupMap() {
@@ -551,7 +588,8 @@ public class DevicesTabFragment extends Fragment {
         mapViewTracking.setBuiltInZoomControls(false);
         mapViewTracking.setTilesScaledToDpi(true);
 
-        loadMapSource(mapViewTracking);
+        // ⭐ 유틸 사용 - 한 줄로 간결!
+        MapModeManager.applyToMapView(requireContext(), mapViewTracking);
 
         mapViewTracking.getController().setZoom(16.0);
         mapViewTracking.getController().setCenter(DEFAULT_CENTER);
@@ -573,7 +611,8 @@ public class DevicesTabFragment extends Fragment {
         mapViewSatTracking.setBuiltInZoomControls(false);
         mapViewSatTracking.setTilesScaledToDpi(true);
 
-        loadMapSource(mapViewSatTracking);
+        // ⭐ 유틸 사용 - 한 줄로 간결!
+        MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
 
         mapViewSatTracking.getController().setZoom(14.0);
         mapViewSatTracking.getController().setCenter(DEFAULT_CENTER);
@@ -587,56 +626,6 @@ public class DevicesTabFragment extends Fragment {
         satCurrentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         satCurrentMarker.setTitle("Last Position");
         mapViewSatTracking.getOverlays().add(satCurrentMarker);
-    }
-
-
-    private void loadMapSource(MapView mapView) {
-        try {
-            if (isNetworkAvailable()) {
-                mapView.setTileSource(TileSourceFactory.MAPNIK);
-                return;
-            }
-
-            File mbtilesDir = new File(
-                    requireContext().getExternalFilesDir(null),
-                    MBTILES_SUBDIR
-            );
-            if (!mbtilesDir.exists()) mbtilesDir.mkdirs();
-
-            File[] mbtilesFiles = mbtilesDir.listFiles(
-                    (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
-            );
-
-            if (mbtilesFiles != null && mbtilesFiles.length > 0) {
-                OfflineTileProvider tileProvider = new OfflineTileProvider(
-                        new SimpleRegisterReceiver(requireContext()),
-                        mbtilesFiles
-                );
-                mapView.setTileProvider(tileProvider);
-                mapView.setTileSource(new XYTileSource(
-                        "offline", 0, 18, 256, ".png", new String[]{}
-                ));
-                return;
-            }
-
-            mapView.setTileSource(TileSourceFactory.MAPNIK);
-        } catch (Exception e) {
-            Log.e(TAG, "Map source load failed: " + e.getMessage());
-            mapView.setTileSource(TileSourceFactory.MAPNIK);
-        }
-    }
-
-
-    private boolean isNetworkAvailable() {
-        try {
-            ConnectivityManager cm = (ConnectivityManager)
-                    requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
 

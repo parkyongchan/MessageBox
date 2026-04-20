@@ -312,6 +312,15 @@
                     android:textSize="14sp"
                     android:visibility="gone" />
 
+                <!-- ⭐ My Location 지도 모드 토글 (우측 상단) -->
+                <include
+                    android:id="@+id/mapModeToggleMyLoc"
+                    layout="@layout/view_map_mode_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="12dp" />
+
             </FrameLayout>
 
 
@@ -374,7 +383,7 @@
                     android:textColor="#95B0D4"
                     android:textSize="12sp" />
 
-                <!-- ⭐ NEW: Clickable Settings Link -->
+                <!-- Clickable Settings Link -->
                 <LinearLayout
                     android:id="@+id/linkSettings"
                     android:layout_width="match_parent"
@@ -597,6 +606,15 @@
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:visibility="gone" />
+
+                <!-- ⭐ Satellite 지도 모드 토글 (우측 상단) -->
+                <include
+                    android:id="@+id/mapModeToggleSat"
+                    layout="@layout/view_map_mode_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="12dp" />
 
             </FrameLayout>
 

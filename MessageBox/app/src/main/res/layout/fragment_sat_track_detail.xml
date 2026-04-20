@@ -197,11 +197,25 @@
     </LinearLayout>
 
 
-    <!-- Map -->
-    <org.osmdroid.views.MapView
-        android:id="@+id/mapDetail"
+    <!-- ⭐ Map + Toggle (FrameLayout 으로 감싸서 오버레이 배치) -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapDetail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- ⭐ 지도 모드 토글 (우측 상단) -->
+        <include
+            layout="@layout/view_map_mode_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp" />
+
+    </FrameLayout>
 
 </LinearLayout>

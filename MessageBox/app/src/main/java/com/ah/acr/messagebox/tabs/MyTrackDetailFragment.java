@@ -3,8 +3,6 @@ package com.ah.acr.messagebox.tabs;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -27,12 +25,10 @@ import com.ah.acr.messagebox.database.MyTrackEntity;
 import com.ah.acr.messagebox.database.MyTrackPointEntity;
 import com.ah.acr.messagebox.database.MyTrackViewModel;
 import com.ah.acr.messagebox.export.TrackExporter;
+import com.ah.acr.messagebox.util.MapModeManager;
+import com.ah.acr.messagebox.util.MapModeToggleHelper;
 
 import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.modules.OfflineTileProvider;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.tileprovider.tilesource.XYTileSource;
-import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -49,7 +45,6 @@ public class MyTrackDetailFragment extends DialogFragment {
 
     private static final String TAG = "MyTrackDetail";
     private static final String ARG_TRACK_ID = "track_id";
-    private static final String MBTILES_SUBDIR = "mbtiles";
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
 
     private int trackId = -1;
@@ -116,6 +111,7 @@ public class MyTrackDetailFragment extends DialogFragment {
         bindViews(view);
         setupMap();
         setupButtons();
+        setupMapModeToggle(view);
         loadTrackData();
     }
 
@@ -158,6 +154,20 @@ public class MyTrackDetailFragment extends DialogFragment {
 
 
     // ═══════════════════════════════════════════════════════
+    //   ⭐ 지도 모드 토글
+    // ═══════════════════════════════════════════════════════
+
+    private void setupMapModeToggle(View root) {
+        MapModeToggleHelper.setup(
+                root,
+                requireContext(),
+                newMode -> {
+                    Log.v(TAG, "지도 모드 변경: " + newMode);
+                    MapModeManager.applyToMapView(requireContext(), mapView);
+                }
+        );
+    }
+
 
     private void bindViews(View view) {
         tvTitle = view.findViewById(R.id.tvDetailTitle);
@@ -266,7 +276,8 @@ public class MyTrackDetailFragment extends DialogFragment {
         mapView.getController().setZoom(14.0);
         mapView.getController().setCenter(DEFAULT_CENTER);
 
-        loadMapSource();
+        // ⭐ 유틸 사용
+        MapModeManager.applyToMapView(requireContext(), mapView);
 
         polyline = new Polyline();
         polyline.setColor(Color.RED);
@@ -280,56 +291,6 @@ public class MyTrackDetailFragment extends DialogFragment {
         endMarker = new Marker(mapView);
         endMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         endMarker.setTitle("End");
-    }
-
-
-    private void loadMapSource() {
-        try {
-            if (isNetworkAvailable()) {
-                mapView.setTileSource(TileSourceFactory.MAPNIK);
-                return;
-            }
-
-            File mbtilesDir = new File(
-                    requireContext().getExternalFilesDir(null),
-                    MBTILES_SUBDIR
-            );
-            if (!mbtilesDir.exists()) mbtilesDir.mkdirs();
-
-            File[] mbtilesFiles = mbtilesDir.listFiles(
-                    (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
-            );
-
-            if (mbtilesFiles != null && mbtilesFiles.length > 0) {
-                OfflineTileProvider tileProvider = new OfflineTileProvider(
-                        new SimpleRegisterReceiver(requireContext()),
-                        mbtilesFiles
-                );
-                mapView.setTileProvider(tileProvider);
-                mapView.setTileSource(new XYTileSource(
-                        "offline", 0, 18, 256, ".png", new String[]{}
-                ));
-                return;
-            }
-
-            mapView.setTileSource(TileSourceFactory.MAPNIK);
-        } catch (Exception e) {
-            Log.e(TAG, "Map source load failed: " + e.getMessage());
-            mapView.setTileSource(TileSourceFactory.MAPNIK);
-        }
-    }
-
-
-    private boolean isNetworkAvailable() {
-        try {
-            ConnectivityManager cm = (ConnectivityManager)
-                    requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
 

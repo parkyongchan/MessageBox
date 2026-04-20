@@ -564,6 +564,15 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!-- ⭐ 지도 모드 토글 (좌측 상단) -->
+        <include
+            layout="@layout/view_map_mode_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="8dp" />
+
+        <!-- Zoom 정보 (우측 상단) -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -574,17 +583,15 @@
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
             android:layout_margin="8dp"
-            android:layout_gravity="top|start">
+            android:layout_gravity="top|end">
 
+            <!-- tv_map_mode 는 기존 Java 코드와 호환을 위해 유지 (visibility=gone) -->
             <TextView
                 android:id="@+id/tv_map_mode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ONLINE"
-                android:textColor="#00E5D1"
-                android:textSize="9sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08" />
+                android:text=""
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tv_map_zoom"
@@ -657,7 +664,7 @@
             android:gravity="center_vertical"
             android:visibility="gone">
 
-            <!-- SPEED (숨김 가능) -->
+            <!-- SPEED -->
             <LinearLayout
                 android:id="@+id/info_speed_group"
                 android:layout_width="wrap_content"
@@ -705,7 +712,6 @@
 
             </LinearLayout>
 
-            <!-- SPEED와 HEADING 사이 구분선 -->
             <View
                 android:id="@+id/info_divider_1"
                 android:layout_width="1dp"
@@ -713,7 +719,7 @@
                 android:background="#2A4570"
                 android:layout_marginEnd="14dp" />
 
-            <!-- HEADING (숨김 가능) -->
+            <!-- HEADING -->
             <LinearLayout
                 android:id="@+id/info_heading_group"
                 android:layout_width="wrap_content"
@@ -760,7 +766,6 @@
 
             </LinearLayout>
 
-            <!-- HEADING과 TYPE 사이 구분선 -->
             <View
                 android:id="@+id/info_divider_2"
                 android:layout_width="1dp"
@@ -798,7 +803,6 @@
 
             </LinearLayout>
 
-            <!-- TYPE와 TIME 사이 구분선 -->
             <View
                 android:layout_width="1dp"
                 android:layout_height="32dp"

@@ -7,8 +7,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -41,15 +39,13 @@ import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationViewModel;
 import com.ah.acr.messagebox.database.LocationWithAddress;
 import com.ah.acr.messagebox.databinding.FragmentMapTabBinding;
+import com.ah.acr.messagebox.util.MapModeManager;
+import com.ah.acr.messagebox.util.MapModeToggleHelper;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapListener;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
-import org.osmdroid.tileprovider.modules.OfflineTileProvider;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.tileprovider.tilesource.XYTileSource;
-import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -68,11 +64,12 @@ import java.util.Locale;
  * 지도 탭 (Map Tab)
  * - 받은 위치 데이터 목록 + 지도 시각화
  * - 검색 포커스 시 지도 숨겨 목록 확대
+ * - ⭐ 지도 모드 수동 토글 (온라인/오프라인)
+ * - ⭐ 아이콘 분류: 0x10=SOS, 0x11=CAR(Track)
  */
 public class MapTabFragment extends Fragment {
     private static final String TAG = MapTabFragment.class.getSimpleName();
 
-    private static final String MBTILES_SUBDIR = "mbtiles";
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
     private static final double DEFAULT_ZOOM = 10.0;
     private static final double DEFAULT_ZOOM_SINGLE = 14.0;
@@ -94,7 +91,6 @@ public class MapTabFragment extends Fragment {
     private static final int MODE_TRACK = 2;
     private static final int MODE_SOS = 4;
 
-    // ⭐ 검색 모드 상태
     private boolean mIsSearchMode = false;
 
 
@@ -113,6 +109,7 @@ public class MapTabFragment extends Fragment {
         setupRefresh();
         setupMap();
         setupMapControls();
+        setupMapModeToggle();
         observeData();
 
         binding.chip7d.setSelected(true);
@@ -122,9 +119,17 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 지도 초기화 (온라인 우선)
-    // ═══════════════════════════════════════════════════════
+    private void setupMapModeToggle() {
+        MapModeToggleHelper.setup(
+                binding.getRoot(),
+                requireContext(),
+                newMode -> {
+                    Log.v(TAG, "지도 모드 변경: " + newMode);
+                    MapModeManager.applyToMapView(requireContext(), mMapView);
+                }
+        );
+    }
+
 
     private void setupMap() {
         Configuration.getInstance().setUserAgentValue(
@@ -143,7 +148,7 @@ public class MapTabFragment extends Fragment {
         mMapView.setMultiTouchControls(true);
         mMapView.setBuiltInZoomControls(false);
 
-        loadMapSource();
+        MapModeManager.applyToMapView(requireContext(), mMapView);
 
         mMapView.getController().setZoom(DEFAULT_ZOOM);
         mMapView.getController().setCenter(DEFAULT_CENTER);
@@ -157,64 +162,6 @@ public class MapTabFragment extends Fragment {
         });
 
         updateZoomLabel();
-    }
-
-
-    /** 온라인 우선 + 오프라인 폴백 */
-    private void loadMapSource() {
-        try {
-            if (isNetworkAvailable()) {
-                mMapView.setTileSource(TileSourceFactory.MAPNIK);
-                binding.tvMapMode.setText("ONLINE");
-                binding.tvMapMode.setTextColor(0xFF00E5D1);
-                Log.v(TAG, "지도: 온라인 모드");
-                return;
-            }
-
-            File mbtilesDir = new File(
-                    requireContext().getExternalFilesDir(null),
-                    MBTILES_SUBDIR
-            );
-            if (!mbtilesDir.exists()) mbtilesDir.mkdirs();
-
-            File[] mbtilesFiles = mbtilesDir.listFiles(
-                    (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
-            );
-
-            if (mbtilesFiles != null && mbtilesFiles.length > 0) {
-                OfflineTileProvider tileProvider = new OfflineTileProvider(
-                        new SimpleRegisterReceiver(requireContext()),
-                        mbtilesFiles
-                );
-                mMapView.setTileProvider(tileProvider);
-                mMapView.setTileSource(new XYTileSource(
-                        "offline", 0, 18, 256, ".png", new String[]{}
-                ));
-                binding.tvMapMode.setText("OFFLINE");
-                binding.tvMapMode.setTextColor(0xFFFFB300);
-                Log.v(TAG, "지도: 오프라인 모드");
-                return;
-            }
-
-            mMapView.setTileSource(TileSourceFactory.MAPNIK);
-            binding.tvMapMode.setText("NO MAP");
-            binding.tvMapMode.setTextColor(0xFFFF5252);
-        } catch (Exception e) {
-            Log.e(TAG, "지도 소스 로드 실패: " + e.getMessage());
-            mMapView.setTileSource(TileSourceFactory.MAPNIK);
-        }
-    }
-
-    private boolean isNetworkAvailable() {
-        try {
-            ConnectivityManager cm = (ConnectivityManager)
-                    requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
 
@@ -273,10 +220,6 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 마커 관리
-    // ═══════════════════════════════════════════════════════
-
     private void refreshMarkers(List<LocationWithAddress> locations) {
         if (mMapView == null) return;
 
@@ -332,23 +275,35 @@ public class MapTabFragment extends Fragment {
     }
 
 
+    /**
+     * ⭐ trackMode 에 따른 마커 아이콘
+     *
+     * TYTO 프로토콜 ver 코드:
+     * - 0x10 : SOS (긴급)    → 🚨 빨간 마커
+     * - 0x11 : CAR (Tracking)→ 🚗 Track 마커
+     * - 0x12 : UAV (드론)    → ✈️ Track 마커
+     * - 0x13 : UAT (차량확장)→ 🚙 Track 마커
+     * - 4, 5 : Legacy SOS
+     * - 2    : Legacy Track
+     */
     private Drawable getMarkerIcon(int trackMode) {
         int iconRes;
-        if (trackMode == 0x10 || trackMode == 0x11
-                || trackMode == 4 || trackMode == 5) {
+        // 🚨 SOS: 0x10 만! (0x11 제외)
+        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             iconRes = R.drawable.ic_marker_sos;
-        } else if (trackMode == 2) {
+        }
+        // 🚗 TRACK: 0x11, 0x12, 0x13, 2
+        else if (trackMode == 0x11 || trackMode == 0x12
+                || trackMode == 0x13 || trackMode == 2) {
             iconRes = R.drawable.ic_marker_track;
-        } else {
+        }
+        // 📍 기본
+        else {
             iconRes = R.drawable.ic_marker_device;
         }
         return ContextCompat.getDrawable(requireContext(), iconRes);
     }
 
-
-    // ═══════════════════════════════════════════════════════
-    // ViewModel & Observer
-    // ═══════════════════════════════════════════════════════
 
     private void setupViewModel() {
         mBleViewModel = new ViewModelProvider(requireActivity()).get(BleViewModel.class);
@@ -416,10 +371,6 @@ public class MapTabFragment extends Fragment {
         });
     }
 
-
-    // ═══════════════════════════════════════════════════════
-    // 필터 & 검색
-    // ═══════════════════════════════════════════════════════
 
     private void setupFilterChips() {
         binding.chip1h.setOnClickListener(v -> selectQuickDate(v, 1, true));
@@ -496,12 +447,7 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // ⭐ 검색 & 검색 모드 (포커스 시 지도 숨김)
-    // ═══════════════════════════════════════════════════════
-
     private void setupSearch() {
-        // 텍스트 변경 리스너
         binding.editSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -515,7 +461,6 @@ public class MapTabFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        // ⭐ 검색창 포커스 리스너
         binding.editSearch.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 enterSearchMode();
@@ -524,7 +469,6 @@ public class MapTabFragment extends Fragment {
             }
         });
 
-        // 검색 완료 (Enter 키) → 키보드 숨김 + 포커스 해제
         binding.editSearch.setOnEditorActionListener((v, actionId, event) -> {
             hideKeyboard();
             binding.editSearch.clearFocus();
@@ -533,12 +477,10 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /** ⭐ 검색 모드 진입 - 지도 숨김, 목록 확대 */
     private void enterSearchMode() {
         if (mIsSearchMode) return;
         mIsSearchMode = true;
 
-        // 지도 영역 숨김 (weight=0)
         ViewGroup.LayoutParams mapParams = binding.mapContainer.getLayoutParams();
         if (mapParams instanceof android.widget.LinearLayout.LayoutParams) {
             android.widget.LinearLayout.LayoutParams lp =
@@ -552,12 +494,10 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /** ⭐ 검색 모드 해제 - 지도 복원 */
     private void exitSearchMode() {
         if (!mIsSearchMode) return;
         mIsSearchMode = false;
 
-        // 지도 영역 복원 (weight=100)
         ViewGroup.LayoutParams mapParams = binding.mapContainer.getLayoutParams();
         if (mapParams instanceof android.widget.LinearLayout.LayoutParams) {
             android.widget.LinearLayout.LayoutParams lp =
@@ -571,7 +511,6 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /** 키보드 숨기기 */
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager)
                 requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -590,14 +529,9 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 아이템 클릭 핸들러
-    // ═══════════════════════════════════════════════════════
-
     public void handleLocationClick(LocationEntity location) {
         Log.v(TAG, "Click Item: " + location.getCodeNum());
 
-        // 검색 모드였다면 해제 (지도 보이게)
         if (mIsSearchMode) {
             binding.editSearch.clearFocus();
             hideKeyboard();
@@ -638,14 +572,12 @@ public class MapTabFragment extends Fragment {
         Toast.makeText(getContext(), "Copied to clipboard.", Toast.LENGTH_SHORT).show();
     }
 
-    /** Map 버튼 → 상세 트랙 팝업 */
     public void handleLocationMapClick(LocationEntity location) {
         if (location.getCodeNum() == null) {
             Toast.makeText(getContext(), "Invalid device", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 검색 모드 해제
         if (mIsSearchMode) {
             binding.editSearch.clearFocus();
             hideKeyboard();
@@ -723,10 +655,6 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 생명주기
-    // ═══════════════════════════════════════════════════════
-
     @Override
     public void onResume() {
         super.onResume();
@@ -738,7 +666,6 @@ public class MapTabFragment extends Fragment {
         super.onPause();
         if (mMapView != null) mMapView.onPause();
 
-        // 검색 모드 해제
         if (mIsSearchMode) {
             exitSearchMode();
             hideKeyboard();

@@ -22,7 +22,6 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.adapter.TrackPointAdapter;
@@ -30,15 +29,13 @@ import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationViewModel;
 import com.ah.acr.messagebox.database.LocationWithAddress;
 import com.ah.acr.messagebox.databinding.FragmentDeviceTrackDetailBinding;
+import com.ah.acr.messagebox.util.MapModeManager;
+import com.ah.acr.messagebox.util.MapModeToggleHelper;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapListener;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
-import org.osmdroid.tileprovider.modules.OfflineTileProvider;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.tileprovider.tilesource.XYTileSource;
-import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -59,6 +56,8 @@ import java.util.Locale;
  * - 해당 장비의 모든 위치 기록
  * - 폴리라인으로 경로 표시
  * - 시간순 하이라이트 자동재생
+ * - ⭐ 지도 모드 수동 토글
+ * - ⭐ 아이콘/타입 분류: 0x10=SOS, 0x11=CAR(Track)
  */
 public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String TAG = DeviceTrackDetailFragment.class.getSimpleName();
@@ -66,10 +65,8 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String ARG_CODE_NUM = "codeNum";
     private static final String ARG_NAME = "name";
 
-    private static final String MBTILES_SUBDIR = "mbtiles";
     private static final double DEFAULT_ZOOM = 10.0;
 
-    // 속도 옵션 (포인트당 밀리초)
     private static final long[] SPEED_INTERVALS = {1000, 500, 250, 100};
     private static final String[] SPEED_LABELS = {"1x", "2x", "4x", "10x"};
 
@@ -81,13 +78,11 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     private String codeNum;
     private String deviceName;
 
-    // 트랙 데이터
     private List<LocationWithAddress> mTrackPoints = new ArrayList<>();
     private final List<Marker> mMarkers = new ArrayList<>();
     private Polyline mPolyline;
     private LiveData<List<LocationWithAddress>> mCurrentTrackLive;
 
-    // 재생 상태
     private boolean mIsPlaying = false;
     private int mCurrentPlayIndex = -1;
     private int mSpeedIndex = 0;
@@ -100,7 +95,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             if (mIsPlaying && mCurrentPlayIndex < mTrackPoints.size() - 1) {
                 mPlayHandler.postDelayed(this, SPEED_INTERVALS[mSpeedIndex]);
             } else {
-                // 재생 완료
                 mIsPlaying = false;
                 updatePlayIcon();
             }
@@ -115,7 +109,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
 
-    /** 팩토리 메서드 */
     public static DeviceTrackDetailFragment newInstance(String codeNum, String name) {
         DeviceTrackDetailFragment fragment = new DeviceTrackDetailFragment();
         Bundle args = new Bundle();
@@ -129,7 +122,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 전체화면 테마
         setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
 
         if (getArguments() != null) {
@@ -167,17 +159,28 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         setupDatePickers();
         setupPlaybackControls();
         setupMapControls();
+        setupMapModeToggle();
         observeInitial();
 
-        // 기본 7일
         binding.chip7d.setSelected(true);
 
         return binding.getRoot();
     }
 
 
+    private void setupMapModeToggle() {
+        MapModeToggleHelper.setup(
+                binding.getRoot(),
+                requireContext(),
+                newMode -> {
+                    Log.v(TAG, "지도 모드 변경: " + newMode);
+                    MapModeManager.applyToMapView(requireContext(), mMapView);
+                }
+        );
+    }
+
+
     private void setupHeader() {
-        // TRACK - 이름 (IMEI)
         String title;
         if (deviceName != null && !deviceName.equals(codeNum)) {
             title = "TRACK - " + deviceName + " (" + codeNum + ")";
@@ -196,10 +199,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 지도 초기화
-    // ═══════════════════════════════════════════════════════
-
     private void setupMap() {
         Configuration.getInstance().setUserAgentValue(
                 requireActivity().getPackageName()
@@ -217,19 +216,14 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         mMapView.setMultiTouchControls(true);
         mMapView.setBuiltInZoomControls(false);
 
-        loadMapSource();
+        MapModeManager.applyToMapView(requireContext(), mMapView);
 
         mMapView.getController().setZoom(DEFAULT_ZOOM);
         mMapView.getController().setCenter(new GeoPoint(37.5665, 126.9780));
 
         mMapView.addMapListener(new MapListener() {
-            @Override
-            public boolean onScroll(ScrollEvent event) {
-                return false;
-            }
-
-            @Override
-            public boolean onZoom(ZoomEvent event) {
+            @Override public boolean onScroll(ScrollEvent event) { return false; }
+            @Override public boolean onZoom(ZoomEvent event) {
                 updateZoomLabel();
                 return false;
             }
@@ -238,39 +232,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         updateZoomLabel();
     }
 
-    private void loadMapSource() {
-        try {
-            File mbtilesDir = new File(
-                    requireContext().getExternalFilesDir(null),
-                    MBTILES_SUBDIR
-            );
-            if (!mbtilesDir.exists()) mbtilesDir.mkdirs();
-
-            File[] mbtilesFiles = mbtilesDir.listFiles(
-                    (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
-            );
-
-            if (mbtilesFiles != null && mbtilesFiles.length > 0) {
-                OfflineTileProvider tileProvider = new OfflineTileProvider(
-                        new SimpleRegisterReceiver(requireContext()),
-                        mbtilesFiles
-                );
-                mMapView.setTileProvider(tileProvider);
-                mMapView.setTileSource(new XYTileSource(
-                        "offline", 0, 18, 256, ".png", new String[]{}
-                ));
-                binding.tvMapMode.setText("OFFLINE");
-                binding.tvMapMode.setTextColor(0xFF00E5D1);
-            } else {
-                mMapView.setTileSource(TileSourceFactory.MAPNIK);
-                binding.tvMapMode.setText("ONLINE");
-                binding.tvMapMode.setTextColor(0xFFFFB300);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "지도 소스 로드 실패: " + e.getMessage());
-            mMapView.setTileSource(TileSourceFactory.MAPNIK);
-        }
-    }
 
     private void updateZoomLabel() {
         if (mMapView != null && binding != null) {
@@ -280,13 +241,8 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 트랙 목록
-    // ═══════════════════════════════════════════════════════
-
     private void setupTrackList() {
         trackAdapter = new TrackPointAdapter((position, item) -> {
-            // 목록 클릭 → 해당 포인트 하이라이트 + 지도 이동
             selectPoint(position);
         });
 
@@ -295,11 +251,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 초기 데이터 로드
-    // ═══════════════════════════════════════════════════════
-
-    /** 초기: 7일 범위로 조회 */
     private void observeInitial() {
         loadTrackDays(7);
     }
@@ -322,16 +273,13 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
     private void loadTrackRange(Date start, Date end) {
-        // UI 업데이트
         binding.tvStartDate.setText(dateFmt.format(start));
         binding.tvEndDate.setText(dateFmt.format(end));
 
-        // 이전 observer 제거
         if (mCurrentTrackLive != null) {
             mCurrentTrackLive.removeObservers(getViewLifecycleOwner());
         }
 
-        // 특정 장비의 해당 범위 트랙 조회
         if (codeNum == null) return;
 
         mCurrentTrackLive = locationViewModel.getRepository() != null
@@ -339,8 +287,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 : null;
 
         if (mCurrentTrackLive == null) {
-            // fallback: 뷰모델의 getTrackByDevice 사용 (start/end 내부 필드 사용)
-            // 우리의 setStartDate/setEndDate가 전체 쿼리에 영향 주지 않도록 직접 조회
             Toast.makeText(getContext(), "Loading tracks...", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -357,7 +303,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
 
     private void updateTrackList() {
-        // 시간 DESC로 뒤집기 (최신이 위로)
         List<LocationWithAddress> reversed = new ArrayList<>(mTrackPoints);
         java.util.Collections.reverse(reversed);
 
@@ -376,14 +321,9 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 지도에 트랙 그리기
-    // ═══════════════════════════════════════════════════════
-
     private void drawTrackOnMap() {
         if (mMapView == null) return;
 
-        // 기존 오버레이 제거
         clearMapOverlays();
 
         if (mTrackPoints.isEmpty()) {
@@ -394,7 +334,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         int total = mTrackPoints.size();
         List<GeoPoint> polylinePoints = new ArrayList<>();
 
-        // 마커 추가 (오래된 → 최신 순)
         for (int i = 0; i < total; i++) {
             LocationWithAddress item = mTrackPoints.get(i);
             LocationEntity loc = item.getLocation();
@@ -408,8 +347,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             marker.setPosition(point);
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
 
-            // 최신일수록 뚜렷, 오래될수록 희미
-            // alpha 범위: 0.35 ~ 1.0
             float alpha;
             if (total == 1) alpha = 1.0f;
             else alpha = 0.35f + (float) i / (total - 1) * 0.65f;
@@ -428,19 +365,17 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             mMapView.getOverlays().add(marker);
         }
 
-        // 폴리라인 (경로)
         if (polylinePoints.size() > 1) {
             mPolyline = new Polyline();
             mPolyline.setPoints(polylinePoints);
             mPolyline.getOutlinePaint().setColor(Color.parseColor("#00E5D1"));
             mPolyline.getOutlinePaint().setStrokeWidth(6f);
             mPolyline.getOutlinePaint().setAlpha(180);
-            mMapView.getOverlays().add(0, mPolyline);  // 마커 아래
+            mMapView.getOverlays().add(0, mPolyline);
         }
 
         mMapView.invalidate();
 
-        // 자동 영역 조정
         mMapView.post(this::fitAllMarkers);
     }
 
@@ -458,17 +393,33 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
+    /**
+     * ⭐ trackMode 에 따른 마커 아이콘
+     *
+     * TYTO 프로토콜 ver 코드:
+     * - 0x10 : SOS (긴급)    → 🚨 빨간 마커
+     * - 0x11 : CAR (Tracking)→ 🚗 Track 마커
+     * - 0x12 : UAV (드론)    → ✈️ Track 마커
+     * - 0x13 : UAT (차량확장)→ 🚙 Track 마커
+     * - 4, 5 : Legacy SOS
+     * - 2    : Legacy Track
+     */
     private Drawable getMarkerIcon(int trackMode) {
         int iconRes;
-        if (trackMode == 0x10 || trackMode == 0x11 || trackMode == 4 || trackMode == 5) {
+        // 🚨 SOS: 0x10 만! (0x11 제외)
+        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             iconRes = R.drawable.ic_marker_sos;
-        } else if (trackMode == 2) {
+        }
+        // 🚗 TRACK: 0x11, 0x12, 0x13, 2
+        else if (trackMode == 0x11 || trackMode == 0x12
+                || trackMode == 0x13 || trackMode == 2) {
             iconRes = R.drawable.ic_marker_track;
-        } else {
+        }
+        // 📍 기본
+        else {
             iconRes = R.drawable.ic_marker_device;
         }
 
-        // 매번 새로운 drawable 인스턴스 (alpha 설정 별도로)
         Drawable src = ContextCompat.getDrawable(requireContext(), iconRes);
         if (src == null) return null;
         return src.mutate();
@@ -507,51 +458,44 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 포인트 선택 / 정보 박스
-    // ═══════════════════════════════════════════════════════
-
-    /** position 은 시간 오름차순(mTrackPoints) 기준 */
     private void selectPoint(int reversedListPosition) {
-        // reversedListPosition → mTrackPoints 인덱스 변환 (최신이 0번 → 끝)
         int pointIndex = mTrackPoints.size() - 1 - reversedListPosition;
         if (pointIndex < 0 || pointIndex >= mTrackPoints.size()) return;
 
-        // 어댑터 선택 업데이트
         trackAdapter.setSelectedPosition(reversedListPosition);
 
         LocationWithAddress item = mTrackPoints.get(pointIndex);
         LocationEntity loc = item.getLocation();
         if (loc.getLatitude() == null || loc.getLongitude() == null) return;
 
-        // 지도 이동
         GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
         mMapView.getController().animateTo(point);
 
-        // 정보 박스 업데이트
         updateInfoBox(loc);
     }
 
 
+    /**
+     * ⭐ 정보 박스 업데이트 - TYPE 분류도 같이 수정
+     */
     private void updateInfoBox(LocationEntity loc) {
         binding.infoBox.setVisibility(View.VISIBLE);
 
-        // SPEED
         binding.tvInfoSpeed.setText(
                 loc.getSpeed() != null ? String.valueOf(loc.getSpeed()) : "-"
         );
 
-        // HEADING
         binding.tvInfoHeading.setText(
                 loc.getDirection() != null ? String.valueOf(loc.getDirection()) : "-"
         );
 
-        // TYPE
+        // ⭐ TYPE 분류 수정: 0x10 만 SOS, 나머지 Track 는 TRACK
         int trackMode = loc.getTrackMode();
-        if (trackMode == 0x10 || trackMode == 0x11 || trackMode == 4 || trackMode == 5) {
+        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             binding.tvInfoType.setText("SOS");
             binding.tvInfoType.setTextColor(0xFFFF5252);
-        } else if (trackMode == 2) {
+        } else if (trackMode == 0x11 || trackMode == 0x12
+                || trackMode == 0x13 || trackMode == 2) {
             binding.tvInfoType.setText("TRACK");
             binding.tvInfoType.setTextColor(0xFF00E5D1);
         } else {
@@ -559,7 +503,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             binding.tvInfoType.setTextColor(0xFF95B0D4);
         }
 
-        // TIME
         if (loc.getCreateAt() != null) {
             binding.tvInfoTime.setText(datetimeFmt.format(loc.getCreateAt()));
         } else {
@@ -567,10 +510,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         }
     }
 
-
-    // ═══════════════════════════════════════════════════════
-    // 필터 칩 / 날짜
-    // ═══════════════════════════════════════════════════════
 
     private void setupFilterChips() {
         binding.chip24h.setOnClickListener(v -> selectQuickChip(v, 24, true));
@@ -598,12 +537,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         binding.btnStartDate.setOnClickListener(v -> showDatePicker(true));
         binding.btnEndDate.setOnClickListener(v -> showDatePicker(false));
         binding.btnApply.setOnClickListener(v -> {
-            // Apply 버튼: 현재 날짜 텍스트로 재조회
             try {
                 Date start = dateFmt.parse(binding.tvStartDate.getText().toString());
                 Date end = dateFmt.parse(binding.tvEndDate.getText().toString());
                 if (start != null && end != null) {
-                    // 종료일은 23:59:59로
                     Calendar c = Calendar.getInstance();
                     c.setTime(end);
                     c.set(Calendar.HOUR_OF_DAY, 23);
@@ -654,10 +591,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 재생 컨트롤
-    // ═══════════════════════════════════════════════════════
-
     private void setupPlaybackControls() {
         binding.btnRewind.setOnClickListener(v -> rewindToStart());
         binding.btnPrev.setOnClickListener(v -> stepPrev());
@@ -683,7 +616,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     private void startPlayback() {
         if (mTrackPoints.isEmpty()) return;
         if (mCurrentPlayIndex >= mTrackPoints.size() - 1) {
-            mCurrentPlayIndex = -1;  // 처음부터
+            mCurrentPlayIndex = -1;
         }
         mIsPlaying = true;
         updatePlayIcon();
@@ -702,12 +635,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             mCurrentPlayIndex = mTrackPoints.size() - 1;
             return;
         }
-        // point index → reversed list position
         int reversedPos = mTrackPoints.size() - 1 - mCurrentPlayIndex;
         selectPoint(reversedPos);
         updateProgressLabel();
 
-        // 리스트 스크롤
         binding.listTracks.smoothScrollToPosition(reversedPos);
     }
 
@@ -777,10 +708,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════
-    // 지도 컨트롤
-    // ═══════════════════════════════════════════════════════
-
     private void setupMapControls() {
         binding.btnZoomIn.setOnClickListener(v -> {
             if (mMapView != null) mMapView.getController().zoomIn();
@@ -791,10 +718,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         binding.btnFitAll.setOnClickListener(v -> fitAllMarkers());
     }
 
-
-    // ═══════════════════════════════════════════════════════
-    // 생명주기
-    // ═══════════════════════════════════════════════════════
 
     @Override
     public void onResume() {

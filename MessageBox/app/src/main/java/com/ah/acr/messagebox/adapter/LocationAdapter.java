@@ -17,6 +17,12 @@ import com.ah.acr.messagebox.databinding.AdapterLocationBinding;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
+/**
+ * ⭐ trackMode 분류 수정:
+ * - 0x10, 4, 5    → SOS (긴급)
+ * - 0x11, 0x12, 0x13, 2 → TRACK (Tracking)
+ * - 기타          → DATA
+ */
 public class LocationAdapter extends ListAdapter<LocationWithAddress, LocationAdapter.LocationViewHolder> {
 
     public interface OnLocationClickListener {
@@ -89,29 +95,27 @@ public class LocationAdapter extends ListAdapter<LocationWithAddress, LocationAd
             binding.tvLatitude.setText(formatCoord(location.getLatitude()));
             binding.tvLongitude.setText(formatCoord(location.getLongitude()));
 
-            // ⭐ Track Mode에 따른 배지 처리
+            // ⭐ Track Mode에 따른 배지 처리 (수정됨)
+            // - 0x10, 4, 5    → SOS (긴급)
+            // - 0x11, 0x12, 0x13, 2 → TRACK (Tracking)
+            // - 기타          → DATA
             int trackMode = location.getTrackMode();
-            if (trackMode == 0x10 || trackMode == 4) {
-                // SOS 모드
+            if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
+                // 🚨 SOS 모드 (긴급)
                 binding.badgeType.setText("SOS");
                 binding.badgeType.setBackgroundResource(R.drawable.bg_badge_sos);
                 binding.badgeType.setTextColor(0xFFFF5252);
                 binding.layDetail.setVisibility(View.GONE);
-            } else if (trackMode == 0x11 || trackMode == 5) {
-                // SOS Stop
-                binding.badgeType.setText("SOS END");
-                binding.badgeType.setBackgroundResource(R.drawable.bg_badge_sos);
-                binding.badgeType.setTextColor(0xFFFF5252);
-                binding.layDetail.setVisibility(View.GONE);
-            } else if (trackMode == 2) {
-                // Track 모드
+            } else if (trackMode == 0x11 || trackMode == 0x12
+                    || trackMode == 0x13 || trackMode == 2) {
+                // 🚗 Track 모드 (0x11=CAR, 0x12=UAV, 0x13=UAT, 2=legacy)
                 binding.badgeType.setText("TRACK");
                 binding.badgeType.setBackgroundResource(R.drawable.bg_badge_track);
                 binding.badgeType.setTextColor(0xFF00E5D1);
                 // 상세 정보 표시
                 showDetailInfo(location);
             } else {
-                // 일반 데이터
+                // 📍 일반 데이터
                 binding.badgeType.setText("DATA");
                 binding.badgeType.setBackgroundResource(R.drawable.bg_badge_data);
                 binding.badgeType.setTextColor(0xFF95B0D4);

@@ -20,6 +20,7 @@ import java.util.Locale;
  * 트랙 포인트 목록 어댑터 (상세 팝업용)
  * - 단순 ListAdapter가 아닌 일반 RecyclerView.Adapter로 구현
  * - 선택된 위치 관리 기능
+ * - ⭐ trackMode 분류: 0x10=SOS, 0x11/0x12/0x13=Track
  */
 public class TrackPointAdapter extends RecyclerView.Adapter<TrackPointAdapter.TrackViewHolder> {
 
@@ -84,15 +85,18 @@ public class TrackPointAdapter extends RecyclerView.Adapter<TrackPointAdapter.Tr
         LocationEntity loc = item.getLocation();
 
         // # 순번 (역순 표시: 최신=1, 오래됨=N)
-        // items는 시간 DESC 순으로 들어옴
         holder.tvIndex.setText(String.valueOf(position + 1));
 
-        // Type 배지 및 색상
+        // ⭐ Type 분류 수정:
+        // 🚨 SOS: 0x10 (진짜 SOS), 4, 5 (legacy SOS)
+        // 🚗 TRACK: 0x11 (CAR), 0x12 (UAV), 0x13 (UAT), 2 (legacy Track)
+        // 📍 DATA: 기타
         int trackMode = loc.getTrackMode();
-        if (trackMode == 0x10 || trackMode == 0x11 || trackMode == 4 || trackMode == 5) {
+        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             holder.tvType.setText("SOS");
             holder.tvType.setTextColor(0xFFFF5252);
-        } else if (trackMode == 2) {
+        } else if (trackMode == 0x11 || trackMode == 0x12
+                || trackMode == 0x13 || trackMode == 2) {
             holder.tvType.setText("TRACK");
             holder.tvType.setTextColor(0xFF378ADD);
         } else {
