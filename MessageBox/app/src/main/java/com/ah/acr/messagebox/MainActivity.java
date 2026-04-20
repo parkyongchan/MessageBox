@@ -16,6 +16,8 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -71,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
     // Test data IMEIs
     private static final String TEST_IMEI_TRACK = "TEST-001";
     private static final String TEST_IMEI_SOS = "TEST-002";
-    private static final String TEST_IMEI_MSG = "1111111111111111";  // ⭐ NEW
+    private static final String TEST_IMEI_MSG = "1111111111111111";
 
     private ActivityMainBinding binding;
 
@@ -82,6 +84,16 @@ public class MainActivity extends AppCompatActivity {
 
     private int mTestTapCount = 0;
     private boolean mIsTestMode = false;
+
+    // ⭐ 재시도 / 주기 동기화용 Handler
+    private Handler mSyncHandler;
+    private Runnable mBroadRetryRunnable;
+    private Runnable mInfoRetryRunnable;
+    private long mLastBroadReceivedTime = 0;
+    private long mLastInfoReceivedTime = 0;
+    private static final long BROAD_TIMEOUT_MS = 15000;   // 15초간 BROAD 안 오면 재요청
+    private static final long INFO_TIMEOUT_MS = 8000;     // 8초간 INFO 안 오면 재요청
+    private static final long PERIODIC_SYNC_MS = 30000;   // 30초마다 주기 동기화
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -155,12 +167,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        mSyncHandler = new Handler(Looper.getMainLooper());
+
         BLE.INSTANCE.getSelectedDevice().observe(this, bleDevice -> {
             if (bleDevice != null) {
                 Log.v("BLE", bleDevice.toString());
                 setConnectBleDevice(bleDevice);
             } else {
                 Log.v("BLE", "disconnected Ble device...");
+                stopPeriodicSync();
             }
         });
 
@@ -182,11 +197,95 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ═════════════════════════════════════════════════════════════
+    //   ⭐ 주기 동기화 / 재시도 로직
+    // ═════════════════════════════════════════════════════════════
+
+    /** BLE 연결 직후 호출 - INFO=?, BROAD=5 요청 + 주기 동기화 시작 */
+    private void startPeriodicSync() {
+        Log.v("SYNC", "▶ Starting periodic sync");
+        mLastBroadReceivedTime = System.currentTimeMillis();
+        mLastInfoReceivedTime = System.currentTimeMillis();
+
+        // 초기 요청
+        BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+
+        // 10초마다 동기화 상태 체크
+        mSyncHandler.removeCallbacksAndMessages(null);
+        mSyncHandler.postDelayed(mPeriodicSyncRunnable, PERIODIC_SYNC_MS);
+
+        // 15초 후에도 BROAD 안 오면 재요청
+        if (mBroadRetryRunnable == null) {
+            mBroadRetryRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    long elapsed = System.currentTimeMillis() - mLastBroadReceivedTime;
+                    if (elapsed >= BROAD_TIMEOUT_MS && BLE.INSTANCE.getSelectedDevice().getValue() != null) {
+                        Log.v("SYNC", "⚠ BROAD timeout (" + elapsed + "ms) - re-requesting BROAD=5");
+                        BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+                    }
+                    mSyncHandler.postDelayed(this, BROAD_TIMEOUT_MS);
+                }
+            };
+        }
+        mSyncHandler.postDelayed(mBroadRetryRunnable, BROAD_TIMEOUT_MS);
+
+        // 8초 후에도 INFO 안 오면 재요청
+        if (mInfoRetryRunnable == null) {
+            mInfoRetryRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    long elapsed = System.currentTimeMillis() - mLastInfoReceivedTime;
+                    DeviceInfo currentInfo = BLE.INSTANCE.getDeviceInfo().getValue();
+                    boolean noImei = currentInfo == null || currentInfo.getImei() == null || currentInfo.getImei().isEmpty();
+
+                    if (noImei && BLE.INSTANCE.getSelectedDevice().getValue() != null) {
+                        Log.v("SYNC", "⚠ INFO not received - re-requesting INFO=?");
+                        BLE.INSTANCE.getWriteQueue().offer("INFO=?");
+                        mSyncHandler.postDelayed(this, INFO_TIMEOUT_MS);
+                    }
+                }
+            };
+        }
+        mSyncHandler.postDelayed(mInfoRetryRunnable, INFO_TIMEOUT_MS);
+    }
+
+    /** 30초마다 반복 - 장비 상태 재확인 */
+    private final Runnable mPeriodicSyncRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                Log.v("SYNC", "■ Device disconnected - stopping periodic sync");
+                return;
+            }
+
+            long broadElapsed = System.currentTimeMillis() - mLastBroadReceivedTime;
+            Log.v("SYNC", "▶ Periodic check - BROAD last received " + broadElapsed + "ms ago");
+
+            if (broadElapsed >= BROAD_TIMEOUT_MS) {
+                Log.v("SYNC", "⚠ BROAD stale - re-requesting BROAD=5");
+                BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+            }
+
+            mSyncHandler.postDelayed(this, PERIODIC_SYNC_MS);
+        }
+    };
+
+    private void stopPeriodicSync() {
+        Log.v("SYNC", "■ Stopping all sync handlers");
+        if (mSyncHandler != null) {
+            mSyncHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
     //   Fixed Header / Status Card
     // ═════════════════════════════════════════════════════════════
 
     private void setupFixedHeaderObservers() {
         BLE.INSTANCE.getDeviceInfo().observe(this, info -> {
+            Log.v("OBS-INFO", "DeviceInfo observer fired: " + (info != null ? info.getImei() : "null"));
+
             if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
                 binding.headerArea.textHeaderSub.setText("IMEI  " + info.getImei());
                 ImeiStorage.save(this, info.getImei());
@@ -207,7 +306,8 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textBleStatusMain.setText("Connected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
-                BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+                // ⭐ 주기 동기화 시작 (onNotifySuccess 에서 이미 INFO=? 는 보냄)
+                startPeriodicSync();
             } else {
                 if (mIsTestMode) return;
                 binding.statusArea.textBleStatusMain.setText("Disconnected");
@@ -219,10 +319,14 @@ public class MainActivity extends AppCompatActivity {
                 binding.headerArea.textHeaderSub.setText("IMEI  -");
                 updateSignalBar(0);
                 updateLocationStatus(0);
+                stopPeriodicSync();
             }
         });
 
         mBleViewModel.getDeviceStatus().observe(this, status -> {
+            Log.v("OBS-STATUS", "DeviceStatus observer fired: " +
+                    (status != null ? ("battery=" + status.getBattery() + " signal=" + status.getSignal()) : "null"));
+
             if (status == null) return;
             binding.statusArea.textMainBattery.setText(String.format("%d%%", status.getBattery()));
             updateSignalBar(status.getSignal());
@@ -325,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
             updateLocationStatus(0);
 
             deleteTestLocationData();
-            deleteTestMessages();  // ⭐ NEW
+            deleteTestMessages();
             Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
         } else {
             // ═══ ON ═══
@@ -333,7 +437,7 @@ public class MainActivity extends AppCompatActivity {
             DeviceStatus test = new DeviceStatus();
             test.setBattery(85);
             test.setSignal(3);
-            test.setInBox(10);  // ⭐ 10 test messages
+            test.setInBox(10);
             test.setOutBox(1);
             test.setTrackingMode(true);
             test.setSosMode(false);
@@ -346,7 +450,7 @@ public class MainActivity extends AppCompatActivity {
             ImeiStorage.save(this, "300434061000001");
 
             insertTestLocationData();
-            insertTestMessages();  // ⭐ NEW
+            insertTestMessages();
             Toast.makeText(this, "🧪 Test data injected (20 locations + 10 messages)",
                     Toast.LENGTH_SHORT).show();
         }
@@ -430,16 +534,11 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ Test Messages (NEW)
+    //   Test Messages
     // ═════════════════════════════════════════════════════════════
 
-    /**
-     * Insert 10 test messages from external IMEI 1111111111111111.
-     * Mix of Korean + English, varied titles/bodies, spread over past 12 hours.
-     */
     private void insertTestMessages() {
         String[][] testMsgs = {
-                // {title, body}
                 {"안녕하세요",         "오늘도 좋은 하루 보내세요! 😊"},
                 {"날씨 확인",           "서울 현재 맑음, 기온 15도입니다."},
                 {"미팅 변경 안내",      "내일 오후 2시 미팅이 3시로 변경되었습니다. 확인 부탁드려요."},
@@ -455,30 +554,21 @@ public class MainActivity extends AppCompatActivity {
         Calendar cal = Calendar.getInstance();
         Date now = cal.getTime();
 
-        // Hours back from now for each message
         int[] hoursBack = {0, 1, 2, 3, 4, 5, 6, 8, 10, 12};
 
         for (int i = 0; i < testMsgs.length; i++) {
             cal.setTime(now);
             cal.add(Calendar.HOUR_OF_DAY, -hoursBack[i]);
-            cal.add(Calendar.MINUTE, -(i * 7));  // Add some minute variation
+            cal.add(Calendar.MINUTE, -(i * 7));
             Date sentTime = cal.getTime();
 
-            // First 3 messages = unread, rest = read (for UI variety)
             boolean isRead = i >= 3;
 
             MsgEntity msg = new MsgEntity(
-                    0,                          // id (auto-gen)
-                    false,                      // isSendMsg = false (received)
-                    TEST_IMEI_MSG,              // codeNum = sender IMEI
-                    testMsgs[i][0],             // title
-                    testMsgs[i][1],             // msg body
-                    sentTime,                   // createAt
-                    sentTime,                   // receiveAt
-                    sentTime,                   // sendDeviceAt
-                    isRead,                     // isRead
-                    false,                      // isSend
-                    false                       // isDeviceSend
+                    0, false, TEST_IMEI_MSG,
+                    testMsgs[i][0], testMsgs[i][1],
+                    sentTime, sentTime, sentTime,
+                    isRead, false, false
             );
             msgViewModel.insert(msg, success -> {
                 if (success) Log.v("TEST_MSG", "Test message " + (testMsgs.length) + " saved");
@@ -490,7 +580,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    /** Delete test messages (match by IMEI) */
     private void deleteTestMessages() {
         msgViewModel.getAllMsgs().observe(this, new androidx.lifecycle.Observer<List<MsgEntity>>() {
             @Override
@@ -566,6 +655,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopPeriodicSync();
         BleManager.getInstance().disconnectAllDevice();
         BleManager.getInstance().destroy();
     }
@@ -603,7 +693,10 @@ public class MainActivity extends AppCompatActivity {
             if (vals.length > 9) info.setSosStarted(!vals[9].equals("0"));
             if (vals.length > 10) info.setTrackingMode((!vals[10].equals("0")));
 
-            BLE.INSTANCE.getDeviceInfo().setValue(info);
+            // ⭐ postValue 로 변경 (어떤 스레드에서 호출돼도 안전)
+            BLE.INSTANCE.getDeviceInfo().postValue(info);
+            mLastInfoReceivedTime = System.currentTimeMillis();
+            Log.v("SYNC", "✓ INFO received - imei=" + info.getImei());
 
             if (info.isPwChanged()) {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_TRY);
@@ -618,6 +711,11 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_OK);
                 BLE.INSTANCE.isLogon().postValue(true);
+                // ⭐ 로그인 성공 시 다시 한 번 BROAD=5 요청 (안전장치)
+                mSyncHandler.postDelayed(() -> {
+                    BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+                    Log.v("SYNC", "▶ Post-login BROAD=5 sent");
+                }, 500);
             }
         } else if (packet.startsWith("CHANGELOGIN=")) {
             String msg = packet.substring(12);
@@ -625,6 +723,10 @@ public class MainActivity extends AppCompatActivity {
             if (vals[0].equals("OK")) {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_CHANGE_OK);
                 BLE.INSTANCE.isLogon().postValue(true);
+                mSyncHandler.postDelayed(() -> {
+                    BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
+                    Log.v("SYNC", "▶ Post-changelogin BROAD=5 sent");
+                }, 500);
             } else {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_CHANGE_FAIL);
             }
@@ -716,9 +818,10 @@ public class MainActivity extends AppCompatActivity {
                     double lng = buffer.readFloat();
                     byte etc = buffer.readByte();
 
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
-                            sender, lat, lng, 0, 0, 0, null,
-                            new Date(), false, false, false);
+                    Date now = new Date();
+                    LocationEntity addLoc = new LocationEntity(0, false, ver,
+                            sender, lat, lng, 0, 0, 0, now,
+                            now, false, false, false);
                     Log.v("VER 11", addLoc.toString());
                     locationViewModel.insert(addLoc, success -> {
                         if (success) Log.v("Location ADD", "Location saved");
@@ -750,9 +853,10 @@ public class MainActivity extends AppCompatActivity {
                     int dir = buffer.readUnsignedByte() * 2;
                     byte etc = buffer.readByte();
 
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
-                            sender, lat, lng, alt, dir, speed, null,
-                            new Date(), false, false, false);
+                    Date now = new Date();
+                    LocationEntity addLoc = new LocationEntity(0, false, ver,
+                            sender, lat, lng, alt, dir, speed, now,
+                            now, false, false, false);
                     Log.v("VER 12", addLoc.toString());
                     locationViewModel.insert(addLoc, success -> {
                         if (success) Log.v("Location ADD", "Location saved");
@@ -796,7 +900,7 @@ public class MainActivity extends AppCompatActivity {
                     ZonedDateTime zdtUtc = ldt.atZone(ZoneId.of("UTC"));
                     Date date = Date.from(zdtUtc.toInstant());
 
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                    LocationEntity addLoc = new LocationEntity(0, false, ver,
                             sender, lat, lng, alt, dir, speed, date,
                             new Date(), false, false, false);
                     Log.v("VER 13", addLoc.toString());
@@ -854,6 +958,8 @@ public class MainActivity extends AppCompatActivity {
 
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,OK", vals[0]));
             } catch (Exception e) {
+                Log.e("RECEIVE-ERR", "PARSE FAILED: " + e.getMessage(), e);
+                Log.e("RECEIVE-ERR", "raw packet: " + packet);
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,FAIL", vals[0]));
             }
         } else if (packet.startsWith("MSGDEL=")) {
@@ -874,14 +980,17 @@ public class MainActivity extends AppCompatActivity {
             sta.setOutBox(Integer.parseInt(vals[2]));
             sta.setSignal(Integer.parseInt(vals[3]));
 
-            if (vals.length > 4) {
-                sta.setGpsTime(vals[4]);
-                sta.setGpsLat(vals[5]);
-                sta.setGpsLng(vals[6]);
-                sta.setSosMode(!vals[7].equals("0"));
-                sta.setTrackingMode(!vals[8].equals("0"));
-            }
-            mBleViewModel.getDeviceStatus().setValue(sta);
+            if (vals.length > 4) sta.setGpsTime(vals[4]);
+            if (vals.length > 5) sta.setGpsLat(vals[5]);
+            if (vals.length > 6) sta.setGpsLng(vals[6]);
+            if (vals.length > 7) sta.setSosMode(!vals[7].equals("0"));
+            if (vals.length > 8) sta.setTrackingMode(!vals[8].equals("0"));
+
+            // ⭐ postValue 로 변경 + 수신 시각 기록
+            mBleViewModel.getDeviceStatus().postValue(sta);
+            mLastBroadReceivedTime = System.currentTimeMillis();
+            Log.v("SYNC", "✓ BROAD received - battery=" + sta.getBattery() +
+                    " signal=" + sta.getSignal() + " tracking=" + sta.isTrackingMode());
         } else if (packet.startsWith("SN=")) {
             String msg = packet.substring(3);
             String[] vals = msg.split(",");
