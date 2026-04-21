@@ -17,7 +17,7 @@ import androidx.room.TypeConverters
         SatTrackEntity::class,
         SatTrackPointEntity::class
     ],
-    version = 4,   // ⭐ v3 → v4 (avatarPath added to AddressEntity)
+    version = 5,   // ⭐ v4 → v5 (sort by create_at instead of id, self-echo matching)
     exportSchema = false
 )
 @TypeConverters(Converters::class)

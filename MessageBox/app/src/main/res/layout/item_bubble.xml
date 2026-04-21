@@ -1,22 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 
+  카카오톡 스타일 말풍선 레이아웃
+  - 송신: 우측 정렬, 노랑 말풍선
+  - 수신: 좌측 정렬, 흰색 말풍선 + 아바타 + 이름
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/layout_bubble_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="6dp"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
     android:gravity="start">
 
     <!-- ⭐ 상대방 아바타 (수신 시만 표시) -->
-    <!-- FrameLayout으로 ImageView + TextView 중첩 -->
     <FrameLayout
         android:id="@+id/layout_bubble_avatar"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_marginEnd="8dp"
-        android:layout_marginTop="2dp">
+        android:layout_marginTop="18dp">
 
-        <!-- 아바타 이미지 (AvatarHelper가 생성한 Bitmap) -->
         <ImageView
             android:id="@+id/img_bubble_avatar"
             android:layout_width="match_parent"
@@ -24,7 +30,6 @@
             android:scaleType="centerCrop"
             android:contentDescription="Avatar" />
 
-        <!-- Fallback TextView (AvatarHelper 실패 시만 표시) -->
         <TextView
             android:id="@+id/text_bubble_avatar"
             android:layout_width="match_parent"
@@ -38,12 +43,11 @@
 
     </FrameLayout>
 
-    <!-- 말풍선 컨테이너 -->
+    <!-- 말풍선 컨테이너 (발신자 이름 + 시간+말풍선 row) -->
     <LinearLayout
         android:id="@+id/layout_bubble_content"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:orientation="vertical">
 
         <!-- 발신자 이름 (수신 시만 표시) -->
@@ -51,11 +55,12 @@
             android:id="@+id/text_bubble_sender"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#8899AA"
-            android:textSize="11sp"
+            android:textColor="#95B0D4"
+            android:textSize="12sp"
             android:layout_marginBottom="3dp"
             android:layout_marginStart="4dp" />
 
+        <!-- 시간 + 말풍선 Row -->
         <LinearLayout
             android:id="@+id/layout_bubble_row"
             android:layout_width="wrap_content"
@@ -63,7 +68,7 @@
             android:orientation="horizontal"
             android:gravity="bottom">
 
-            <!-- 발신 시 - 좌측: 모래시계(위) + 시간(아래) 세로 배치 -->
+            <!-- 발신 시 - 좌측: 모래시계 + 시간 -->
             <LinearLayout
                 android:id="@+id/layout_bubble_time_left"
                 android:layout_width="wrap_content"
@@ -71,6 +76,7 @@
                 android:orientation="vertical"
                 android:gravity="end"
                 android:layout_marginEnd="6dp"
+                android:layout_marginBottom="2dp"
                 android:visibility="gone">
 
                 <!-- 모래시계 아이콘 (미전송 표시) -->
@@ -88,27 +94,26 @@
                     android:id="@+id/text_bubble_time_left"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#4A5F78"
+                    android:textColor="#7A8FA8"
                     android:textSize="10sp" />
 
             </LinearLayout>
 
-            <!-- 말풍선 본체 -->
+            <!-- 말풍선 본체 (카카오톡 스타일) -->
             <LinearLayout
                 android:id="@+id/layout_bubble_box"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:maxWidth="260dp"
-                android:background="#1A2F50"
-                android:padding="10dp">
+                android:background="@drawable/bg_bubble_receive">
 
                 <!-- 제목 -->
                 <TextView
                     android:id="@+id/text_bubble_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#00E5D1"
+                    android:textColor="#0066CC"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="4dp"
@@ -119,20 +124,21 @@
                     android:id="@+id/text_bubble_msg"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
+                    android:textColor="#000000"
+                    android:textSize="15sp"
                     android:lineSpacingExtra="2dp" />
 
             </LinearLayout>
 
-            <!-- 수신 시 - 우측: 시간만 표시 -->
+            <!-- 수신 시 - 우측: 시간만 -->
             <TextView
                 android:id="@+id/text_bubble_time_right"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#4A5F78"
+                android:textColor="#7A8FA8"
                 android:textSize="10sp"
                 android:layout_marginStart="6dp"
+                android:layout_marginBottom="2dp"
                 android:visibility="gone" />
 
         </LinearLayout>

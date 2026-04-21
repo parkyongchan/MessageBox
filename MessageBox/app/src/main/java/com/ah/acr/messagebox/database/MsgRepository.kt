@@ -2,6 +2,7 @@ package com.ah.acr.messagebox.database
 
 import androidx.lifecycle.LiveData
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 class MsgRepository(private val msgDao: MsgDao) {
 
@@ -52,5 +53,19 @@ class MsgRepository(private val msgDao: MsgDao) {
 
     suspend fun deleteById(msgId: Int) {
         msgDao.deleteMsgById(msgId)
+    }
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ 자기 에코 매칭
+    // ═════════════════════════════════════════════════════════
+
+    /** 자기 에코 후보 찾기 (매칭되는 송신 레코드) */
+    suspend fun findSelfSentMessage(codeNum: String, message: String): MsgEntity? {
+        return msgDao.findSelfSentMessage(codeNum, message)
+    }
+
+    /** 자기 에코 수신 처리 */
+    suspend fun markSelfEchoReceived(msgId: Int, receiveAt: Date) {
+        msgDao.markSelfEchoReceived(msgId, receiveAt)
     }
 }

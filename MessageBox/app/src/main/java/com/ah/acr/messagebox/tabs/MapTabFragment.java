@@ -64,8 +64,21 @@ import java.util.Locale;
  * 지도 탭 (Map Tab)
  * - 받은 위치 데이터 목록 + 지도 시각화
  * - 검색 포커스 시 지도 숨겨 목록 확대
- * - ⭐ 지도 모드 수동 토글 (온라인/오프라인)
- * - ⭐ 아이콘 분류: 0x10=SOS, 0x11=CAR(Track)
+ * - 지도 모드 수동 토글 (온라인/오프라인)
+ *
+ * ⭐ 마커 아이콘 구분 (프로토콜 ver 값 기준):
+ *
+ *   수신 (다른 장비):
+ *     🚨 0x10 = SOS 수신 → 빨강 (ic_marker_sos)
+ *     🚗 0x11, 0x12, 0x13 = TRACK 수신 → 파랑 (ic_marker_track)
+ *
+ *   송신 (내 장비):
+ *     🆘 0x00 = 내 SOS 송신 → 주황 (ic_marker_my_sos)
+ *     🎯 0x01, 0x02, 0x03 = 내 TRACK 송신 → 초록 (ic_marker_my_track)
+ *
+ *   Legacy (테스트 데이터):
+ *     4, 5 = SOS (빨강)
+ *     2    = TRACK (파랑)
  */
 public class MapTabFragment extends Fragment {
     private static final String TAG = MapTabFragment.class.getSimpleName();
@@ -259,7 +272,8 @@ public class MapTabFragment extends Fragment {
             }
             marker.setSnippet(snippet);
 
-            Drawable icon = getMarkerIcon(loc.getTrackMode());
+            // ⭐ 마커 아이콘: trackMode 와 isIncomeLoc 으로 판별
+            Drawable icon = getMarkerIcon(loc.getTrackMode(), loc.isIncomeLoc());
             if (icon != null) marker.setIcon(icon);
 
             mMarkers.add(marker);
@@ -276,31 +290,63 @@ public class MapTabFragment extends Fragment {
 
 
     /**
-     * ⭐ trackMode 에 따른 마커 아이콘
+     * ⭐ 마커 아이콘 선택 (프로토콜 ver 기반 + 송수신 구분)
      *
      * TYTO 프로토콜 ver 코드:
-     * - 0x10 : SOS (긴급)    → 🚨 빨간 마커
-     * - 0x11 : CAR (Tracking)→ 🚗 Track 마커
-     * - 0x12 : UAV (드론)    → ✈️ Track 마커
-     * - 0x13 : UAT (차량확장)→ 🚙 Track 마커
-     * - 4, 5 : Legacy SOS
-     * - 2    : Legacy Track
+     *   수신 (다른 장비로부터):
+     *     0x10 (16) → 🚨 SOS 빨강
+     *     0x11 (17) → 🚗 CAR TRACK 파랑
+     *     0x12 (18) → ✈️ UAV TRACK 파랑
+     *     0x13 (19) → 🚙 UAT TRACK 파랑
+     *
+     *   송신 (내 장비):
+     *     0x00 (0)  → 🆘 내 SOS 주황
+     *     0x01 (1)  → 🎯 내 CAR TRACK 초록
+     *     0x02 (2)  → 🎯 내 UAV TRACK 초록
+     *     0x03 (3)  → 🎯 내 UAT TRACK 초록
+     *
+     *   Legacy (테스트):
+     *     4, 5 → SOS 빨강
+     *     2    → TRACK 파랑 (⚠️ 0x02 와 충돌 - isIncomeLoc 으로 구분)
+     *
+     * @param trackMode DB 에 저장된 track_mode 값 (프로토콜 ver)
+     * @param isIncomeLoc true=송신(내 장비), false=수신(다른 장비)
      */
-    private Drawable getMarkerIcon(int trackMode) {
+    private Drawable getMarkerIcon(int trackMode, boolean isIncomeLoc) {
         int iconRes;
-        // 🚨 SOS: 0x10 만! (0x11 제외)
-        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
-            iconRes = R.drawable.ic_marker_sos;
+
+        // ═══ 송신 (내 위치) - isIncomeLoc = true ═══
+        if (isIncomeLoc) {
+            // 🆘 내 SOS: 0x00
+            if (trackMode == 0x00) {
+                iconRes = R.drawable.ic_marker_my_sos;
+            }
+            // 🎯 내 TRACK: 0x01, 0x02, 0x03
+            else if (trackMode == 0x01 || trackMode == 0x02 || trackMode == 0x03) {
+                iconRes = R.drawable.ic_marker_my_track;
+            }
+            // 기본 (송신이지만 알 수 없는 모드)
+            else {
+                iconRes = R.drawable.ic_marker_device;
+            }
         }
-        // 🚗 TRACK: 0x11, 0x12, 0x13, 2
-        else if (trackMode == 0x11 || trackMode == 0x12
-                || trackMode == 0x13 || trackMode == 2) {
-            iconRes = R.drawable.ic_marker_track;
-        }
-        // 📍 기본
+        // ═══ 수신 (다른 장비) - isIncomeLoc = false ═══
         else {
-            iconRes = R.drawable.ic_marker_device;
+            // 🚨 SOS 수신: 0x10 + Legacy 4, 5
+            if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
+                iconRes = R.drawable.ic_marker_sos;
+            }
+            // 🚗 TRACK 수신: 0x11, 0x12, 0x13 + Legacy 2
+            else if (trackMode == 0x11 || trackMode == 0x12
+                    || trackMode == 0x13 || trackMode == 2) {
+                iconRes = R.drawable.ic_marker_track;
+            }
+            // 기본
+            else {
+                iconRes = R.drawable.ic_marker_device;
+            }
         }
+
         return ContextCompat.getDrawable(requireContext(), iconRes);
     }
 

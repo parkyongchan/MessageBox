@@ -10,6 +10,10 @@ import com.ah.acr.messagebox.R;
 /**
  * 지도 모드 토글 UI 설정 헬퍼
  * Fragment 에서 토글 UI 연결을 한 줄로 단순화
+ *
+ * ⭐ OFFLINE 폴백 버그 수정:
+ * - OFFLINE 클릭 시 MBTiles 없으면 자동 ONLINE 폴백 발생
+ * - 이 때 토글 UI 도 ONLINE 으로 동기화되어야 함
  */
 public class MapModeToggleHelper {
 
@@ -38,20 +42,28 @@ public class MapModeToggleHelper {
         // 현재 모드에 맞게 UI 업데이트
         updateUI(ctx, btnOnline, btnOffline);
 
-        // 온라인 클릭
+        // 🌐 온라인 클릭
         btnOnline.setOnClickListener(v -> {
             if (MapModeManager.getMode(ctx) == MapModeManager.Mode.ONLINE) return;
             MapModeManager.setMode(ctx, MapModeManager.Mode.ONLINE);
             updateUI(ctx, btnOnline, btnOffline);
             if (listener != null) listener.onModeChanged(MapModeManager.Mode.ONLINE);
+
+            // ⭐ 콜백 후 재검증 (안전장치)
+            updateUI(ctx, btnOnline, btnOffline);
         });
 
-        // 오프라인 클릭
+        // 📁 오프라인 클릭
         btnOffline.setOnClickListener(v -> {
             if (MapModeManager.getMode(ctx) == MapModeManager.Mode.OFFLINE) return;
             MapModeManager.setMode(ctx, MapModeManager.Mode.OFFLINE);
             updateUI(ctx, btnOnline, btnOffline);
             if (listener != null) listener.onModeChanged(MapModeManager.Mode.OFFLINE);
+
+            // ⭐ 핵심 수정: 콜백 후 UI 재검증
+            // MBTiles 파일 없으면 applyToMapView() 에서 ONLINE 으로 자동 폴백됨
+            // 이 때 토글 UI 도 ONLINE 으로 동기화해야 함
+            updateUI(ctx, btnOnline, btnOffline);
         });
     }
 

@@ -6,9 +6,9 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 import com.ah.acr.messagebox.AddrssBookFragment;
 import com.ah.acr.messagebox.FirmwareFragment;
+import com.ah.acr.messagebox.OfflineMapFragment;
 import com.ah.acr.messagebox.SettingFragment;
 import com.ah.acr.messagebox.SosFragment;
-import com.ah.acr.messagebox.StatusFragment;
 
 public class SettingViewPagerAdapter extends FragmentStateAdapter {
     public SettingViewPagerAdapter(@NonNull Fragment fragment) {
@@ -23,12 +23,13 @@ public class SettingViewPagerAdapter extends FragmentStateAdapter {
             case 1: return new SettingFragment();
             case 2: return new SosFragment();
             case 3: return new FirmwareFragment();
+            case 4: return new OfflineMapFragment();  // ⭐ 새로 추가
             default: return new AddrssBookFragment();
         }
     }
 
     @Override
     public int getItemCount() {
-        return 4; // 탭 개수
+        return 5; // ⭐ 탭 개수 (Maps 추가)
     }
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Date
 
 class MsgViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -112,6 +113,44 @@ class MsgViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteById(id)
         } catch (e: Exception) {
             Log.e("MsgViewModel", "메세지 삭제 실패", e)
+        }
+    }
+
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ 자기 에코 매칭
+    // ═════════════════════════════════════════════════════════
+
+    /**
+     * 자기 에코 메시지 처리
+     * - 자기 자신이 보낸 메시지가 위성 경유하여 되돌아온 경우
+     * - 기존 송신 레코드를 찾아서 업데이트 (새 레코드 생성 X)
+     *
+     * @param codeNum 수신자 IMEI (= 내 IMEI)
+     * @param message 메시지 본문
+     * @param onResult 콜백: true = 매칭 성공 (기존 레코드 업데이트),
+     *                       false = 매칭 실패 (중복이거나 이미 처리됨)
+     */
+    fun tryMarkSelfEcho(
+        codeNum: String,
+        message: String,
+        onResult: (Boolean) -> Unit
+    ) = viewModelScope.launch {
+        try {
+            val existing = repository.findSelfSentMessage(codeNum, message)
+            if (existing != null) {
+                // 기존 송신 레코드 발견 → 수신 완료 표시
+                repository.markSelfEchoReceived(existing.id, Date())
+                Log.v("SELF-ECHO", "매칭 성공: id=${existing.id} codeNum=$codeNum")
+                onResult(true)
+            } else {
+                // 매칭 실패 (이미 처리된 에코 또는 다른 사람 메시지)
+                Log.v("SELF-ECHO", "매칭 실패: codeNum=$codeNum (중복 에코)")
+                onResult(false)
+            }
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "자기 에코 처리 실패", e)
+            onResult(false)
         }
     }
 }

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="46dp"
+    android:viewportWidth="36"
+    android:viewportHeight="46">
+
+    <!-- 외부 원형 그림자 -->
+    <path
+        android:pathData="M18,45 C18,45 4,26 4,16 A14,14 0 1,1 32,16 C32,26 18,45 18,45 Z"
+        android:fillColor="#1A000000" />
+
+    <!-- 메인 핀 모양 (초록) -->
+    <path
+        android:pathData="M18,44 C18,44 5,25 5,15 A13,13 0 1,1 31,15 C31,25 18,44 18,44 Z"
+        android:fillColor="#34C759"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2" />
+
+    <!-- 내부 원 (흰색) -->
+    <path
+        android:pathData="M18,22 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"
+        android:fillColor="#FFFFFF" />
+
+    <!-- 안쪽 원 (초록) -->
+    <path
+        android:pathData="M18,22 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0"
+        android:fillColor="#34C759" />
+
+    <!-- 중앙 점 (내 위치 표시) -->
+    <path
+        android:pathData="M18,22 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFFFFF" />
+
+</vector>

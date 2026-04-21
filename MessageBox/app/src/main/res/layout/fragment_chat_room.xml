@@ -1,33 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#0A1628">
 
-    <!-- 헤더 -->
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 헤더 (뒤로가기 + 아바타 + 이름 + 새로고침 + 삭제) -->
+    <!-- ─────────────────────────────────────────────── -->
     <LinearLayout
+        android:id="@+id/chat_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="#0D1F3C"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="12dp"
-        android:gravity="center_vertical">
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ⭐ 헤더 아바타 - FrameLayout + ImageView + TextView fallback -->
+        <!-- ⭐ 뒤로가기 버튼 (신규) -->
+        <ImageView
+            android:id="@+id/btn_chat_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_arrow_back"
+            android:padding="8dp"
+            app:tint="#00E5D1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Back" />
+
+        <!-- 헤더 아바타 (기존 유지) -->
         <FrameLayout
             android:id="@+id/frame_chat_room_avatar"
             android:layout_width="38dp"
             android:layout_height="38dp"
             android:clickable="true"
             android:focusable="true"
-            android:layout_marginEnd="12dp">
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="10dp">
 
-            <!-- 아바타 이미지 (AvatarHelper Bitmap 또는 업로드 이미지) -->
             <ImageView
                 android:id="@+id/img_chat_room_avatar"
                 android:layout_width="match_parent"
@@ -35,7 +54,6 @@
                 android:scaleType="centerCrop"
                 android:contentDescription="Avatar" />
 
-            <!-- Fallback TextView (AvatarHelper 실패 시만 표시) -->
             <TextView
                 android:id="@+id/text_chat_room_avatar"
                 android:layout_width="match_parent"
@@ -47,7 +65,6 @@
                 android:background="#1A2F50"
                 android:visibility="gone" />
 
-            <!-- 카메라 편집 힌트 (우측 하단) -->
             <View
                 android:layout_width="12dp"
                 android:layout_height="12dp"
@@ -87,7 +104,20 @@
 
         </LinearLayout>
 
-        <!-- 전체삭제 버튼 (휴지통 아이콘) -->
+        <!-- ⭐ 새로고침 버튼 (신규) -->
+        <ImageView
+            android:id="@+id/btn_chat_refresh"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_refresh"
+            android:padding="8dp"
+            app:tint="#00E5D1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Refresh Inbox" />
+
+        <!-- 전체삭제 버튼 (기존 유지) -->
         <ImageView
             android:id="@+id/btn_chat_delete_all"
             android:layout_width="40dp"
@@ -101,33 +131,48 @@
 
     </LinearLayout>
 
-    <!-- 말풍선 리스트 -->
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 말풍선 리스트                                    -->
+    <!-- ─────────────────────────────────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_chat_room"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
-        android:clipToPadding="false" />
+        android:clipToPadding="false"
+        app:layout_constraintTop_toBottomOf="@id/chat_header"
+        app:layout_constraintBottom_toTopOf="@id/chat_divider"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 
     <!-- 구분선 -->
     <View
+        android:id="@+id/chat_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#1A2F50" />
+        android:background="#1A2F50"
+        app:layout_constraintBottom_toTopOf="@id/chat_input_area" />
 
-    <!-- 입력창 -->
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- 입력창 (기존 유지)                                -->
+    <!-- ─────────────────────────────────────────────── -->
     <LinearLayout
+        android:id="@+id/chat_input_area"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="#0D1F3C"
-        android:padding="10dp">
+        android:padding="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- 제목 입력 -->
         <EditText
             android:id="@+id/edit_chat_title"
             android:layout_width="match_parent"
@@ -144,7 +189,6 @@
             android:layout_marginBottom="6dp"
             android:singleLine="true" />
 
-        <!-- 본문 + 전송 버튼 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -183,4 +227,50 @@
 
     </LinearLayout>
 
-</LinearLayout>
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- ⭐ FAB: 대기 메시지 전송 (우측 하단 플로팅)        -->
+    <!-- ─────────────────────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/fab_send_pending"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_fab_send_pending"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:elevation="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/chat_divider">
+
+        <!-- 전송 아이콘 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="▶"
+            android:textColor="#0A1628"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- 배지 (대기 메시지 개수) -->
+        <TextView
+            android:id="@+id/text_fab_badge"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="-2dp"
+            android:layout_marginEnd="-2dp"
+            android:background="@drawable/bg_fab_badge"
+            android:gravity="center"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

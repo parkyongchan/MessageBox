@@ -47,24 +47,17 @@ interface LocationDao {
 
 
     // ═══════════════════════════════════════════════════════
-    // ⭐ 신규: 조회/필터/트랙 쿼리
+    // ⭐ 장비별 최신 위치 (필터 미적용)
+    //   - 송신(0x00-0x03) + 수신(0x10-0x13) 모두 포함
     // ═══════════════════════════════════════════════════════
 
-    /**
-     * 장비별 최신 위치 (메인 목록용)
-     * - 수신된 위치만 (is_income_loc = 0)
-     * - 장비 번호(code_num)별로 그룹핑
-     * - 각 그룹에서 가장 최근 것만 선택
-     */
     @Transaction
     @Query("""
         SELECT * FROM locations
-        WHERE is_income_loc = 0
-          AND create_at BETWEEN :startDate AND :endDate
+        WHERE create_at BETWEEN :startDate AND :endDate
           AND id IN (
               SELECT MAX(id) FROM locations
-              WHERE is_income_loc = 0
-                AND create_at BETWEEN :startDate AND :endDate
+              WHERE create_at BETWEEN :startDate AND :endDate
               GROUP BY code_num
           )
         ORDER BY create_at DESC
@@ -75,18 +68,36 @@ interface LocationDao {
     ): LiveData<List<LocationWithAddress>>
 
 
-    /**
-     * 필터 적용된 장비별 최신 위치
-     * - 서브쿼리로 주소록 검색 처리 (JOIN 없이)
-     * @param trackMode 0=All, 2=Track, 4=SOS
-     * @param search 검색어 (codeNum 또는 numbersNic 매칭)
-     */
+    // ═══════════════════════════════════════════════════════
+    // ⭐ 필터 적용된 장비별 최신 위치
+    //
+    //   trackMode 값 (UI 필터):
+    //     0 = ALL   (전체)
+    //     2 = TRACK (0x01, 0x02, 0x03, 0x11, 0x12, 0x13)
+    //     4 = SOS   (0x00, 0x10)
+    //
+    //   DB 에 저장된 track_mode 값 (프로토콜 ver):
+    //     0  (0x00) = 내 SOS 송신
+    //     1  (0x01) = 내 CAR TRACK 송신
+    //     2  (0x02) = 내 UAV TRACK 송신 / 레거시 TRACK
+    //     3  (0x03) = 내 UAT TRACK 송신
+    //     4  (0x04) = 레거시 SOS
+    //     5  (0x05) = 레거시 SOS
+    //     16 (0x10) = 남 SOS 수신
+    //     17 (0x11) = 남 CAR TRACK 수신
+    //     18 (0x12) = 남 UAV TRACK 수신
+    //     19 (0x13) = 남 UAT TRACK 수신
+    // ═══════════════════════════════════════════════════════
+
     @Transaction
     @Query("""
         SELECT * FROM locations
-        WHERE is_income_loc = 0
-          AND create_at BETWEEN :startDate AND :endDate
-          AND (:trackMode = 0 OR track_mode = :trackMode)
+        WHERE create_at BETWEEN :startDate AND :endDate
+          AND (
+              :trackMode = 0
+              OR (:trackMode = 2 AND track_mode IN (1, 2, 3, 17, 18, 19))
+              OR (:trackMode = 4 AND track_mode IN (0, 4, 5, 16))
+          )
           AND (
               :search = '' 
               OR code_num LIKE '%' || :search || '%'
@@ -97,9 +108,12 @@ interface LocationDao {
           )
           AND id IN (
               SELECT MAX(id) FROM locations
-              WHERE is_income_loc = 0
-                AND create_at BETWEEN :startDate AND :endDate
-                AND (:trackMode = 0 OR track_mode = :trackMode)
+              WHERE create_at BETWEEN :startDate AND :endDate
+                AND (
+                    :trackMode = 0
+                    OR (:trackMode = 2 AND track_mode IN (1, 2, 3, 17, 18, 19))
+                    OR (:trackMode = 4 AND track_mode IN (0, 4, 5, 16))
+                )
               GROUP BY code_num
           )
         ORDER BY create_at DESC
@@ -112,15 +126,15 @@ interface LocationDao {
     ): LiveData<List<LocationWithAddress>>
 
 
-    /**
-     * 특정 장비의 전체 트랙 (상세 화면용)
-     * - 시간 오름차순 (트랙 그릴 때 자연스러움)
-     */
+    // ═══════════════════════════════════════════════════════
+    // ⭐ 특정 장비의 전체 트랙 (상세 화면용)
+    //   - 시간 오름차순 (트랙 그리기 자연스러움)
+    // ═══════════════════════════════════════════════════════
+
     @Transaction
     @Query("""
         SELECT * FROM locations 
         WHERE code_num = :codeNum
-          AND is_income_loc = 0
           AND create_at BETWEEN :startDate AND :endDate
         ORDER BY create_at ASC
     """)

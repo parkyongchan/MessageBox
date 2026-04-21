@@ -85,15 +85,19 @@ public class MainActivity extends AppCompatActivity {
     private int mTestTapCount = 0;
     private boolean mIsTestMode = false;
 
-    // ⭐ 재시도 / 주기 동기화용 Handler
+    // 헤더 버튼 토글 상태
+    private boolean mIsTrackingMode = false;
+    private boolean mIsSosMode = false;
+
+    // 주기 동기화 Handler
     private Handler mSyncHandler;
     private Runnable mBroadRetryRunnable;
     private Runnable mInfoRetryRunnable;
     private long mLastBroadReceivedTime = 0;
     private long mLastInfoReceivedTime = 0;
-    private static final long BROAD_TIMEOUT_MS = 15000;   // 15초간 BROAD 안 오면 재요청
-    private static final long INFO_TIMEOUT_MS = 8000;     // 8초간 INFO 안 오면 재요청
-    private static final long PERIODIC_SYNC_MS = 30000;   // 30초마다 주기 동기화
+    private static final long BROAD_TIMEOUT_MS = 15000;
+    private static final long INFO_TIMEOUT_MS = 8000;
+    private static final long PERIODIC_SYNC_MS = 30000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -193,27 +197,133 @@ public class MainActivity extends AppCompatActivity {
         checkExternalStorage();
 
         setupFixedHeaderObservers();
+        setupHeaderButtons();
         setupBottomTabs();
     }
 
+
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ 주기 동기화 / 재시도 로직
+    //   헤더 버튼 (TRACK, SOS, 종료)
     // ═════════════════════════════════════════════════════════════
 
-    /** BLE 연결 직후 호출 - INFO=?, BROAD=5 요청 + 주기 동기화 시작 */
+    private void setupHeaderButtons() {
+        binding.headerArea.btnTrackHeader.setOnClickListener(v -> onTrackButtonClick());
+        binding.headerArea.btnSosHeader.setOnClickListener(v -> onSosButtonClick());
+        binding.headerArea.btnExitHeader.setOnClickListener(v -> onExitButtonClick());
+    }
+
+    private void onTrackButtonClick() {
+        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            Toast.makeText(this, "장비가 연결되어 있지 않습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (mIsTrackingMode) {
+            new AlertDialog.Builder(this)
+                    .setTitle("추적 모드 중지")
+                    .setMessage("추적(Tracking) 모드를 중지하시겠습니까?")
+                    .setPositiveButton("중지", (d, w) -> {
+                        BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
+                        Log.v("TRACK", "LOCATION=3 (추적 중지 요청)");
+                    })
+                    .setNegativeButton("취소", null)
+                    .show();
+        } else {
+            if (mIsSosMode) {
+                Toast.makeText(this, "SOS 모드 중에는 추적을 시작할 수 없습니다.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle("추적 모드 시작")
+                    .setMessage("추적(Tracking) 모드를 시작하시겠습니까?\n\n설정된 주기에 따라 위치가 전송됩니다.")
+                    .setPositiveButton("시작", (d, w) -> {
+                        BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
+                        Log.v("TRACK", "LOCATION=2 (추적 시작 요청)");
+                    })
+                    .setNegativeButton("취소", null)
+                    .show();
+        }
+    }
+
+    private void onSosButtonClick() {
+        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            Toast.makeText(this, "장비가 연결되어 있지 않습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (mIsSosMode) {
+            new AlertDialog.Builder(this)
+                    .setTitle("SOS 중지")
+                    .setMessage("SOS 긴급 모드를 중지하시겠습니까?")
+                    .setPositiveButton("중지", (d, w) -> {
+                        BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
+                        Log.v("SOS", "LOCATION=5 (SOS 중지 요청)");
+                    })
+                    .setNegativeButton("취소", null)
+                    .show();
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle("🚨 SOS Emergency")
+                    .setMessage("SOS 긴급 신호를 전송하시겠습니까?\n\n3분 주기로 전송됩니다.")
+                    .setPositiveButton("전송", (d, w) -> {
+                        BLE.INSTANCE.getWriteQueue().offer("LOCATION=4");
+                        Log.v("SOS", "LOCATION=4 (SOS 시작 요청)");
+                    })
+                    .setNegativeButton("취소", null)
+                    .show();
+        }
+    }
+
+    private void onExitButtonClick() {
+        new AlertDialog.Builder(this)
+                .setTitle("앱 종료")
+                .setMessage("TYTO Connect 를 종료하시겠습니까?")
+                .setPositiveButton("종료", (d, w) -> {
+                    Log.v("EXIT", "사용자가 앱 종료 선택");
+                    finishAndRemoveTask();
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    private void updateTrackButtonUI(boolean isActive) {
+        mIsTrackingMode = isActive;
+        if (isActive) {
+            binding.headerArea.btnTrackHeader.setBackgroundResource(R.drawable.bg_track_button_active);
+            binding.headerArea.textTrackLabel.setTextColor(0xFF0A1628);
+        } else {
+            binding.headerArea.btnTrackHeader.setBackgroundResource(R.drawable.bg_track_button);
+            binding.headerArea.textTrackLabel.setTextColor(0xFF00E5D1);
+        }
+    }
+
+    private void updateSosButtonUI(boolean isActive) {
+        mIsSosMode = isActive;
+        if (isActive) {
+            binding.headerArea.btnSosHeader.setBackgroundResource(R.drawable.bg_sos_button_active);
+            binding.headerArea.textSosLabel.setTextColor(0xFFFFFFFF);
+        } else {
+            binding.headerArea.btnSosHeader.setBackgroundResource(R.drawable.bg_sos_button);
+            binding.headerArea.textSosLabel.setTextColor(0xFFE24B4A);
+        }
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   주기 동기화
+    // ═════════════════════════════════════════════════════════════
+
     private void startPeriodicSync() {
         Log.v("SYNC", "▶ Starting periodic sync");
         mLastBroadReceivedTime = System.currentTimeMillis();
         mLastInfoReceivedTime = System.currentTimeMillis();
 
-        // 초기 요청
         BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
 
-        // 10초마다 동기화 상태 체크
         mSyncHandler.removeCallbacksAndMessages(null);
         mSyncHandler.postDelayed(mPeriodicSyncRunnable, PERIODIC_SYNC_MS);
 
-        // 15초 후에도 BROAD 안 오면 재요청
         if (mBroadRetryRunnable == null) {
             mBroadRetryRunnable = new Runnable() {
                 @Override
@@ -229,7 +339,6 @@ public class MainActivity extends AppCompatActivity {
         }
         mSyncHandler.postDelayed(mBroadRetryRunnable, BROAD_TIMEOUT_MS);
 
-        // 8초 후에도 INFO 안 오면 재요청
         if (mInfoRetryRunnable == null) {
             mInfoRetryRunnable = new Runnable() {
                 @Override
@@ -249,7 +358,6 @@ public class MainActivity extends AppCompatActivity {
         mSyncHandler.postDelayed(mInfoRetryRunnable, INFO_TIMEOUT_MS);
     }
 
-    /** 30초마다 반복 - 장비 상태 재확인 */
     private final Runnable mPeriodicSyncRunnable = new Runnable() {
         @Override
         public void run() {
@@ -294,6 +402,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (info != null) {
+                updateTrackButtonUI(info.isTrackingMode());
+                updateSosButtonUI(info.isSosStarted());
+
                 if (info.isSosStarted()) updateLocationStatus(2);
                 else if (info.isTrackingMode()) updateLocationStatus(1);
                 else updateLocationStatus(0);
@@ -306,7 +417,6 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textBleStatusMain.setText("Connected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
-                // ⭐ 주기 동기화 시작 (onNotifySuccess 에서 이미 INFO=? 는 보냄)
                 startPeriodicSync();
             } else {
                 if (mIsTestMode) return;
@@ -319,6 +429,10 @@ public class MainActivity extends AppCompatActivity {
                 binding.headerArea.textHeaderSub.setText("IMEI  -");
                 updateSignalBar(0);
                 updateLocationStatus(0);
+
+                updateTrackButtonUI(false);
+                updateSosButtonUI(false);
+
                 stopPeriodicSync();
             }
         });
@@ -332,6 +446,9 @@ public class MainActivity extends AppCompatActivity {
             updateSignalBar(status.getSignal());
             binding.statusArea.textMainInbox.setText(String.valueOf(status.getInBox()));
             binding.statusArea.textMainOutbox.setText(String.valueOf(status.getOutBox()));
+
+            updateTrackButtonUI(status.isTrackingMode());
+            updateSosButtonUI(status.isSosMode());
 
             if (status.isSosMode()) updateLocationStatus(2);
             else if (status.isTrackingMode()) updateLocationStatus(1);
@@ -351,16 +468,6 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textMainUnsent.setVisibility(View.GONE);
             }
         });
-
-        binding.headerArea.btnSosHeader.setOnClickListener(v ->
-                new AlertDialog.Builder(this)
-                        .setTitle("SOS Emergency")
-                        .setMessage("Send SOS signal?\nIt will be sent every 3 minutes.")
-                        .setPositiveButton("Send", (d, w) ->
-                                BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"))
-                        .setNegativeButton("Cancel", null)
-                        .show()
-        );
 
         binding.headerArea.textHeaderTitle.setOnClickListener(v -> {
             mTestTapCount++;
@@ -413,10 +520,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** Test mode toggle - inject/delete locations + messages */
     private void toggleTestMode() {
         if (mIsTestMode) {
-            // ═══ OFF ═══
             mIsTestMode = false;
             binding.statusArea.textBleStatusMain.setText("Disconnected");
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
@@ -427,12 +532,13 @@ public class MainActivity extends AppCompatActivity {
             binding.headerArea.textHeaderSub.setText("IMEI  -");
             updateSignalBar(0);
             updateLocationStatus(0);
+            updateTrackButtonUI(false);
+            updateSosButtonUI(false);
 
             deleteTestLocationData();
             deleteTestMessages();
             Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
         } else {
-            // ═══ ON ═══
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
             test.setBattery(85);
@@ -455,11 +561,6 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
         }
     }
-
-
-    // ═════════════════════════════════════════════════════════════
-    //   Test Location Data
-    // ═════════════════════════════════════════════════════════════
 
     private void insertTestLocationData() {
         double[][] trackCoords = {
@@ -531,11 +632,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
-
-    // ═════════════════════════════════════════════════════════════
-    //   Test Messages
-    // ═════════════════════════════════════════════════════════════
 
     private void insertTestMessages() {
         String[][] testMsgs = {
@@ -632,8 +728,25 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   Existing methods
+    //   뒤로가기 가드
     // ═════════════════════════════════════════════════════════════
+
+    @Override
+    public void onBackPressed() {
+        Fragment currentTab = getSupportFragmentManager().findFragmentById(R.id.tab_container);
+        if (currentTab != null && currentTab.getChildFragmentManager().getBackStackEntryCount() > 0) {
+            currentTab.getChildFragmentManager().popBackStack();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("앱 종료")
+                .setMessage("TYTO Connect 를 종료하시겠습니까?")
+                .setPositiveButton("종료", (d, w) -> super.onBackPressed())
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
@@ -676,6 +789,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ 위치 파싱 헬퍼 메서드
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * Address (Unitcode 5바이트 또는 IMEI 8바이트) 파싱
+     */
+    private String parseAddress(ByteBuf buffer, int senderLen) {
+        if (senderLen == 5) {
+            // Unitcode: 1byte + 4bytes
+            byte senderF = buffer.readByte();
+            int senderB = buffer.readInt();
+            return String.format("%d%09d", senderF, senderB);
+        } else if (senderLen == 8) {
+            // IMEI: 4bytes + 4bytes
+            int senderF = buffer.readInt();
+            int senderB = buffer.readInt();
+            return String.format("%08d%07d", senderF, senderB);
+        }
+        return null;
+    }
+
+
     public void receivePacketProcess(String packet) throws Exception {
 
         Log.v("RECEVICE", packet);
@@ -693,7 +830,6 @@ public class MainActivity extends AppCompatActivity {
             if (vals.length > 9) info.setSosStarted(!vals[9].equals("0"));
             if (vals.length > 10) info.setTrackingMode((!vals[10].equals("0")));
 
-            // ⭐ postValue 로 변경 (어떤 스레드에서 호출돼도 안전)
             BLE.INSTANCE.getDeviceInfo().postValue(info);
             mLastInfoReceivedTime = System.currentTimeMillis();
             Log.v("SYNC", "✓ INFO received - imei=" + info.getImei());
@@ -711,7 +847,6 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_OK);
                 BLE.INSTANCE.isLogon().postValue(true);
-                // ⭐ 로그인 성공 시 다시 한 번 BROAD=5 요청 (안전장치)
                 mSyncHandler.postDelayed(() -> {
                     BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
                     Log.v("SYNC", "▶ Post-login BROAD=5 sent");
@@ -801,19 +936,38 @@ public class MainActivity extends AppCompatActivity {
                 ByteBuf buffer = Unpooled.wrappedBuffer(data);
                 byte ver = buffer.getByte(0);
 
-                if (ver == 0x11 || ver == 0x10) {
+                // ═══════════════════════════════════════════════════════
+                // ⭐ CAR / SOS 모드 (0x00, 0x01 = 송신 / 0x10, 0x11 = 수신)
+                // ═══════════════════════════════════════════════════════
+                if (ver == 0x00 || ver == 0x01) {
+                    // 송신 (No Recipient - Address 없음)
+                    // Mode(1) + Lat(4) + Lng(4) + Status(1) = 10 bytes
+                    buffer.readByte();  // Mode
+                    double lat = buffer.readFloat();
+                    double lng = buffer.readFloat();
+                    byte etc = buffer.readByte();
+
+                    String myImei = ImeiStorage.getLast(this);
+                    Date now = new Date();
+                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                            myImei, lat, lng, 0, 0, 0, now,
+                            now, false, false, false);
+                    Log.v("LOC SEND " + String.format("0x%02X", ver),
+                            "myImei=" + myImei + " lat=" + lat + " lng=" + lng);
+                    locationViewModel.insert(addLoc, success -> {
+                        if (success) Log.v("Location ADD", "내 위치 저장 (" + String.format("0x%02X", ver) + ")");
+                        return null;
+                    });
+
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, 0.0, 0.0, 0.0, null, ver
+                    );
+
+                } else if (ver == 0x11 || ver == 0x10) {
+                    // 수신 (With Recipient - Address 있음)
                     int senderLen = buffer.readableBytes() - 10;
-                    buffer.readByte();
-                    String sender = null;
-                    if (senderLen == 5) {
-                        byte senderF = buffer.readByte();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%d%09d", senderF, senderB);
-                    } else if (senderLen == 8) {
-                        int senderF = buffer.readInt();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%08d%07d", senderF, senderB);
-                    }
+                    buffer.readByte();  // Mode
+                    String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     byte etc = buffer.readByte();
@@ -822,10 +976,10 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, false, ver,
                             sender, lat, lng, 0, 0, 0, now,
                             now, false, false, false);
-                    Log.v("VER 11", addLoc.toString());
+                    Log.v("LOC RECV " + String.format("0x%02X", ver),
+                            "sender=" + sender + " lat=" + lat + " lng=" + lng);
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "Location saved");
-                        else Log.v("Location ADD", "Location save failed");
+                        if (success) Log.v("Location ADD", "수신 위치 저장 (" + String.format("0x%02X", ver) + ")");
                         return null;
                     });
 
@@ -833,19 +987,42 @@ public class MainActivity extends AppCompatActivity {
                             this, lat, lng, 0.0, 0.0, 0.0, null, ver
                     );
 
+                }
+                // ═══════════════════════════════════════════════════════
+                // ⭐ UAV 모드 (0x02 = 송신 / 0x12 = 수신)
+                // ═══════════════════════════════════════════════════════
+                else if (ver == 0x02) {
+                    // 송신 (No Recipient)
+                    // Mode(1) + Lat(4) + Lng(4) + Alt(2) + Speed(1) + Az(1) + Status(1) = 14 bytes
+                    buffer.readByte();  // Mode
+                    double lat = buffer.readFloat();
+                    double lng = buffer.readFloat();
+                    int alt = buffer.readShort();
+                    int speed = buffer.readUnsignedByte() * 2;
+                    int dir = buffer.readUnsignedByte() * 2;
+                    byte etc = buffer.readByte();
+
+                    String myImei = ImeiStorage.getLast(this);
+                    Date now = new Date();
+                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                            myImei, lat, lng, alt, dir, speed, now,
+                            now, false, false, false);
+                    Log.v("LOC SEND 0x02", "UAV myImei=" + myImei + " lat=" + lat);
+                    locationViewModel.insert(addLoc, success -> {
+                        if (success) Log.v("Location ADD", "내 UAV 위치 저장");
+                        return null;
+                    });
+
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, (double) alt, (double) speed,
+                            (double) dir, null, ver
+                    );
+
                 } else if (ver == 0x12) {
+                    // 수신 (With Recipient)
                     int senderLen = buffer.readableBytes() - 14;
-                    buffer.readByte();
-                    String sender = null;
-                    if (senderLen == 5) {
-                        byte senderF = buffer.readByte();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%d%09d", senderF, senderB);
-                    } else if (senderLen == 8) {
-                        int senderF = buffer.readInt();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%08d%07d", senderF, senderB);
-                    }
+                    buffer.readByte();  // Mode
+                    String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     int alt = buffer.readShort();
@@ -857,10 +1034,9 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, false, ver,
                             sender, lat, lng, alt, dir, speed, now,
                             now, false, false, false);
-                    Log.v("VER 12", addLoc.toString());
+                    Log.v("LOC RECV 0x12", "UAV sender=" + sender + " lat=" + lat);
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "Location saved");
-                        else Log.v("Location ADD", "Location save failed");
+                        if (success) Log.v("Location ADD", "수신 UAV 위치 저장");
                         return null;
                     });
 
@@ -869,19 +1045,52 @@ public class MainActivity extends AppCompatActivity {
                             (double) dir, null, ver
                     );
 
+                }
+                // ═══════════════════════════════════════════════════════
+                // ⭐ UAT 모드 (0x03 = 송신 / 0x13 = 수신)
+                // ═══════════════════════════════════════════════════════
+                else if (ver == 0x03) {
+                    // 송신 (No Recipient)
+                    // Mode(1) + Lat(4) + Lng(4) + Alt(2) + Speed(1) + Az(1) + Status(1) + Time(7) = 21 bytes
+                    buffer.readByte();  // Mode
+                    double lat = buffer.readFloat();
+                    double lng = buffer.readFloat();
+                    int alt = buffer.readShort();
+                    int speed = buffer.readUnsignedByte() * 2;
+                    int dir = buffer.readUnsignedByte() * 2;
+                    byte etc = buffer.readByte();
+
+                    int year = buffer.readShort();
+                    int mon = buffer.readUnsignedByte();
+                    int day = buffer.readUnsignedByte();
+                    int hour = buffer.readUnsignedByte();
+                    int min = buffer.readUnsignedByte();
+                    int sec = buffer.readUnsignedByte();
+
+                    LocalDateTime ldt = LocalDateTime.of(year, mon, day, hour, min, sec);
+                    ZonedDateTime zdtUtc = ldt.atZone(ZoneId.of("UTC"));
+                    Date date = Date.from(zdtUtc.toInstant());
+
+                    String myImei = ImeiStorage.getLast(this);
+                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                            myImei, lat, lng, alt, dir, speed, date,
+                            new Date(), false, false, false);
+                    Log.v("LOC SEND 0x03", "UAT myImei=" + myImei + " lat=" + lat);
+                    locationViewModel.insert(addLoc, success -> {
+                        if (success) Log.v("Location ADD", "내 UAT 위치 저장");
+                        return null;
+                    });
+
+                    SatTrackStateHolder.recordPoint(
+                            this, lat, lng, (double) alt, (double) speed,
+                            (double) dir, date, ver
+                    );
+
                 } else if (ver == 0x13) {
+                    // 수신 (With Recipient)
                     int senderLen = buffer.readableBytes() - 21;
-                    buffer.readByte();
-                    String sender = null;
-                    if (senderLen == 5) {
-                        byte senderF = buffer.readByte();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%d%09d", senderF, senderB);
-                    } else if (senderLen == 8) {
-                        int senderF = buffer.readInt();
-                        int senderB = buffer.readInt();
-                        sender = String.format("%08d%07d", senderF, senderB);
-                    }
+                    buffer.readByte();  // Mode
+                    String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     int alt = buffer.readShort();
@@ -903,10 +1112,9 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, false, ver,
                             sender, lat, lng, alt, dir, speed, date,
                             new Date(), false, false, false);
-                    Log.v("VER 13", addLoc.toString());
+                    Log.v("LOC RECV 0x13", "UAT sender=" + sender + " lat=" + lat);
                     locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "Location saved");
-                        else Log.v("Location ADD", "Location save failed");
+                        if (success) Log.v("Location ADD", "수신 UAT 위치 저장");
                         return null;
                     });
 
@@ -915,43 +1123,53 @@ public class MainActivity extends AppCompatActivity {
                             (double) dir, date, ver
                     );
 
-                } else if (ver == 0x16) {
+                }
+                // ═══════════════════════════════════════════════════════
+                // ⭐ 메시지 (0x16 = 구형 / 0x17 = Free Mode)
+                // ═══════════════════════════════════════════════════════
+                else if (ver == 0x16) {
                     byte[] header = new byte[21];
                     byte[] body = new byte[data.length - 22];
                     System.arraycopy(data, 1, header, 0, header.length);
                     System.arraycopy(data, header.length + 1, body, 0, body.length);
 
-                    String codeNum = new String(header, StandardCharsets.UTF_8);
+                    String codeNum = new String(header, StandardCharsets.UTF_8).trim();
                     String message = new String(body, StandardCharsets.UTF_8);
 
-                    MsgEntity addMsg = new MsgEntity(0, false, codeNum.trim(), "title", message,
+                    Log.v("MSG 0x16", "sender=" + codeNum + " msg=" + message);
+
+                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", message,
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
                     msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "Message saved");
-                        else Log.v("MSG ADD", "Message save failed");
+                        if (success) Log.v("MSG ADD", "Message saved (0x16)");
                         return null;
                     });
-                } else if (ver == 0x17) {
-                    Log.v("MSG FREE", "Size : " + buffer.readableBytes());
-                    buffer.readByte();
-                    int size = buffer.readUnsignedByte();
-                    String codeNum = buffer.readCharSequence(size, StandardCharsets.US_ASCII).toString();
-                    size = buffer.readUnsignedByte();
-                    String title = buffer.readCharSequence(size, StandardCharsets.UTF_8).toString();
-                    size = buffer.readUnsignedByte();
-                    String message = buffer.readCharSequence(size, StandardCharsets.UTF_8).toString();
 
-                    MsgEntity addMsg = new MsgEntity(0, false, codeNum.trim(), title.trim(), message.trim(),
+                } else if (ver == 0x17) {
+                    Log.v("MSG 0x17", "Size : " + buffer.readableBytes());
+                    buffer.readByte();  // Mode (0x17)
+
+                    int addrSize = buffer.readUnsignedByte();
+                    String codeNum = buffer.readCharSequence(addrSize, StandardCharsets.US_ASCII).toString().trim();
+
+                    int titleSize = buffer.readUnsignedByte();
+                    String title = buffer.readCharSequence(titleSize, StandardCharsets.UTF_8).toString().trim();
+
+                    int memoSize = buffer.readUnsignedByte();
+                    String message = buffer.readCharSequence(memoSize, StandardCharsets.UTF_8).toString().trim();
+
+                    Log.v("MSG 0x17", "sender=" + codeNum + " title=" + title + " msg=" + message);
+
+                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
                     msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "Message saved");
-                        else Log.v("MSG ADD", "Message save failed");
+                        if (success) Log.v("MSG ADD", "Message saved (0x17)");
                         return null;
                     });
                 }
@@ -986,7 +1204,6 @@ public class MainActivity extends AppCompatActivity {
             if (vals.length > 7) sta.setSosMode(!vals[7].equals("0"));
             if (vals.length > 8) sta.setTrackingMode(!vals[8].equals("0"));
 
-            // ⭐ postValue 로 변경 + 수신 시각 기록
             mBleViewModel.getDeviceStatus().postValue(sta);
             mLastBroadReceivedTime = System.currentTimeMillis();
             Log.v("SYNC", "✓ BROAD received - battery=" + sta.getBattery() +

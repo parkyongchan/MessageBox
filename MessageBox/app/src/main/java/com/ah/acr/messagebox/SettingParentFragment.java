@@ -56,7 +56,7 @@ public class SettingParentFragment extends Fragment {
         SettingViewPagerAdapter adapter = new SettingViewPagerAdapter(this);
         viewPager.setAdapter(adapter);
 
-        // ⭐ TabLayoutMediator에 아이콘 + 텍스트 설정
+        // ⭐ TabLayoutMediator에 아이콘 + 텍스트 설정 (5개 탭)
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> {
                     if (position == 0) {
@@ -71,6 +71,10 @@ public class SettingParentFragment extends Fragment {
                     } else if (position == 3) {
                         tab.setText("Firmware");
                         tab.setIcon(R.drawable.ic_tab_firmware);
+                    } else if (position == 4) {
+                        // ⭐ 새 탭: 오프라인 지도 관리
+                        tab.setText("Maps");
+                        tab.setIcon(R.drawable.ic_tab_maps);
                     } else {
                         tab.setText("Address");
                         tab.setIcon(R.drawable.ic_tab_address);
