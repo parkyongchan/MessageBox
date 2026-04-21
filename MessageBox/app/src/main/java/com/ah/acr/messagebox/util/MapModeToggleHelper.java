@@ -1,89 +1,75 @@
 package com.ah.acr.messagebox.util;
 
 import android.content.Context;
-import android.util.Log;
+import android.graphics.Color;
 import android.view.View;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
 
 import com.ah.acr.messagebox.R;
 
 /**
- * 지도 모드 토글 UI 설정 헬퍼
- * Fragment 에서 토글 UI 연결을 한 줄로 단순화
- *
- * ⭐ OFFLINE 폴백 버그 수정:
- * - OFFLINE 클릭 시 MBTiles 없으면 자동 ONLINE 폴백 발생
- * - 이 때 토글 UI 도 ONLINE 으로 동기화되어야 함
+ * 지도 모드 토글 UI 헬퍼
+ * 
+ * 사용법:
+ *   1. Fragment layout 에 <include layout="@layout/view_map_mode_toggle" /> 추가
+ *   2. Fragment 에서 MapModeToggleHelper.setup(root, context, listener) 호출
  */
 public class MapModeToggleHelper {
 
-    private static final String TAG = "MapModeToggle";
-
     public interface OnModeChangedListener {
-        void onModeChanged(MapModeManager.Mode newMode);
+        void onModeChanged(@NonNull MapModeManager.Mode newMode);
     }
 
-    /**
-     * 토글 UI 설정 (view_map_mode_toggle.xml 이 include 된 View 에서 호출)
-     * 
-     * @param root 토글이 포함된 상위 View (보통 fragment 의 root)
-     * @param ctx Context
-     * @param listener 모드 변경 시 콜백
-     */
-    public static void setup(View root, Context ctx, OnModeChangedListener listener) {
-        TextView btnOnline = root.findViewById(R.id.btn_mode_online);
-        TextView btnOffline = root.findViewById(R.id.btn_mode_offline);
+    /** 토글 UI 초기화 */
+    public static void setup(View root, Context context, OnModeChangedListener listener) {
+        View btnOnline = root.findViewById(R.id.btn_mode_online);
+        View btnOffline = root.findViewById(R.id.btn_mode_offline);
 
-        if (btnOnline == null || btnOffline == null) {
-            Log.w(TAG, "토글 버튼을 찾을 수 없습니다. view_map_mode_toggle.xml 이 include 되었는지 확인하세요.");
-            return;
-        }
+        if (btnOnline == null || btnOffline == null) return;
 
-        // 현재 모드에 맞게 UI 업데이트
-        updateUI(ctx, btnOnline, btnOffline);
+        // 초기 UI 반영
+        updateUI(btnOnline, btnOffline, MapModeManager.getMode(context));
 
-        // 🌐 온라인 클릭
+        // 온라인 클릭
         btnOnline.setOnClickListener(v -> {
-            if (MapModeManager.getMode(ctx) == MapModeManager.Mode.ONLINE) return;
-            MapModeManager.setMode(ctx, MapModeManager.Mode.ONLINE);
-            updateUI(ctx, btnOnline, btnOffline);
+            if (MapModeManager.isOnline(context)) return;  // 이미 온라인
+            MapModeManager.setMode(context, MapModeManager.Mode.ONLINE);
+            updateUI(btnOnline, btnOffline, MapModeManager.Mode.ONLINE);
             if (listener != null) listener.onModeChanged(MapModeManager.Mode.ONLINE);
-
-            // ⭐ 콜백 후 재검증 (안전장치)
-            updateUI(ctx, btnOnline, btnOffline);
         });
 
-        // 📁 오프라인 클릭
+        // 오프라인 클릭
         btnOffline.setOnClickListener(v -> {
-            if (MapModeManager.getMode(ctx) == MapModeManager.Mode.OFFLINE) return;
-            MapModeManager.setMode(ctx, MapModeManager.Mode.OFFLINE);
-            updateUI(ctx, btnOnline, btnOffline);
+            if (MapModeManager.isOffline(context)) return;  // 이미 오프라인
+            MapModeManager.setMode(context, MapModeManager.Mode.OFFLINE);
+            updateUI(btnOnline, btnOffline, MapModeManager.Mode.OFFLINE);
             if (listener != null) listener.onModeChanged(MapModeManager.Mode.OFFLINE);
-
-            // ⭐ 핵심 수정: 콜백 후 UI 재검증
-            // MBTiles 파일 없으면 applyToMapView() 에서 ONLINE 으로 자동 폴백됨
-            // 이 때 토글 UI 도 ONLINE 으로 동기화해야 함
-            updateUI(ctx, btnOnline, btnOffline);
         });
     }
 
+    /** 현재 모드에 따라 UI 업데이트 */
+    private static void updateUI(View btnOnline, View btnOffline, MapModeManager.Mode mode) {
+        TextView tvOnline = (TextView) btnOnline;
+        TextView tvOffline = (TextView) btnOffline;
 
-    /** 현재 모드에 맞게 토글 UI 업데이트 */
-    private static void updateUI(Context ctx, TextView btnOnline, TextView btnOffline) {
-        MapModeManager.Mode currentMode = MapModeManager.getMode(ctx);
+        if (mode == MapModeManager.Mode.ONLINE) {
+            tvOnline.setBackgroundResource(R.drawable.bg_map_mode_active);
+            tvOnline.setTextColor(Color.parseColor("#0A1628"));
+            tvOnline.setTypeface(null, android.graphics.Typeface.BOLD);
 
-        if (currentMode == MapModeManager.Mode.ONLINE) {
-            // 🌐 ONLINE 활성
-            btnOnline.setBackgroundResource(R.drawable.bg_map_mode_active);
-            btnOnline.setTextColor(0xFF0A1628);
-            btnOffline.setBackgroundResource(0);
-            btnOffline.setTextColor(0xFF95B0D4);
+            tvOffline.setBackgroundColor(Color.TRANSPARENT);
+            tvOffline.setTextColor(Color.parseColor("#95B0D4"));
+            tvOffline.setTypeface(null, android.graphics.Typeface.NORMAL);
         } else {
-            // 📁 OFFLINE 활성
-            btnOffline.setBackgroundResource(R.drawable.bg_map_mode_active);
-            btnOffline.setTextColor(0xFF0A1628);
-            btnOnline.setBackgroundResource(0);
-            btnOnline.setTextColor(0xFF95B0D4);
+            tvOffline.setBackgroundResource(R.drawable.bg_map_mode_active);
+            tvOffline.setTextColor(Color.parseColor("#0A1628"));
+            tvOffline.setTypeface(null, android.graphics.Typeface.BOLD);
+
+            tvOnline.setBackgroundColor(Color.TRANSPARENT);
+            tvOnline.setTextColor(Color.parseColor("#95B0D4"));
+            tvOnline.setTypeface(null, android.graphics.Typeface.NORMAL);
         }
     }
 }
