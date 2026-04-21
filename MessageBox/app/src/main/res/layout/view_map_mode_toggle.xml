@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res-auto"
+    xmlns:card="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    card:cardBackgroundColor="#CC0A1628"
+    card:cardCornerRadius="14dp"
+    card:cardElevation="4dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="2dp">
+
+        <TextView
+            android:id="@+id/btn_mode_online"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:background="@drawable/bg_map_mode_active"
+            android:text="🌐 ONLINE"
+            android:textColor="#0A1628"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_mode_offline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginStart="2dp"
+            android:text="📁 OFFLINE"
+            android:textColor="#95B0D4"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
