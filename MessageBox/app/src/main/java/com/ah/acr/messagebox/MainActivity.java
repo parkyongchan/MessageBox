@@ -12,15 +12,19 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
 import com.ah.acr.messagebox.ble.BLE;
@@ -75,6 +79,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String TEST_IMEI_SOS = "TEST-002";
     private static final String TEST_IMEI_MSG = "1111111111111111";
 
+    // ⭐ 스마트 자동 받기 (Smart Auto Receive)
+    public static final String PREF_AUTO_RECEIVE = "pref_auto_receive_enabled";
+    public static final boolean DEFAULT_AUTO_RECEIVE = true;  // 기본 ON
+    private static final long RECEIVE_TIMEOUT_MS = 30000;     // 30초 타임아웃
+
+    // ⭐ 색상 (자동 받기 토글)
+    private static final int COLOR_AUTO_ON = 0xFF00E5D1;       // 민트 (활성)
+    private static final int COLOR_AUTO_OFF = 0xFF95B0D4;      // 회색 (비활성)
+    private static final int COLOR_AUTO_RECEIVING = 0xFFFFB300; // 주황 (받는 중)
+
     private ActivityMainBinding binding;
 
     private BleViewModel mBleViewModel;
@@ -98,6 +112,13 @@ public class MainActivity extends AppCompatActivity {
     private static final long BROAD_TIMEOUT_MS = 15000;
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
+
+    // ⭐ 스마트 자동 받기 상태 관리
+    private boolean mIsAutoReceiving = false;
+    private int mLastInboxCount = 0;
+    private long mLastAutoReceiveTime = 0;
+    private Runnable mAutoReceiveTimeoutRunnable;
+    private Animation mAutoReceiveRotation;  // 회전 애니메이션
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -180,6 +201,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.v("BLE", "disconnected Ble device...");
                 stopPeriodicSync();
+                resetAutoReceive();
             }
         });
 
@@ -197,9 +219,190 @@ public class MainActivity extends AppCompatActivity {
         checkExternalStorage();
 
         setupFixedHeaderObservers();
-        setupReconnectUI();       // ⭐ v2 신규: 재연결 UI 설정
+        setupReconnectUI();
+        setupAutoReceiveToggle();  // ⭐ 자동 받기 토글 설정
         setupHeaderButtons();
         setupBottomTabs();
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ 스마트 자동 받기 (Smart Auto Receive) - Phase A + B
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 자동 받기 활성화 상태 조회
+     */
+    private boolean isAutoReceiveEnabled() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        return prefs.getBoolean(PREF_AUTO_RECEIVE, DEFAULT_AUTO_RECEIVE);
+    }
+
+    /**
+     * 자동 받기 설정 저장
+     */
+    private void setAutoReceiveEnabled(boolean enabled) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.edit().putBoolean(PREF_AUTO_RECEIVE, enabled).apply();
+        Log.v("AUTO-RECV", "설정 변경: " + (enabled ? "ON" : "OFF"));
+    }
+
+    /**
+     * ⭐ Phase B: 자동 받기 토글 UI 설정
+     */
+    private void setupAutoReceiveToggle() {
+        // 회전 애니메이션 로드
+        mAutoReceiveRotation = AnimationUtils.loadAnimation(this, R.anim.rotate_auto_receive);
+
+        // 초기 UI 상태 설정
+        updateAutoReceiveToggleUI(isAutoReceiveEnabled(), false);
+
+        // 토글 클릭 리스너
+        binding.statusArea.btnAutoReceive.setOnClickListener(v -> {
+            boolean newState = !isAutoReceiveEnabled();
+            setAutoReceiveEnabled(newState);
+            updateAutoReceiveToggleUI(newState, false);
+
+            String msg = newState ? "자동 받기 ON" : "자동 받기 OFF";
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+
+            // OFF로 변경했는데 받는 중이면 중지 표시 (실제 통신은 이미 진행 중)
+            if (!newState && mIsAutoReceiving) {
+                stopAutoReceiveAnimation();
+                Log.v("AUTO-RECV", "사용자가 OFF로 변경 (진행 중인 수신은 계속됨)");
+            }
+        });
+    }
+
+    /**
+     * ⭐ 자동 받기 토글 UI 업데이트
+     *
+     * @param enabled    활성화 여부
+     * @param isReceiving 현재 받는 중인지
+     */
+    private void updateAutoReceiveToggleUI(boolean enabled, boolean isReceiving) {
+        if (!enabled) {
+            // OFF 상태: 회색, 정지
+            binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_OFF);
+            binding.statusArea.btnAutoReceive.clearAnimation();
+        } else if (isReceiving) {
+            // ON + 받는 중: 주황, 회전
+            binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_RECEIVING);
+            if (binding.statusArea.btnAutoReceive.getAnimation() == null) {
+                binding.statusArea.btnAutoReceive.startAnimation(mAutoReceiveRotation);
+            }
+        } else {
+            // ON + 대기: 민트, 정지
+            binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_ON);
+            binding.statusArea.btnAutoReceive.clearAnimation();
+        }
+    }
+
+    /**
+     * ⭐ 자동 받기 애니메이션 시작 (회전)
+     */
+    private void startAutoReceiveAnimation() {
+        runOnUiThread(() -> {
+            if (isAutoReceiveEnabled()) {
+                updateAutoReceiveToggleUI(true, true);
+            }
+        });
+    }
+
+    /**
+     * ⭐ 자동 받기 애니메이션 정지
+     */
+    private void stopAutoReceiveAnimation() {
+        runOnUiThread(() -> {
+            updateAutoReceiveToggleUI(isAutoReceiveEnabled(), false);
+        });
+    }
+
+    /**
+     * BROAD 응답에서 inbox 카운트 변화 감지하여 자동 받기 시작
+     */
+    private void checkAndTriggerAutoReceive(int currentInboxCount) {
+        if (!isAutoReceiveEnabled()) {
+            Log.v("AUTO-RECV", "자동 받기 비활성화 상태");
+            return;
+        }
+
+        if (currentInboxCount <= 0) {
+            mLastInboxCount = 0;
+            return;
+        }
+
+        if (mIsAutoReceiving) {
+            Log.v("AUTO-RECV", "이미 받는 중 (inbox=" + currentInboxCount + ")");
+            return;
+        }
+
+        boolean shouldTrigger = (currentInboxCount > mLastInboxCount) || (mLastInboxCount == 0);
+        if (!shouldTrigger) {
+            Log.v("AUTO-RECV", "inbox 변화 없음 (inbox=" + currentInboxCount + ")");
+            return;
+        }
+
+        Log.v("AUTO-RECV", "★ 자동 받기 시작 (inbox=" + currentInboxCount + ")");
+        mIsAutoReceiving = true;
+        mLastAutoReceiveTime = System.currentTimeMillis();
+        mLastInboxCount = currentInboxCount;
+
+        // ⭐ 애니메이션 시작
+        startAutoReceiveAnimation();
+
+        // RECEIVED 요청
+        BLE.INSTANCE.getWriteQueue().offer("RECEIVED=0,OK");
+
+        startAutoReceiveTimeout();
+    }
+
+    private void startAutoReceiveTimeout() {
+        if (mAutoReceiveTimeoutRunnable != null) {
+            mSyncHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+        }
+
+        mAutoReceiveTimeoutRunnable = () -> {
+            if (mIsAutoReceiving) {
+                long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
+                Log.w("AUTO-RECV", "⚠ 자동 받기 타임아웃 (" + elapsed + "ms) - 리셋");
+                mIsAutoReceiving = false;
+
+                // ⭐ 애니메이션 정지
+                stopAutoReceiveAnimation();
+            }
+        };
+
+        mSyncHandler.postDelayed(mAutoReceiveTimeoutRunnable, RECEIVE_TIMEOUT_MS);
+    }
+
+    private void completeAutoReceive() {
+        if (mIsAutoReceiving) {
+            long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
+            Log.v("AUTO-RECV", "✓ 자동 받기 완료 (" + elapsed + "ms 소요)");
+            mIsAutoReceiving = false;
+            mLastInboxCount = 0;
+
+            if (mAutoReceiveTimeoutRunnable != null) {
+                mSyncHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+            }
+
+            // ⭐ 애니메이션 정지
+            stopAutoReceiveAnimation();
+        }
+    }
+
+    private void resetAutoReceive() {
+        mIsAutoReceiving = false;
+        mLastInboxCount = 0;
+        if (mAutoReceiveTimeoutRunnable != null) {
+            mSyncHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+        }
+
+        // ⭐ 애니메이션 정지
+        stopAutoReceiveAnimation();
+
+        Log.v("AUTO-RECV", "상태 리셋");
     }
 
 
@@ -312,22 +515,10 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ v2 재연결 UI (자동 재접속 메커니즘 연동)
+    //   v2 재연결 UI (자동 재접속 메커니즘 연동)
     // ═════════════════════════════════════════════════════════════
 
-    /**
-     * BLE v2 재연결 상태 UI 설정
-     *
-     * - CONNECT_STATUS_RECONNECTING: "Reconnecting (N/5)" + [취소] 버튼
-     * - CONNECT_STATUS_FAILED: "Failed" + [재시도] 버튼
-     *     → [재시도] 클릭 시:
-     *       1. selectedDevice 리셋 (이전 장비 스냅샷 제거)
-     *       2. BLE 탭으로 이동 (자동 재스캔 시작됨)
-     *       3. 사용자가 새로 스캔된 TYTO2 선택하여 재연결
-     * - 기타 상태: 기존 getSelectedDevice 옵저버가 처리 (Connected/Disconnected)
-     */
     private void setupReconnectUI() {
-        // 연결 상태 문자열 관찰 (재연결 관련 상태 처리)
         BLE.INSTANCE.getConnectionStatus().observe(this, status -> {
             if (status == null || mIsTestMode) return;
 
@@ -335,12 +526,11 @@ public class MainActivity extends AppCompatActivity {
 
             switch (status) {
                 case BLE.CONNECT_STATUS_RECONNECTING: {
-                    // 재연결 중: "Reconnecting (2/5)" + [취소]
                     int attempts = BLE.INSTANCE.getReconnectAttempts();
                     int max = BLE.INSTANCE.getMaxReconnectAttempts();
 
                     binding.statusArea.textBleStatusMain.setText("Reconnecting");
-                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);  // 주황
+                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);
                     binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
 
                     binding.statusArea.textReconnectCount.setText(
@@ -354,9 +544,8 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 case BLE.CONNECT_STATUS_FAILED: {
-                    // 재연결 최종 실패: "Failed" + [재시도]
                     binding.statusArea.textBleStatusMain.setText("Failed");
-                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);  // 빨강
+                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
                     binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
 
                     binding.statusArea.textReconnectCount.setVisibility(View.GONE);
@@ -371,7 +560,6 @@ public class MainActivity extends AppCompatActivity {
                 case BLE.CONNECT_STATUS_LOST:
                 case BLE.CONNECT_STATUS_TRYING:
                 default: {
-                    // 재연결 UI 숨김 (기존 getSelectedDevice 옵저버가 처리)
                     binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                     binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
                     break;
@@ -379,30 +567,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 액션 버튼 클릭 처리 (취소 or 재시도)
         binding.statusArea.btnConnectionAction.setOnClickListener(v -> {
             String currentStatus = BLE.INSTANCE.getConnectionStatus().getValue();
             Log.v("BLE-UI", "Action button clicked, status: " + currentStatus);
 
             if (BLE.CONNECT_STATUS_RECONNECTING.equals(currentStatus)) {
-                // 재연결 중 → 취소
                 BLE.INSTANCE.cancelReconnect();
                 Toast.makeText(this, "재연결을 취소했습니다.", Toast.LENGTH_SHORT).show();
             } else if (BLE.CONNECT_STATUS_FAILED.equals(currentStatus)) {
-                // ⭐ v2 개선: 재시도 시 Connect 탭으로 이동 + 자동 재스캔
                 Log.v("BLE-UI", "Retry → Reset selectedDevice & navigate to BLE tab");
 
-                // ⭐ 핵심 수정: 이전 selectedDevice 스냅샷 제거
-                // (startScan에서 이전 장비를 목록 맨 위에 추가하는 로직 방지)
                 BLE.INSTANCE.getSelectedDevice().postValue(null);
 
-                // 재연결 UI 숨김 (Failed 상태 리셋)
                 binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                 binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
 
-                // BLE 탭으로 이동
-                // BleItemFragment가 생성되면서 자동으로 스캔 시작됨
-                // (BleItemFragment.onCreateView 내 checkScanStatus 호출)
                 binding.bottomNav.setSelectedItemId(R.id.tab_ble);
 
                 Toast.makeText(this,
@@ -521,7 +700,6 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
 
-                // ⭐ v2: 연결 성공 시 재연결 UI 숨김
                 binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                 binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
 
@@ -529,12 +707,9 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 if (mIsTestMode) return;
 
-                // ⭐ v2: 재연결 중/실패 상태일 때는 덮어쓰지 않음
-                // (setupReconnectUI의 옵저버가 우선 처리)
                 String status = BLE.INSTANCE.getConnectionStatus().getValue();
                 if (BLE.CONNECT_STATUS_RECONNECTING.equals(status) ||
                     BLE.CONNECT_STATUS_FAILED.equals(status)) {
-                    // 재연결 UI 유지
                     return;
                 }
 
@@ -887,7 +1062,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopPeriodicSync();
-        // ⭐ v2: BLE.destroyBle() 로 통합 (재연결 상태까지 완전히 정리)
+        resetAutoReceive();
         BLE.INSTANCE.destroyBle();
     }
 
@@ -909,20 +1084,15 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ 위치 파싱 헬퍼 메서드
+    //   위치 파싱 헬퍼 메서드
     // ═════════════════════════════════════════════════════════════
 
-    /**
-     * Address (Unitcode 5바이트 또는 IMEI 8바이트) 파싱
-     */
     private String parseAddress(ByteBuf buffer, int senderLen) {
         if (senderLen == 5) {
-            // Unitcode: 1byte + 4bytes
             byte senderF = buffer.readByte();
             int senderB = buffer.readInt();
             return String.format("%d%09d", senderF, senderB);
         } else if (senderLen == 8) {
-            // IMEI: 4bytes + 4bytes
             int senderF = buffer.readInt();
             int senderB = buffer.readInt();
             return String.format("%08d%07d", senderF, senderB);
@@ -1047,6 +1217,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.v("RECEIVE", "number of remaining  : " + vals[1]);
                 if (vals[1].equals("0")) {
                     Toast.makeText(this, getString(R.string.inbox_receive_complite), Toast.LENGTH_LONG).show();
+                    completeAutoReceive();  // ⭐ 자동 받기 완료
                     return;
                 }
                 byte[] data = Base64.decode(vals[2], Base64.NO_WRAP);
@@ -1054,13 +1225,9 @@ public class MainActivity extends AppCompatActivity {
                 ByteBuf buffer = Unpooled.wrappedBuffer(data);
                 byte ver = buffer.getByte(0);
 
-                // ═══════════════════════════════════════════════════════
-                // ⭐ CAR / SOS 모드 (0x00, 0x01 = 송신 / 0x10, 0x11 = 수신)
-                // ═══════════════════════════════════════════════════════
+                // CAR / SOS 모드
                 if (ver == 0x00 || ver == 0x01) {
-                    // 송신 (No Recipient - Address 없음)
-                    // Mode(1) + Lat(4) + Lng(4) + Status(1) = 10 bytes
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     byte etc = buffer.readByte();
@@ -1082,9 +1249,8 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 } else if (ver == 0x11 || ver == 0x10) {
-                    // 수신 (With Recipient - Address 있음)
                     int senderLen = buffer.readableBytes() - 10;
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1106,13 +1272,9 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 }
-                // ═══════════════════════════════════════════════════════
-                // ⭐ UAV 모드 (0x02 = 송신 / 0x12 = 수신)
-                // ═══════════════════════════════════════════════════════
+                // UAV 모드
                 else if (ver == 0x02) {
-                    // 송신 (No Recipient)
-                    // Mode(1) + Lat(4) + Lng(4) + Alt(2) + Speed(1) + Az(1) + Status(1) = 14 bytes
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     int alt = buffer.readShort();
@@ -1137,9 +1299,8 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 } else if (ver == 0x12) {
-                    // 수신 (With Recipient)
                     int senderLen = buffer.readableBytes() - 14;
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1164,13 +1325,9 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 }
-                // ═══════════════════════════════════════════════════════
-                // ⭐ UAT 모드 (0x03 = 송신 / 0x13 = 수신)
-                // ═══════════════════════════════════════════════════════
+                // UAT 모드
                 else if (ver == 0x03) {
-                    // 송신 (No Recipient)
-                    // Mode(1) + Lat(4) + Lng(4) + Alt(2) + Speed(1) + Az(1) + Status(1) + Time(7) = 21 bytes
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
                     int alt = buffer.readShort();
@@ -1205,9 +1362,8 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 } else if (ver == 0x13) {
-                    // 수신 (With Recipient)
                     int senderLen = buffer.readableBytes() - 21;
-                    buffer.readByte();  // Mode
+                    buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1242,9 +1398,7 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                 }
-                // ═══════════════════════════════════════════════════════
-                // ⭐ 메시지 (0x16 = 구형 / 0x17 = Free Mode)
-                // ═══════════════════════════════════════════════════════
+                // 메시지
                 else if (ver == 0x16) {
                     byte[] header = new byte[21];
                     byte[] body = new byte[data.length - 22];
@@ -1268,7 +1422,7 @@ public class MainActivity extends AppCompatActivity {
 
                 } else if (ver == 0x17) {
                     Log.v("MSG 0x17", "Size : " + buffer.readableBytes());
-                    buffer.readByte();  // Mode (0x17)
+                    buffer.readByte();
 
                     int addrSize = buffer.readUnsignedByte();
                     String codeNum = buffer.readCharSequence(addrSize, StandardCharsets.US_ASCII).toString().trim();
@@ -1326,6 +1480,11 @@ public class MainActivity extends AppCompatActivity {
             mLastBroadReceivedTime = System.currentTimeMillis();
             Log.v("SYNC", "✓ BROAD received - battery=" + sta.getBattery() +
                     " signal=" + sta.getSignal() + " tracking=" + sta.isTrackingMode());
+
+            // ⭐ 스마트 자동 받기 트리거
+            int inboxCount = Integer.parseInt(vals[1]);
+            checkAndTriggerAutoReceive(inboxCount);
+
         } else if (packet.startsWith("SN=")) {
             String msg = packet.substring(3);
             String[] vals = msg.split(",");
