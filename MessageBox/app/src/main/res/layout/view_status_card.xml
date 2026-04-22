@@ -25,7 +25,7 @@
             android:gravity="center_vertical"
             android:paddingBottom="10dp">
 
-            <!-- BLE -->
+            <!-- BLE (재연결 UI 포함) -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -49,6 +49,37 @@
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:layout_marginStart="4dp" />
+
+                <!-- ⭐ v2 추가: 재연결 카운트 "(2/5)" -->
+                <TextView
+                    android:id="@+id/text_reconnect_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="(0/5)"
+                    android:textColor="#FFB300"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="3dp"
+                    android:visibility="gone" />
+
+                <!-- ⭐ v2 추가: 액션 버튼 "취소/재시도" -->
+                <TextView
+                    android:id="@+id/btn_connection_action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="취소"
+                    android:textColor="#378ADD"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="6dp"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:background="#1E3A5F"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone" />
 
             </LinearLayout>
 
