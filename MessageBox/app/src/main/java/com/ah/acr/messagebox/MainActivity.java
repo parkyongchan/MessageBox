@@ -197,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
         checkExternalStorage();
 
         setupFixedHeaderObservers();
+        setupReconnectUI();       // ⭐ v2 신규: 재연결 UI 설정
         setupHeaderButtons();
         setupBottomTabs();
     }
@@ -311,6 +312,108 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
+    //   ⭐ v2 재연결 UI (자동 재접속 메커니즘 연동)
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * BLE v2 재연결 상태 UI 설정
+     *
+     * - CONNECT_STATUS_RECONNECTING: "Reconnecting (N/5)" + [취소] 버튼
+     * - CONNECT_STATUS_FAILED: "Failed" + [재시도] 버튼
+     *     → [재시도] 클릭 시:
+     *       1. selectedDevice 리셋 (이전 장비 스냅샷 제거)
+     *       2. BLE 탭으로 이동 (자동 재스캔 시작됨)
+     *       3. 사용자가 새로 스캔된 TYTO2 선택하여 재연결
+     * - 기타 상태: 기존 getSelectedDevice 옵저버가 처리 (Connected/Disconnected)
+     */
+    private void setupReconnectUI() {
+        // 연결 상태 문자열 관찰 (재연결 관련 상태 처리)
+        BLE.INSTANCE.getConnectionStatus().observe(this, status -> {
+            if (status == null || mIsTestMode) return;
+
+            Log.v("BLE-UI", "ConnectionStatus changed: " + status);
+
+            switch (status) {
+                case BLE.CONNECT_STATUS_RECONNECTING: {
+                    // 재연결 중: "Reconnecting (2/5)" + [취소]
+                    int attempts = BLE.INSTANCE.getReconnectAttempts();
+                    int max = BLE.INSTANCE.getMaxReconnectAttempts();
+
+                    binding.statusArea.textBleStatusMain.setText("Reconnecting");
+                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);  // 주황
+                    binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
+
+                    binding.statusArea.textReconnectCount.setText(
+                            String.format("(%d/%d)", attempts, max)
+                    );
+                    binding.statusArea.textReconnectCount.setVisibility(View.VISIBLE);
+
+                    binding.statusArea.btnConnectionAction.setText("취소");
+                    binding.statusArea.btnConnectionAction.setVisibility(View.VISIBLE);
+                    break;
+                }
+
+                case BLE.CONNECT_STATUS_FAILED: {
+                    // 재연결 최종 실패: "Failed" + [재시도]
+                    binding.statusArea.textBleStatusMain.setText("Failed");
+                    binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);  // 빨강
+                    binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
+
+                    binding.statusArea.textReconnectCount.setVisibility(View.GONE);
+
+                    binding.statusArea.btnConnectionAction.setText("재시도");
+                    binding.statusArea.btnConnectionAction.setVisibility(View.VISIBLE);
+                    break;
+                }
+
+                case BLE.CONNECT_STATUS_CONNECTED:
+                case BLE.CONNECT_STATUS_DISCONNECTED:
+                case BLE.CONNECT_STATUS_LOST:
+                case BLE.CONNECT_STATUS_TRYING:
+                default: {
+                    // 재연결 UI 숨김 (기존 getSelectedDevice 옵저버가 처리)
+                    binding.statusArea.textReconnectCount.setVisibility(View.GONE);
+                    binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
+                    break;
+                }
+            }
+        });
+
+        // 액션 버튼 클릭 처리 (취소 or 재시도)
+        binding.statusArea.btnConnectionAction.setOnClickListener(v -> {
+            String currentStatus = BLE.INSTANCE.getConnectionStatus().getValue();
+            Log.v("BLE-UI", "Action button clicked, status: " + currentStatus);
+
+            if (BLE.CONNECT_STATUS_RECONNECTING.equals(currentStatus)) {
+                // 재연결 중 → 취소
+                BLE.INSTANCE.cancelReconnect();
+                Toast.makeText(this, "재연결을 취소했습니다.", Toast.LENGTH_SHORT).show();
+            } else if (BLE.CONNECT_STATUS_FAILED.equals(currentStatus)) {
+                // ⭐ v2 개선: 재시도 시 Connect 탭으로 이동 + 자동 재스캔
+                Log.v("BLE-UI", "Retry → Reset selectedDevice & navigate to BLE tab");
+
+                // ⭐ 핵심 수정: 이전 selectedDevice 스냅샷 제거
+                // (startScan에서 이전 장비를 목록 맨 위에 추가하는 로직 방지)
+                BLE.INSTANCE.getSelectedDevice().postValue(null);
+
+                // 재연결 UI 숨김 (Failed 상태 리셋)
+                binding.statusArea.textReconnectCount.setVisibility(View.GONE);
+                binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
+
+                // BLE 탭으로 이동
+                // BleItemFragment가 생성되면서 자동으로 스캔 시작됨
+                // (BleItemFragment.onCreateView 내 checkScanStatus 호출)
+                binding.bottomNav.setSelectedItemId(R.id.tab_ble);
+
+                Toast.makeText(this,
+                        "장비를 다시 검색합니다. TYTO2 전원을 확인해주세요.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
     //   주기 동기화
     // ═════════════════════════════════════════════════════════════
 
@@ -417,9 +520,24 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textBleStatusMain.setText("Connected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
+
+                // ⭐ v2: 연결 성공 시 재연결 UI 숨김
+                binding.statusArea.textReconnectCount.setVisibility(View.GONE);
+                binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
+
                 startPeriodicSync();
             } else {
                 if (mIsTestMode) return;
+
+                // ⭐ v2: 재연결 중/실패 상태일 때는 덮어쓰지 않음
+                // (setupReconnectUI의 옵저버가 우선 처리)
+                String status = BLE.INSTANCE.getConnectionStatus().getValue();
+                if (BLE.CONNECT_STATUS_RECONNECTING.equals(status) ||
+                    BLE.CONNECT_STATUS_FAILED.equals(status)) {
+                    // 재연결 UI 유지
+                    return;
+                }
+
                 binding.statusArea.textBleStatusMain.setText("Disconnected");
                 binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
@@ -769,8 +887,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopPeriodicSync();
-        BleManager.getInstance().disconnectAllDevice();
-        BleManager.getInstance().destroy();
+        // ⭐ v2: BLE.destroyBle() 로 통합 (재연결 상태까지 완전히 정리)
+        BLE.INSTANCE.destroyBle();
     }
 
     @Override
