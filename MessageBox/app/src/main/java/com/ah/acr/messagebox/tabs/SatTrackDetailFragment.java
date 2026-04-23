@@ -27,6 +27,7 @@ import com.ah.acr.messagebox.database.SatTrackViewModel;
 import com.ah.acr.messagebox.export.TrackExporter;
 import com.ah.acr.messagebox.util.MapModeManager;
 import com.ah.acr.messagebox.util.MapModeToggleHelper;
+import com.ah.acr.messagebox.util.NumberedMarkerUtil;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.BoundingBox;
@@ -43,7 +44,7 @@ import java.util.Locale;
 
 /**
  * Full-screen dialog for viewing a saved Satellite TRACK session.
- * Shows map with polyline, start/end markers, and export button.
+ * Shows map with polyline, numbered markers, and export button.
  */
 public class SatTrackDetailFragment extends DialogFragment {
 
@@ -69,6 +70,9 @@ public class SatTrackDetailFragment extends DialogFragment {
     private Polyline polyline;
     private Marker startMarker;
     private Marker endMarker;
+
+    // ⭐ UI-2026-04-23: 숫자 마커 리스트
+    private final List<Marker> numberedMarkers = new ArrayList<>();
 
 
     public static SatTrackDetailFragment newInstance(int trackId) {
@@ -342,6 +346,21 @@ public class SatTrackDetailFragment extends DialogFragment {
             if (track == null) return;
             currentTrack = track;
             updateHeader(track);
+
+            // ⭐ UI-2026-04-23: 세션 모드에 따라 폴리라인 색상도 변경
+            if (isSosSession(track)) {
+                polyline.setColor(Color.parseColor("#FF5252"));  // 빨강 (SOS)
+            } else {
+                polyline.setColor(Color.parseColor("#378ADD"));  // 청록 (TRACK)
+            }
+            // 포인트가 이미 로드된 상태라면 마커도 재생성
+            if (!currentPoints.isEmpty()) {
+                List<GeoPoint> gps = new ArrayList<>();
+                for (SatTrackPointEntity p : currentPoints) {
+                    gps.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
+                }
+                redrawNumberedMarkers(gps);
+            }
         });
 
         viewModel.getPointsByTrack(trackId).observe(getViewLifecycleOwner(), points -> {
@@ -397,15 +416,22 @@ public class SatTrackDetailFragment extends DialogFragment {
 
         if (!geoPoints.isEmpty()) {
             startMarker.setPosition(geoPoints.get(0));
+            // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 시작/끝 마커 숨김
+            startMarker.setVisible(false);
             if (!mapView.getOverlays().contains(startMarker)) {
                 mapView.getOverlays().add(startMarker);
             }
 
             endMarker.setPosition(geoPoints.get(geoPoints.size() - 1));
+            // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 시작/끝 마커 숨김
+            endMarker.setVisible(false);
             if (!mapView.getOverlays().contains(endMarker)) {
                 mapView.getOverlays().add(endMarker);
             }
         }
+
+        // ⭐ UI-2026-04-23: 숫자 마커 생성
+        redrawNumberedMarkers(geoPoints);
 
         if (geoPoints.size() >= 2) {
             double padLat = (maxLat - minLat) * 0.2;
@@ -438,6 +464,67 @@ public class SatTrackDetailFragment extends DialogFragment {
         }
 
         mapView.invalidate();
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: 숫자 마커 재생성
+     * 위성 TRACK = COLOR_TRACK (청록)
+     * 위성 SOS = COLOR_SOS (빨강)
+     * 세션명에 "SOS" 포함 여부로 판별
+     */
+    private void redrawNumberedMarkers(List<GeoPoint> geoPoints) {
+        if (mapView == null) return;
+
+        // 1) 기존 숫자 마커 제거
+        for (Marker m : numberedMarkers) {
+            mapView.getOverlays().remove(m);
+        }
+        numberedMarkers.clear();
+
+        int total = geoPoints.size();
+        if (total == 0) return;
+
+        Context ctx = requireContext();
+
+        // 2) 세션 모드에 따라 색상 결정
+        int color = isSosSession(currentTrack)
+                ? NumberedMarkerUtil.COLOR_SOS
+                : NumberedMarkerUtil.COLOR_TRACK;
+
+        // 3) 각 포인트에 숫자 마커 생성
+        for (int i = 0; i < total; i++) {
+            GeoPoint pt = geoPoints.get(i);
+
+            // 번호: 최신=1, 오래됨=N
+            int number = total - i;
+
+            // 알파: 인덱스가 높을수록(최신) 뚜렷
+            float alpha = NumberedMarkerUtil.calculateAlpha(i, total);
+
+            // 최신 포인트 여부
+            boolean isLatest = (i == total - 1);
+
+            Marker marker = new Marker(mapView);
+            marker.setPosition(pt);
+            NumberedMarkerUtil.applyToMarker(
+                    marker, ctx, number, color, alpha, isLatest);
+
+            mapView.getOverlays().add(marker);
+            numberedMarkers.add(marker);
+        }
+
+        mapView.invalidate();
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: 세션이 SOS 모드인지 판별
+     * 세션명에 "SOS" 포함 여부로 판단
+     */
+    private boolean isSosSession(SatTrackEntity track) {
+        if (track == null || track.getName() == null) return false;
+        return track.getName().contains("SOS");
     }
 
 

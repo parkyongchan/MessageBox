@@ -2,8 +2,8 @@ package com.ah.acr.messagebox.tabs;
 
 import android.app.DatePickerDialog;
 import android.app.Dialog;
+import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,7 +17,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
@@ -29,8 +29,10 @@ import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationViewModel;
 import com.ah.acr.messagebox.database.LocationWithAddress;
 import com.ah.acr.messagebox.databinding.FragmentDeviceTrackDetailBinding;
+import com.ah.acr.messagebox.export.TrackExporter;
 import com.ah.acr.messagebox.util.MapModeManager;
 import com.ah.acr.messagebox.util.MapModeToggleHelper;
+import com.ah.acr.messagebox.util.NumberedMarkerUtil;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapListener;
@@ -53,11 +55,12 @@ import java.util.Locale;
 
 /**
  * 장비별 전체 트랙 상세 팝업 (전체화면 DialogFragment)
- * - 해당 장비의 모든 위치 기록
- * - 폴리라인으로 경로 표시
- * - 시간순 하이라이트 자동재생
- * - ⭐ 지도 모드 수동 토글
- * - ⭐ 아이콘/타입 분류: 0x10=SOS, 0x11=CAR(Track)
+ *
+ * UI-2026-04-23 업데이트:
+ * - ⭐ 숫자 마커 적용 (NumberedMarkerUtil)
+ * - ⭐ SOS/TRACK 색상 구분
+ * - ⭐ 정보박스 확장 (ALT, SEND_TIME, RECV_TIME)
+ * - ⭐ Export 기능 (GPX/KML/CSV)
  */
 public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String TAG = DeviceTrackDetailFragment.class.getSimpleName();
@@ -107,6 +110,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
     private final SimpleDateFormat datetimeFmt =
             new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+
+    // ⭐ UI-2026-04-23: 풍부한 시간 포맷 "26년 04월 23일 20시 20분 30초"
+    private final SimpleDateFormat richTimeFmt =
+            new SimpleDateFormat("yy년 MM월 dd일 HH시 mm분 ss초", Locale.getDefault());
 
 
     public static DeviceTrackDetailFragment newInstance(String codeNum, String name) {
@@ -160,6 +167,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         setupPlaybackControls();
         setupMapControls();
         setupMapModeToggle();
+        setupExportButton();
         observeInitial();
 
         binding.chip7d.setSelected(true);
@@ -190,6 +198,16 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         binding.tvTrackTitle.setText(title);
 
         binding.btnClose.setOnClickListener(v -> dismiss());
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: Export 버튼 (헤더의 btn_export)
+     */
+    private void setupExportButton() {
+        if (binding.btnExport != null) {
+            binding.btnExport.setOnClickListener(v -> showExportDialog());
+        }
     }
 
 
@@ -321,6 +339,13 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
+    /**
+     * ⭐ UI-2026-04-23: 숫자 마커로 변경
+     * - 최신=1, 오래됨=N
+     * - alpha 페이딩 (최신 뚜렷, 오래됨 희미)
+     * - SOS=빨강, TRACK=청록, 기타=주황
+     * - 최신 마커는 크고 흰 테두리
+     */
     private void drawTrackOnMap() {
         if (mMapView == null) return;
 
@@ -334,29 +359,56 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         int total = mTrackPoints.size();
         List<GeoPoint> polylinePoints = new ArrayList<>();
 
-        for (int i = 0; i < total; i++) {
-            LocationWithAddress item = mTrackPoints.get(i);
+        // 1단계: 유효한 포인트와 좌표 수집
+        List<LocationEntity> validLocations = new ArrayList<>();
+        for (LocationWithAddress item : mTrackPoints) {
             LocationEntity loc = item.getLocation();
-
             if (loc.getLatitude() == null || loc.getLongitude() == null) continue;
+            validLocations.add(loc);
+            polylinePoints.add(new GeoPoint(loc.getLatitude(), loc.getLongitude()));
+        }
 
+        int validTotal = validLocations.size();
+        if (validTotal == 0) {
+            mMapView.invalidate();
+            return;
+        }
+
+        // 2단계: Polyline (색상은 전반적인 세션 성격으로 - 첫 포인트 기준)
+        // 또는 mixed면 그라데이션... 일단 기본 청록으로 유지
+        if (polylinePoints.size() > 1) {
+            mPolyline = new Polyline();
+            mPolyline.setPoints(polylinePoints);
+            // 기본 청록 (TRACK이 대부분)
+            mPolyline.getOutlinePaint().setColor(Color.parseColor("#378ADD"));
+            mPolyline.getOutlinePaint().setStrokeWidth(6f);
+            mPolyline.getOutlinePaint().setAlpha(180);
+            mMapView.getOverlays().add(0, mPolyline);
+        }
+
+        // 3단계: 숫자 마커 생성
+        // 리스트 순서: mTrackPoints 는 시간순 오래된 것 → 최신
+        // 번호: 최신=1, 오래됨=N
+        for (int i = 0; i < validTotal; i++) {
+            LocationEntity loc = validLocations.get(i);
             GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
-            polylinePoints.add(point);
+
+            // 번호: 최신=1, 오래됨=N
+            int number = validTotal - i;
+
+            // 알파: 인덱스가 높을수록(최신) 뚜렷
+            float alpha = NumberedMarkerUtil.calculateAlpha(i, validTotal);
+
+            // 최신 포인트 여부
+            boolean isLatest = (i == validTotal - 1);
+
+            // 색상: trackMode에 따라
+            int color = getColorForTrackMode(loc.getTrackMode());
 
             Marker marker = new Marker(mMapView);
             marker.setPosition(point);
-            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-
-            float alpha;
-            if (total == 1) alpha = 1.0f;
-            else alpha = 0.35f + (float) i / (total - 1) * 0.65f;
-
-            Drawable icon = getMarkerIcon(loc.getTrackMode());
-            if (icon != null) {
-                icon.setAlpha((int) (alpha * 255));
-                marker.setIcon(icon);
-            }
-
+            NumberedMarkerUtil.applyToMarker(
+                    marker, requireContext(), number, color, alpha, isLatest);
             marker.setTitle(timeFmt.format(
                     loc.getCreateAt() != null ? loc.getCreateAt() : new Date()
             ));
@@ -365,18 +417,32 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             mMapView.getOverlays().add(marker);
         }
 
-        if (polylinePoints.size() > 1) {
-            mPolyline = new Polyline();
-            mPolyline.setPoints(polylinePoints);
-            mPolyline.getOutlinePaint().setColor(Color.parseColor("#00E5D1"));
-            mPolyline.getOutlinePaint().setStrokeWidth(6f);
-            mPolyline.getOutlinePaint().setAlpha(180);
-            mMapView.getOverlays().add(0, mPolyline);
-        }
-
         mMapView.invalidate();
-
         mMapView.post(this::fitAllMarkers);
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: trackMode 에 따른 숫자 마커 색상
+     *
+     * TYTO 프로토콜 ver 코드:
+     * - 0x10 : SOS (긴급)    → 빨강
+     * - 0x11 : CAR (Tracking)→ 청록
+     * - 0x12 : UAV (드론)    → 청록
+     * - 0x13 : UAT (차량확장)→ 청록
+     * - 4, 5 : Legacy SOS   → 빨강
+     * - 2    : Legacy Track → 청록
+     * - 기타                  → 주황
+     */
+    private int getColorForTrackMode(int trackMode) {
+        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
+            return NumberedMarkerUtil.COLOR_SOS;
+        } else if (trackMode == 0x11 || trackMode == 0x12
+                || trackMode == 0x13 || trackMode == 2) {
+            return NumberedMarkerUtil.COLOR_TRACK;
+        } else {
+            return NumberedMarkerUtil.COLOR_OTHER;
+        }
     }
 
 
@@ -390,39 +456,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             mMapView.getOverlays().remove(mPolyline);
             mPolyline = null;
         }
-    }
-
-
-    /**
-     * ⭐ trackMode 에 따른 마커 아이콘
-     *
-     * TYTO 프로토콜 ver 코드:
-     * - 0x10 : SOS (긴급)    → 🚨 빨간 마커
-     * - 0x11 : CAR (Tracking)→ 🚗 Track 마커
-     * - 0x12 : UAV (드론)    → ✈️ Track 마커
-     * - 0x13 : UAT (차량확장)→ 🚙 Track 마커
-     * - 4, 5 : Legacy SOS
-     * - 2    : Legacy Track
-     */
-    private Drawable getMarkerIcon(int trackMode) {
-        int iconRes;
-        // 🚨 SOS: 0x10 만! (0x11 제외)
-        if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
-            iconRes = R.drawable.ic_marker_sos;
-        }
-        // 🚗 TRACK: 0x11, 0x12, 0x13, 2
-        else if (trackMode == 0x11 || trackMode == 0x12
-                || trackMode == 0x13 || trackMode == 2) {
-            iconRes = R.drawable.ic_marker_track;
-        }
-        // 📍 기본
-        else {
-            iconRes = R.drawable.ic_marker_device;
-        }
-
-        Drawable src = ContextCompat.getDrawable(requireContext(), iconRes);
-        if (src == null) return null;
-        return src.mutate();
     }
 
 
@@ -476,20 +509,26 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
 
     /**
-     * ⭐ 정보 박스 업데이트 - TYPE 분류도 같이 수정
+     * ⭐ UI-2026-04-23: 정보 박스 확장
+     * - 기존: SPEED | HEADING | TYPE | TIME
+     * - 신규: SPEED | HEADING | TYPE | ALT  (1줄)
+     *        + 📤 SEND: 26년 04월 23일 20시 20분 30초
+     *        + 📥 RECV: 26년 04월 23일 20시 20분 45초  (2줄)
      */
     private void updateInfoBox(LocationEntity loc) {
         binding.infoBox.setVisibility(View.VISIBLE);
 
+        // SPEED
         binding.tvInfoSpeed.setText(
                 loc.getSpeed() != null ? String.valueOf(loc.getSpeed()) : "-"
         );
 
+        // HEADING
         binding.tvInfoHeading.setText(
                 loc.getDirection() != null ? String.valueOf(loc.getDirection()) : "-"
         );
 
-        // ⭐ TYPE 분류 수정: 0x10 만 SOS, 나머지 Track 는 TRACK
+        // TYPE (아이콘 색상까지)
         int trackMode = loc.getTrackMode();
         if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             binding.tvInfoType.setText("SOS");
@@ -503,6 +542,34 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             binding.tvInfoType.setTextColor(0xFF95B0D4);
         }
 
+        // ⭐ UI-2026-04-23: ALT (고도)
+        if (binding.tvInfoAlt != null) {
+            if (loc.getAltitude() != null) {
+                binding.tvInfoAlt.setText(String.valueOf(loc.getAltitude()));
+            } else {
+                binding.tvInfoAlt.setText("-");
+            }
+        }
+
+        // ⭐ UI-2026-04-23: SEND_TIME (기기 GPS 시간)
+        if (binding.tvInfoSendTime != null) {
+            if (loc.getGpsDate() != null) {
+                binding.tvInfoSendTime.setText(richTimeFmt.format(loc.getGpsDate()));
+            } else {
+                binding.tvInfoSendTime.setText("-");
+            }
+        }
+
+        // ⭐ UI-2026-04-23: RECV_TIME (앱 수신 시간)
+        if (binding.tvInfoRecvTime != null) {
+            if (loc.getCreateAt() != null) {
+                binding.tvInfoRecvTime.setText(richTimeFmt.format(loc.getCreateAt()));
+            } else {
+                binding.tvInfoRecvTime.setText("-");
+            }
+        }
+
+        // (기존 TIME 필드는 호환성 유지)
         if (loc.getCreateAt() != null) {
             binding.tvInfoTime.setText(datetimeFmt.format(loc.getCreateAt()));
         } else {
@@ -510,6 +577,134 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         }
     }
 
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ UI-2026-04-23: Export 기능 (GPX/KML/CSV)
+    // ═══════════════════════════════════════════════════════════════
+
+    private void showExportDialog() {
+        if (mTrackPoints.isEmpty()) {
+            Toast.makeText(getContext(),
+                    "내보낼 데이터가 없습니다",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] formats = {
+                "GPX (GPS Exchange Format)",
+                "KML (Google Earth)",
+                "CSV (Excel/Analysis)"
+        };
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Export Device Track")
+                .setItems(formats, (dialog, which) -> {
+                    TrackExporter.Format format;
+                    switch (which) {
+                        case 0: format = TrackExporter.Format.GPX; break;
+                        case 1: format = TrackExporter.Format.KML; break;
+                        case 2: format = TrackExporter.Format.CSV; break;
+                        default: return;
+                    }
+                    performExport(format);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+
+    private void performExport(TrackExporter.Format format) {
+        // LocationWithAddress 리스트를 TrackExporter가 요구하는
+        // MyTrackEntity + MyTrackPointEntity 형식으로 변환
+
+        Date start = mTrackPoints.get(0).getLocation().getCreateAt();
+        Date end = mTrackPoints.get(mTrackPoints.size() - 1).getLocation().getCreateAt();
+        if (start == null) start = new Date();
+        if (end == null) end = new Date();
+
+        // 장비명으로 트랙 이름 생성
+        String trackName = (deviceName != null && !deviceName.isEmpty())
+                ? deviceName : (codeNum != null ? codeNum : "Device");
+        trackName += " Track " + dateFmt.format(start);
+
+        // 가상 MyTrackEntity 생성 (export용 어댑터)
+        // 시그니처: id, name, startTime, endTime,
+        //          totalDistance, pointCount,
+        //          avgSpeed, maxSpeed, minAltitude, maxAltitude,
+        //          status(String), int, int,
+        //          createdAt
+        com.ah.acr.messagebox.database.MyTrackEntity adapter =
+                new com.ah.acr.messagebox.database.MyTrackEntity(
+                        0, trackName, start, end,
+                        0.0,                    // totalDistance (export가 계산)
+                        mTrackPoints.size(),    // pointCount
+                        0.0, 0.0, 0.0, 0.0,     // avgSpeed, maxSpeed, minAlt, maxAlt
+                        "COMPLETED",            // status (String!)
+                        0, 0,                   // 추가 int 2개
+                        new Date()              // createdAt
+                );
+
+        // LocationWithAddress → MyTrackPointEntity 변환
+        List<com.ah.acr.messagebox.database.MyTrackPointEntity> pts = new ArrayList<>();
+        for (LocationWithAddress item : mTrackPoints) {
+            LocationEntity loc = item.getLocation();
+            if (loc.getLatitude() == null || loc.getLongitude() == null) continue;
+
+            pts.add(new com.ah.acr.messagebox.database.MyTrackPointEntity(
+                    0,                          // id
+                    0,                          // trackId
+                    loc.getLatitude(),
+                    loc.getLongitude(),
+                    loc.getAltitude() != null ? loc.getAltitude().doubleValue() : 0.0,
+                    loc.getSpeed() != null ? loc.getSpeed().doubleValue() : 0.0,
+                    loc.getDirection() != null ? loc.getDirection().floatValue() : 0f,
+                    0,                          // accuracy
+                    loc.getCreateAt() != null ? loc.getCreateAt() : new Date()
+            ));
+        }
+
+        TrackExporter.ExportResult result = TrackExporter.exportTrack(
+                requireContext(),
+                adapter,
+                pts,
+                format
+        );
+
+        if (result.success) {
+            showExportSuccessDialog(result.file, format);
+        } else {
+            Toast.makeText(getContext(),
+                    "❌ Export failed: " + result.errorMessage,
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+    private void showExportSuccessDialog(File file, TrackExporter.Format format) {
+        String displayPath = TrackExporter.getDisplayPath(file);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("✅ Exported Successfully")
+                .setMessage("File saved:\n\n📁 " + displayPath
+                        + "\n\nWhat would you like to do?")
+                .setPositiveButton("Share", (d, w) -> {
+                    try {
+                        Intent intent = TrackExporter.buildShareIntent(
+                                requireContext(), file, format);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Share failed: " + e.getMessage());
+                        Toast.makeText(getContext(),
+                                "Share failed: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNeutralButton("OK", null)
+                .show();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
 
     private void setupFilterChips() {
         binding.chip24h.setOnClickListener(v -> selectQuickChip(v, 24, true));

@@ -27,6 +27,7 @@ import com.ah.acr.messagebox.database.MyTrackViewModel;
 import com.ah.acr.messagebox.export.TrackExporter;
 import com.ah.acr.messagebox.util.MapModeManager;
 import com.ah.acr.messagebox.util.MapModeToggleHelper;
+import com.ah.acr.messagebox.util.NumberedMarkerUtil;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.BoundingBox;
@@ -65,6 +66,9 @@ public class MyTrackDetailFragment extends DialogFragment {
     private Polyline polyline;
     private Marker startMarker;
     private Marker endMarker;
+
+    // ⭐ UI-2026-04-23: 숫자 마커 리스트
+    private final List<Marker> numberedMarkers = new ArrayList<>();
 
 
     public static MyTrackDetailFragment newInstance(int trackId) {
@@ -356,16 +360,23 @@ public class MyTrackDetailFragment extends DialogFragment {
         if (!geoPoints.isEmpty()) {
             GeoPoint start = geoPoints.get(0);
             startMarker.setPosition(start);
+            // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 시작/끝 마커 숨김
+            startMarker.setVisible(false);
             if (!mapView.getOverlays().contains(startMarker)) {
                 mapView.getOverlays().add(startMarker);
             }
 
             GeoPoint end = geoPoints.get(geoPoints.size() - 1);
             endMarker.setPosition(end);
+            // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 시작/끝 마커 숨김
+            endMarker.setVisible(false);
             if (!mapView.getOverlays().contains(endMarker)) {
                 mapView.getOverlays().add(endMarker);
             }
         }
+
+        // ⭐ UI-2026-04-23: 숫자 마커 생성
+        redrawNumberedMarkers(geoPoints);
 
         if (geoPoints.size() >= 2) {
             double padLat = (maxLat - minLat) * 0.2;
@@ -395,6 +406,54 @@ public class MyTrackDetailFragment extends DialogFragment {
         } else if (geoPoints.size() == 1) {
             mapView.getController().setCenter(geoPoints.get(0));
             mapView.getController().setZoom(16.0);
+        }
+
+        mapView.invalidate();
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: 숫자 마커 재생성
+     * 내 위치 기록 (My Location) → COLOR_MY (민트색)
+     * 최신=1, 오래됨=N, alpha 페이딩
+     */
+    private void redrawNumberedMarkers(List<GeoPoint> geoPoints) {
+        if (mapView == null) return;
+
+        // 1) 기존 숫자 마커 제거
+        for (Marker m : numberedMarkers) {
+            mapView.getOverlays().remove(m);
+        }
+        numberedMarkers.clear();
+
+        int total = geoPoints.size();
+        if (total == 0) return;
+
+        Context ctx = requireContext();
+
+        // 2) 각 포인트에 숫자 마커 생성
+        for (int i = 0; i < total; i++) {
+            GeoPoint pt = geoPoints.get(i);
+
+            // 번호: 최신=1, 오래됨=N
+            int number = total - i;
+
+            // 알파: 인덱스가 높을수록(최신) 뚜렷
+            float alpha = NumberedMarkerUtil.calculateAlpha(i, total);
+
+            // 최신 포인트 여부
+            boolean isLatest = (i == total - 1);
+
+            // 색상: 내 위치 = 민트 (COLOR_MY)
+            int color = NumberedMarkerUtil.COLOR_MY;
+
+            Marker marker = new Marker(mapView);
+            marker.setPosition(pt);
+            NumberedMarkerUtil.applyToMarker(
+                    marker, ctx, number, color, alpha, isLatest);
+
+            mapView.getOverlays().add(marker);
+            numberedMarkers.add(marker);
         }
 
         mapView.invalidate();

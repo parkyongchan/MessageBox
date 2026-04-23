@@ -64,6 +64,37 @@
             android:singleLine="true"
             android:ellipsize="middle" />
 
+        <!-- ⭐ UI-2026-04-23: Export 버튼 추가 -->
+        <LinearLayout
+            android:id="@+id/btn_export"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/bg_btn_play"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📤"
+                android:textSize="12sp"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Export"
+                android:textColor="#00E5D1"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/btn_close"
             android:layout_width="wrap_content"
@@ -585,7 +616,6 @@
             android:layout_margin="8dp"
             android:layout_gravity="top|end">
 
-            <!-- tv_map_mode 는 기존 Java 코드와 호환을 위해 유지 (visibility=gone) -->
             <TextView
                 android:id="@+id/tv_map_mode"
                 android:layout_width="wrap_content"
@@ -648,12 +678,12 @@
 
         </LinearLayout>
 
-        <!-- ═══════ 정보 박스 ═══════ -->
+        <!-- ═══════ ⭐ UI-2026-04-23: 정보 박스 (확장) ═══════ -->
         <LinearLayout
             android:id="@+id/info_box"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:layout_gravity="bottom|center_horizontal"
             android:layout_marginBottom="10dp"
             android:background="@drawable/bg_info_box"
@@ -661,182 +691,280 @@
             android:paddingEnd="12dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp"
-            android:gravity="center_vertical"
             android:visibility="gone">
 
-            <!-- SPEED -->
+            <!-- 첫 번째 줄: SPEED | HEADING | TYPE | ALT -->
             <LinearLayout
-                android:id="@+id/info_speed_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginEnd="14dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <TextView
+                <!-- SPEED -->
+                <LinearLayout
+                    android:id="@+id/info_speed_group"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SPEED"
-                    android:textColor="#5A7090"
-                    android:textSize="9sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:layout_marginEnd="12dp">
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SPEED"
+                        android:textColor="#5A7090"
+                        android:textSize="8sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="2dp">
+
+                        <TextView
+                            android:id="@+id/tv_info_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="#E8F1FB"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="km/h"
+                            android:textColor="#95B0D4"
+                            android:textSize="8sp"
+                            android:layout_marginStart="2dp"
+                            android:layout_marginTop="6dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/info_divider_1"
+                    android:layout_width="1dp"
+                    android:layout_height="32dp"
+                    android:background="#2A4570"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- HEADING -->
+                <LinearLayout
+                    android:id="@+id/info_heading_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HDG"
+                        android:textColor="#5A7090"
+                        android:textSize="8sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="2dp">
+
+                        <TextView
+                            android:id="@+id/tv_info_heading"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="#E8F1FB"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="°"
+                            android:textColor="#95B0D4"
+                            android:textSize="12sp"
+                            android:layout_marginStart="1dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/info_divider_2"
+                    android:layout_width="1dp"
+                    android:layout_height="32dp"
+                    android:background="#2A4570"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- TYPE -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:gravity="center"
-                    android:layout_marginTop="2dp">
+                    android:layout_marginEnd="12dp">
 
                     <TextView
-                        android:id="@+id/tv_info_speed"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="#E8F1FB"
-                        android:textSize="18sp"
+                        android:text="TYPE"
+                        android:textColor="#5A7090"
+                        android:textSize="8sp"
                         android:textStyle="bold"
-                        android:fontFamily="monospace" />
+                        android:letterSpacing="0.1" />
+
+                    <TextView
+                        android:id="@+id/tv_info_type"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DATA"
+                        android:textColor="#00E5D1"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.05"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="32dp"
+                    android:background="#2A4570"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- ⭐ ALT 새로 추가 -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="km/h"
-                        android:textColor="#95B0D4"
-                        android:textSize="9sp"
-                        android:layout_marginStart="2dp"
-                        android:layout_marginTop="8dp" />
+                        android:text="ALT"
+                        android:textColor="#5A7090"
+                        android:textSize="8sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="2dp">
+
+                        <TextView
+                            android:id="@+id/tv_info_alt"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="#E8F1FB"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="m"
+                            android:textColor="#95B0D4"
+                            android:textSize="8sp"
+                            android:layout_marginStart="2dp"
+                            android:layout_marginTop="6dp" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </LinearLayout>
 
+            <!-- 구분선 -->
             <View
-                android:id="@+id/info_divider_1"
-                android:layout_width="1dp"
-                android:layout_height="32dp"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
                 android:background="#2A4570"
-                android:layout_marginEnd="14dp" />
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp" />
 
-            <!-- HEADING -->
+            <!-- ⭐ 두 번째 줄: SEND_TIME (기기 GPS 시간) -->
             <LinearLayout
-                android:id="@+id/info_heading_group"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginEnd="14dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="2dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="HEADING"
-                    android:textColor="#5A7090"
+                    android:text="📤 SEND:"
+                    android:textColor="#95B0D4"
                     android:textSize="9sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.1" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_marginTop="2dp">
-
-                    <TextView
-                        android:id="@+id/tv_info_heading"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="#E8F1FB"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:fontFamily="monospace" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="°"
-                        android:textColor="#95B0D4"
-                        android:textSize="14sp"
-                        android:layout_marginStart="1dp" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <View
-                android:id="@+id/info_divider_2"
-                android:layout_width="1dp"
-                android:layout_height="32dp"
-                android:background="#2A4570"
-                android:layout_marginEnd="14dp" />
-
-            <!-- TYPE -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginEnd="14dp">
+                    android:layout_marginEnd="6dp" />
 
                 <TextView
+                    android:id="@+id/tv_info_send_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="TYPE"
-                    android:textColor="#5A7090"
-                    android:textSize="9sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1" />
-
-                <TextView
-                    android:id="@+id/tv_info_type"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="DATA"
-                    android:textColor="#00E5D1"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.05"
-                    android:layout_marginTop="4dp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="32dp"
-                android:background="#2A4570"
-                android:layout_marginEnd="14dp" />
-
-            <!-- TIME -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="TIME"
-                    android:textColor="#5A7090"
-                    android:textSize="9sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1" />
-
-                <TextView
-                    android:id="@+id/tv_info_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="2026-04-11 10:12"
+                    android:text="-"
                     android:textColor="#E8F1FB"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
-                    android:layout_marginTop="4dp" />
+                    android:fontFamily="monospace" />
 
             </LinearLayout>
+
+            <!-- ⭐ 세 번째 줄: RECV_TIME (앱 수신 시간) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📥 RECV:"
+                    android:textColor="#95B0D4"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_info_recv_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#00E5D1"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace" />
+
+            </LinearLayout>
+
+            <!-- 기존 tv_info_time 필드 (호환성 - 숨김) -->
+            <TextView
+                android:id="@+id/tv_info_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:visibility="gone" />
 
         </LinearLayout>
 

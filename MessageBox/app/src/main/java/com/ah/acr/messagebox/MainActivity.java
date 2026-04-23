@@ -502,6 +502,20 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("TYTO Connect 를 종료하시겠습니까?")
                 .setPositiveButton("종료", (d, w) -> {
                     Log.v("EXIT", "사용자가 앱 종료 선택");
+
+                    // ⭐ v4 Phase B-2-5-fix: Service 완전 종료
+                    // Service.stop → ACTION_STOP → stopForegroundService()
+                    //   → stopForeground (알림 제거)
+                    //   → stopSelf (Service 종료)
+                    //   → onDestroy (BLE 리소스 정리)
+                    try {
+                        com.ah.acr.messagebox.service.TytoConnectService.stop(this);
+                        Log.v("EXIT", "🔴 TytoConnectService 중지 요청");
+                    } catch (Exception e) {
+                        Log.v("EXIT", "Service 중지 실패: " + e.getMessage());
+                    }
+
+                    // Activity 종료 + Task 제거
                     finishAndRemoveTask();
                 })
                 .setNegativeButton("취소", null)

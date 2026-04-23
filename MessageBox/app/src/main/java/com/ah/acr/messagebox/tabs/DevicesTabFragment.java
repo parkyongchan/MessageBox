@@ -137,6 +137,9 @@ public class DevicesTabFragment extends Fragment {
     private Marker currentLocationMarker;
     private List<GeoPoint> pathPoints = new ArrayList<>();
 
+    // ⭐ UI-2026-04-23: My Location 숫자 마커 리스트
+    private final List<Marker> myNumberedMarkers = new ArrayList<>();
+
     // Map overlays (satellite)
     private Polyline satPolyline;
     private Marker satCurrentMarker;
@@ -1009,7 +1012,15 @@ public class DevicesTabFragment extends Fragment {
 
         pathPoints.clear();
         if (pathPolyline != null) pathPolyline.setPoints(pathPoints);
-        if (mapViewTracking != null) mapViewTracking.invalidate();
+
+        // ⭐ UI-2026-04-23: 숫자 마커 청소
+        if (mapViewTracking != null) {
+            for (Marker m : myNumberedMarkers) {
+                mapViewTracking.getOverlays().remove(m);
+            }
+            myNumberedMarkers.clear();
+            mapViewTracking.invalidate();
+        }
 
         startElapsedTimer();
     }
@@ -1153,6 +1164,11 @@ public class DevicesTabFragment extends Fragment {
 
         pathPolyline.setPoints(pathPoints);
         currentLocationMarker.setPosition(newPoint);
+        // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 기존 단일 마커 숨김
+        currentLocationMarker.setVisible(false);
+
+        // ⭐ UI-2026-04-23: 숫자 마커 재생성
+        redrawMyNumberedMarkers();
 
         if (pathPoints.size() <= 3) {
             mapViewTracking.getController().animateTo(newPoint);
@@ -1201,14 +1217,69 @@ public class DevicesTabFragment extends Fragment {
                         pathPoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
                     }
                     pathPolyline.setPoints(pathPoints);
+
+                    // ⭐ UI-2026-04-23: 숫자 마커 재생성
+                    redrawMyNumberedMarkers();
+
                     if (!pathPoints.isEmpty()) {
                         GeoPoint last = pathPoints.get(pathPoints.size() - 1);
                         currentLocationMarker.setPosition(last);
+                        // ⭐ UI-2026-04-23: 기존 단일 마커 숨김
+                        currentLocationMarker.setVisible(false);
                         mapViewTracking.getController().animateTo(last);
                         tvWaitingGps.setVisibility(View.GONE);
                     }
                     mapViewTracking.invalidate();
                 });
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: My Location 숫자 마커 재생성
+     * 내 위치 = COLOR_MY (민트 #00E5D1)
+     * 최신=1, 오래됨=N, alpha 페이딩
+     */
+    private void redrawMyNumberedMarkers() {
+        if (mapViewTracking == null) return;
+
+        // 1) 기존 숫자 마커 제거
+        for (Marker m : myNumberedMarkers) {
+            mapViewTracking.getOverlays().remove(m);
+        }
+        myNumberedMarkers.clear();
+
+        int total = pathPoints.size();
+        if (total == 0) return;
+
+        Context ctx = requireContext();
+
+        // 2) 각 포인트에 숫자 마커 생성
+        for (int i = 0; i < total; i++) {
+            GeoPoint pt = pathPoints.get(i);
+
+            // 번호: 최신=1, 오래됨=N
+            int number = total - i;
+
+            // 알파: 인덱스가 높을수록(최신) 뚜렷
+            float alpha = com.ah.acr.messagebox.util.NumberedMarkerUtil
+                    .calculateAlpha(i, total);
+
+            // 최신 포인트 여부
+            boolean isLatest = (i == total - 1);
+
+            // 내 위치 = 민트
+            int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_MY;
+
+            Marker marker = new Marker(mapViewTracking);
+            marker.setPosition(pt);
+            com.ah.acr.messagebox.util.NumberedMarkerUtil.applyToMarker(
+                    marker, ctx, number, color, alpha, isLatest);
+
+            mapViewTracking.getOverlays().add(marker);
+            myNumberedMarkers.add(marker);
+        }
+
+        mapViewTracking.invalidate();
     }
 
 
@@ -1263,6 +1334,7 @@ public class DevicesTabFragment extends Fragment {
      * - 최신=1, 오래됨=N
      * - alpha 페이딩 (오래될수록 희미)
      * - 최신 마커는 크고 흰 테두리
+     * - TRACK: 청록, SOS: 빨강
      */
     private void redrawSatNumberedMarkers() {
         if (mapViewSatTracking == null) return;
@@ -1278,6 +1350,16 @@ public class DevicesTabFragment extends Fragment {
 
         Context ctx = requireContext();
 
+        // ⭐ UI-2026-04-23: 세션 모드에 따라 색상 결정
+        // tvSatSessionTitle 확인 (SOS Active / TRACK Active)
+        int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_TRACK;
+        if (tvSatSessionTitle != null) {
+            CharSequence title = tvSatSessionTitle.getText();
+            if (title != null && title.toString().contains("SOS")) {
+                color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_SOS;
+            }
+        }
+
         // 2) 각 포인트에 숫자 마커 생성
         for (int i = 0; i < total; i++) {
             GeoPoint pt = satPathPoints.get(i);
@@ -1291,10 +1373,6 @@ public class DevicesTabFragment extends Fragment {
 
             // 최신 포인트 여부
             boolean isLatest = (i == total - 1);
-
-            // 색상 (TRACK 청록 기본)
-            // TODO: SOS 세션 시 COLOR_SOS 사용
-            int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_TRACK;
 
             Marker marker = new Marker(mapViewSatTracking);
             marker.setPosition(pt);
