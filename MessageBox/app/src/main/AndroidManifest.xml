@@ -20,9 +20,22 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- ⭐ v4 Phase B-1 추가: BLE Foreground Service 타입 (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
     <!-- 배터리 최적화 제외 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
         tools:ignore="BatteryLife" />
+
+    <!-- ⭐ v4 Phase B-1 추가: BLE 권한 (혹시 누락 방지) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"
+        tools:targetApi="s" />
 
     <!-- 오프라인 지도 파일 읽기/쓰기 권한 (OSMDroid) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -70,12 +83,19 @@
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.MessageBox.NoActionBar" />
 
-        <!-- 위치 추적 포그라운드 서비스 -->
+        <!-- 위치 추적 포그라운드 서비스 (기존) -->
         <service
             android:name=".service.LocationTrackingService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- ⭐ v4 Phase B-1 추가: TYTO Connect BLE Foreground Service -->
+        <service
+            android:name=".service.TytoConnectService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <!-- ⭐ 파일 공유용 FileProvider -->
         <provider

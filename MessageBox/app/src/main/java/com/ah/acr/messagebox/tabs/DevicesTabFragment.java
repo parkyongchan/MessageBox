@@ -96,7 +96,8 @@ public class DevicesTabFragment extends Fragment {
     private View satStateNotTracking;
     private View linkSettings;
     private TextView tvSatConnectedImei;
-    private Button btnSatStart;
+    // ⭐ v4 Phase 3-1: btnSatStart 제거 (세션 시작은 Settings에서)
+    // private Button btnSatStart;
     private RecyclerView rvSatTracks;
     private TextView tvSatTrackCount;
     private TextView tvEmptySatTracks;
@@ -108,6 +109,13 @@ public class DevicesTabFragment extends Fragment {
     private TextView tvSatWaitingGps;
     private MapView mapViewSatTracking;
     private Button btnSatStop;
+
+    // ⭐ UI-2026-04-23: State B 세션 헤더 (아이콘/제목)
+    private TextView tvSatSessionIcon;
+    private TextView tvSatSessionTitle;
+
+    // ⭐ UI-2026-04-23: 숫자 마커 리스트 (매번 재생성)
+    private final List<Marker> satNumberedMarkers = new ArrayList<>();
 
     private View mapModeToggleSat;
 
@@ -355,7 +363,8 @@ public class DevicesTabFragment extends Fragment {
         satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
         linkSettings = root.findViewById(R.id.linkSettings);
         tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
-        btnSatStart = root.findViewById(R.id.btnSatStart);
+        // ⭐ v4 Phase 3-1: btnSatStart 제거됨 (xml에서도 삭제됨)
+        // btnSatStart = root.findViewById(R.id.btnSatStart);
         rvSatTracks = root.findViewById(R.id.rvSatTracks);
         tvSatTrackCount = root.findViewById(R.id.tvSatTrackCount);
         tvEmptySatTracks = root.findViewById(R.id.tvEmptySatTracks);
@@ -367,6 +376,10 @@ public class DevicesTabFragment extends Fragment {
         tvSatWaitingGps = root.findViewById(R.id.tvSatWaitingGps);
         mapViewSatTracking = root.findViewById(R.id.mapViewSatTracking);
         btnSatStop = root.findViewById(R.id.btnSatStop);
+
+        // ⭐ UI-2026-04-23: 세션 헤더
+        tvSatSessionIcon = root.findViewById(R.id.tvSatSessionIcon);
+        tvSatSessionTitle = root.findViewById(R.id.tvSatSessionTitle);
 
         mapModeToggleSat = root.findViewById(R.id.mapModeToggleSat);
     }
@@ -404,18 +417,28 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
+    /**
+     * ⭐ Phase 1-1: Spinner 커스텀 레이아웃 적용
+     * 다크 테마 배경(#0A1628)에 맞춰 흰색 텍스트 사용
+     */
     private void setupSpinners() {
         String[] intervals = {"10s", "30s", "1m", "2m", "5m", "10m"};
         ArrayAdapter<String> intervalAdapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, intervals);
-        intervalAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                requireContext(),
+                R.layout.spinner_item_dark,            // ⭐ 커스텀 (닫힌 상태)
+                intervals);
+        intervalAdapter.setDropDownViewResource(
+                R.layout.spinner_dropdown_item_dark);   // ⭐ 커스텀 (드롭다운)
         spinnerInterval.setAdapter(intervalAdapter);
         spinnerInterval.setSelection(1);
 
         String[] distances = {"5m", "10m", "20m", "50m", "100m"};
         ArrayAdapter<String> distanceAdapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, distances);
-        distanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                requireContext(),
+                R.layout.spinner_item_dark,            // ⭐ 커스텀 (닫힌 상태)
+                distances);
+        distanceAdapter.setDropDownViewResource(
+                R.layout.spinner_dropdown_item_dark);   // ⭐ 커스텀 (드롭다운)
         spinnerDistance.setAdapter(distanceAdapter);
         spinnerDistance.setSelection(2);
     }
@@ -454,7 +477,8 @@ public class DevicesTabFragment extends Fragment {
         btnStartTracking.setOnClickListener(v -> onStartClicked());
         btnStopTracking.setOnClickListener(v -> onStopClicked());
 
-        btnSatStart.setOnClickListener(v -> onSatStartClicked());
+        // ⭐ v4 Phase 3-1: btnSatStart 제거됨
+        // btnSatStart.setOnClickListener(v -> onSatStartClicked());
         btnSatStop.setOnClickListener(v -> onSatStopClicked());
 
         if (linkSettings != null) {
@@ -705,6 +729,11 @@ public class DevicesTabFragment extends Fragment {
     //   SATELLITE - START/STOP
     // ═══════════════════════════════════════════════════════════════
 
+    /**
+     * ⭐ v4 Phase 3-1: btnSatStart는 제거되었지만 메서드는 유지
+     * Phase 4에서 Settings의 Start 버튼이 이 메서드를 호출하거나
+     * 유사한 플로우를 재사용할 예정
+     */
     private void onSatStartClicked() {
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
             Toast.makeText(requireContext(),
@@ -782,6 +811,189 @@ public class DevicesTabFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
+    //   ⭐ v4 Phase 3A: 헤더 TRACK/SOS와 연동된 세션 관리
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * MainActivity에서 호출:
+     * 헤더 TRACK/SOS 버튼으로 시작된 세션
+     *
+     * @param mode 1=TRACK, 2=SOS
+     */
+    public void startSatSessionFromHeader(int mode) {
+        // 이미 활성 세션 있으면 skip
+        if (currentSatTrackId > 0) {
+            Log.v("SAT-SESSION", "이미 활성 세션 있음, skip");
+            return;
+        }
+
+        // 연결 확인
+        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            Log.v("SAT-SESSION", "⚠ BLE 미연결, 세션 시작 skip");
+            return;
+        }
+
+        if (connectedImei == null || connectedImei.isEmpty()) {
+            Log.v("SAT-SESSION", "⚠ IMEI 없음, 세션 시작 skip");
+            return;
+        }
+
+        String modeLabel = (mode == 2) ? "SOS" : "TRACK";
+        String trackName = modeLabel + " " + android.text.format.DateFormat.format(
+                "MM/dd HH:mm", new Date()).toString();
+
+        Log.v("SAT-SESSION", "⭐ 헤더 " + modeLabel + "으로 세션 시작: " + trackName);
+
+        satTrackViewModel.startNewTrack(trackName, connectedImei, trackId -> {
+            currentSatTrackId = trackId.intValue();
+            satTrackingStartTime = System.currentTimeMillis();
+
+            SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
+
+            // LOCATION=2 (헤더 버튼이 이미 전송했으므로 skip)
+            // 여기서 UI만 전환
+
+            if (isAdded() && getActivity() != null) {
+                requireActivity().runOnUiThread(() -> {
+                    // Satellite TRACK 세그먼트로 자동 이동
+                    if (currentTab != TAB_SATELLITE) {
+                        switchTab(TAB_SATELLITE);
+                    }
+                    switchToSatTrackingState();
+
+                    // ⭐ UI-2026-04-23: 세션 헤더 모드별 설정
+                    if (tvSatSessionIcon != null && tvSatSessionTitle != null) {
+                        if (mode == 2) {
+                            tvSatSessionIcon.setText("🆘");
+                            tvSatSessionTitle.setText("SOS Active");
+                        } else {
+                            tvSatSessionIcon.setText("🛰");
+                            tvSatSessionTitle.setText("TRACK Active");
+                        }
+                    }
+
+                    Toast.makeText(requireContext(),
+                            "🛰 " + modeLabel + " session started",
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+            return null;
+        });
+    }
+
+    /**
+     * MainActivity에서 호출:
+     * 헤더 TRACK/SOS 종료 시 저장 다이얼로그 표시
+     *
+     * @param prevMode 종료 직전 모드 (1=TRACK, 2=SOS)
+     */
+    public void stopSatSessionFromHeader(int prevMode) {
+        if (currentSatTrackId <= 0) {
+            Log.v("SAT-SESSION", "활성 세션 없음, skip");
+            return;
+        }
+
+        String modeLabel = (prevMode == 2) ? "SOS" : "TRACK";
+        Log.v("SAT-SESSION", "⏹ 헤더 " + modeLabel + " 종료, 저장 다이얼로그 표시");
+
+        // UI 스레드에서 다이얼로그
+        if (isAdded() && getActivity() != null) {
+            requireActivity().runOnUiThread(() -> {
+                showSaveShareDialog(prevMode);
+            });
+        }
+    }
+
+    /**
+     * 세션 저장/공유/버리기 다이얼로그
+     */
+    private void showSaveShareDialog(int mode) {
+        if (!isAdded() || getActivity() == null) return;
+
+        String modeLabel = (mode == 2) ? "SOS" : "TRACK";
+        int pointCount = satPathPoints.size();
+
+        String message = "Session ended:\n\n" +
+                "Mode: " + modeLabel + "\n" +
+                "Points: " + pointCount + "\n" +
+                "Duration: " + formatElapsed(System.currentTimeMillis() - satTrackingStartTime);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("✅ Satellite " + modeLabel + " Ended")
+                .setMessage(message)
+                .setPositiveButton("💾 Save", (d, w) -> saveSatSession())
+                .setNeutralButton("📤 Save & Share", (d, w) -> saveAndShareSatSession())
+                .setNegativeButton("🗑 Discard", (d, w) -> discardSatSession())
+                .setCancelable(false)
+                .show();
+    }
+
+    private void saveSatSession() {
+        if (currentSatTrackId > 0) {
+            satTrackViewModel.stopTrack(currentSatTrackId);
+        }
+        SatTrackStateHolder.stopSession();
+
+        Toast.makeText(requireContext(),
+                "✅ Session saved",
+                Toast.LENGTH_SHORT).show();
+
+        resetSatSession();
+    }
+
+    private void saveAndShareSatSession() {
+        if (currentSatTrackId > 0) {
+            satTrackViewModel.stopTrack(currentSatTrackId);
+        }
+        SatTrackStateHolder.stopSession();
+
+        // 공유 기능 (간단 구현: 저장 후 공유 intent)
+        try {
+            android.content.Intent shareIntent = new android.content.Intent(
+                    android.content.Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+
+            String text = "Satellite TRACK Session\n" +
+                    "Points: " + satPathPoints.size() + "\n" +
+                    "Duration: " + formatElapsed(
+                            System.currentTimeMillis() - satTrackingStartTime);
+            shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
+
+            startActivity(android.content.Intent.createChooser(
+                    shareIntent, "Share Track"));
+        } catch (Exception e) {
+            Log.v("SAT-SESSION", "공유 실패: " + e.getMessage());
+        }
+
+        Toast.makeText(requireContext(),
+                "✅ Session saved & shared",
+                Toast.LENGTH_SHORT).show();
+
+        resetSatSession();
+    }
+
+    private void discardSatSession() {
+        // 세션만 종료 (저장은 됨, 사용자가 나중에 리스트에서 삭제 가능)
+        if (currentSatTrackId > 0) {
+            satTrackViewModel.stopTrack(currentSatTrackId);
+        }
+        SatTrackStateHolder.stopSession();
+
+        Toast.makeText(requireContext(),
+                "⏹ Session ended (kept in list)",
+                Toast.LENGTH_SHORT).show();
+
+        resetSatSession();
+    }
+
+    private void resetSatSession() {
+        currentSatTrackId = -1;
+        satTrackingStartTime = 0;
+        switchToSatNotTrackingState();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
     //   UI STATE (My Location)
     // ═══════════════════════════════════════════════════════════════
 
@@ -819,13 +1031,21 @@ public class DevicesTabFragment extends Fragment {
         satStateTracking.setVisibility(View.VISIBLE);
 
         tvSatDistance.setText("0.00 km");
-        tvSatPoints.setText("0 pt");
+        tvSatPoints.setText("0");   // ⭐ UI-2026-04-23: "0 pt" → "0" (그리드 하단에 라벨)
         tvSatElapsed.setText("00:00:00");
         tvSatWaitingGps.setVisibility(View.VISIBLE);
 
         satPathPoints.clear();
         if (satPolyline != null) satPolyline.setPoints(satPathPoints);
-        if (mapViewSatTracking != null) mapViewSatTracking.invalidate();
+
+        // ⭐ UI-2026-04-23: 숫자 마커 청소
+        if (mapViewSatTracking != null) {
+            for (Marker m : satNumberedMarkers) {
+                mapViewSatTracking.getOverlays().remove(m);
+            }
+            satNumberedMarkers.clear();
+            mapViewSatTracking.invalidate();
+        }
 
         startSatElapsedTimer();
     }
@@ -1009,9 +1229,14 @@ public class DevicesTabFragment extends Fragment {
                     }
                     satPolyline.setPoints(satPathPoints);
 
+                    // ⭐ UI-2026-04-23: 숫자 마커 재생성
+                    redrawSatNumberedMarkers();
+
                     if (!satPathPoints.isEmpty()) {
                         GeoPoint last = satPathPoints.get(satPathPoints.size() - 1);
                         satCurrentMarker.setPosition(last);
+                        // 기존 최신 위치 마커는 숨김 (숫자 마커가 대체)
+                        satCurrentMarker.setVisible(false);
                         mapViewSatTracking.getController().animateTo(last);
                         tvSatWaitingGps.setVisibility(View.GONE);
                     }
@@ -1023,11 +1248,64 @@ public class DevicesTabFragment extends Fragment {
             if (track == null) return;
             double distanceKm = track.getTotalDistance() / 1000.0;
             tvSatDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
-            tvSatPoints.setText(String.format(Locale.US, "%d pt", track.getPointCount()));
+            // ⭐ UI-2026-04-23: 그리드에 POINTS 라벨 있으므로 숫자만
+            tvSatPoints.setText(String.format(Locale.US, "%d", track.getPointCount()));
             if (satTrackingStartTime == 0) {
                 satTrackingStartTime = track.getStartTime().getTime();
             }
         });
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-23: 숫자 마커 재생성
+     * satPathPoints 기반으로 각 포인트에 숫자 마커 표시
+     * - 최신=1, 오래됨=N
+     * - alpha 페이딩 (오래될수록 희미)
+     * - 최신 마커는 크고 흰 테두리
+     */
+    private void redrawSatNumberedMarkers() {
+        if (mapViewSatTracking == null) return;
+
+        // 1) 기존 숫자 마커 제거
+        for (Marker m : satNumberedMarkers) {
+            mapViewSatTracking.getOverlays().remove(m);
+        }
+        satNumberedMarkers.clear();
+
+        int total = satPathPoints.size();
+        if (total == 0) return;
+
+        Context ctx = requireContext();
+
+        // 2) 각 포인트에 숫자 마커 생성
+        for (int i = 0; i < total; i++) {
+            GeoPoint pt = satPathPoints.get(i);
+
+            // 번호: 최신=1, 오래됨=N
+            int number = total - i;
+
+            // 알파: 인덱스가 높을수록(최신) 뚜렷
+            float alpha = com.ah.acr.messagebox.util.NumberedMarkerUtil
+                    .calculateAlpha(i, total);
+
+            // 최신 포인트 여부
+            boolean isLatest = (i == total - 1);
+
+            // 색상 (TRACK 청록 기본)
+            // TODO: SOS 세션 시 COLOR_SOS 사용
+            int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_TRACK;
+
+            Marker marker = new Marker(mapViewSatTracking);
+            marker.setPosition(pt);
+            com.ah.acr.messagebox.util.NumberedMarkerUtil.applyToMarker(
+                    marker, ctx, number, color, alpha, isLatest);
+
+            mapViewSatTracking.getOverlays().add(marker);
+            satNumberedMarkers.add(marker);
+        }
+
+        mapViewSatTracking.invalidate();
     }
 
 

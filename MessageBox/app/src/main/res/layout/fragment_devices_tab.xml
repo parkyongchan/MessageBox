@@ -351,7 +351,7 @@
         android:visibility="gone">
 
 
-        <!-- State: Not Tracking -->
+        <!-- ═══════ State: Not Tracking (⭐ v4 Phase 3-1 재설계) ═══════ -->
         <LinearLayout
             android:id="@+id/satStateNotTracking"
             android:layout_width="match_parent"
@@ -360,89 +360,150 @@
             android:padding="12dp"
             android:visibility="visible">
 
+            <!-- ⭐ 안내 카드 (START 버튼 대신) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_track_card"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="14dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🛰 Satellite TRACK Mode"
-                    android:textColor="#00E5D1"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Starts TRACK mode on the connected TYTO device.\nGPS points received via satellite will be recorded to this session."
-                    android:textColor="#95B0D4"
-                    android:textSize="12sp" />
-
-                <!-- Clickable Settings Link -->
+                <!-- 헤더 -->
                 <LinearLayout
-                    android:id="@+id/linkSettings"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_settings_link"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="8dp">
+                    android:orientation="horizontal">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⚙️"
-                        android:textSize="14sp" />
+                        android:text="🛰"
+                        android:textSize="16sp" />
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:text="Runs with settings from Location Report tab"
-                        android:textColor="#FFB300"
-                        android:textSize="12sp"
+                        android:text="Satellite TRACK"
+                        android:textColor="#00E5D1"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- ⚠ 비활성 상태 안내 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="⚠ No active session"
+                    android:textColor="#FFB84D"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Start TRACK or SOS from Settings to begin recording satellite GPS points."
+                    android:textColor="#95B0D4"
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="2dp" />
+
+                <!-- Settings 이동 링크 (강조됨) -->
+                <LinearLayout
+                    android:id="@+id/linkSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_settings_link"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⚙️"
+                        android:textSize="16sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Go to Settings"
+                            android:textColor="#FFB300"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Configure interval, distance &amp; start tracking"
+                            android:textColor="#95B0D4"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="›"
                         android:textColor="#FFB300"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                 </LinearLayout>
 
+                <!-- 구분선 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="12dp"
+                    android:background="#1A2A44" />
 
+                <!-- Connected device -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Connected device:"
+                        android:text="📡"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Connected:"
                         android:textColor="#95B0D4"
                         android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/tvSatConnectedImei"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
                         android:text="-"
                         android:textColor="#FF5252"
                         android:textSize="12sp"
@@ -452,19 +513,10 @@
 
             </LinearLayout>
 
+            <!-- ⭐ btnSatStart 제거됨 (v4 Phase 3-1) -->
+            <!-- 세션 시작은 Settings에서 처리 -->
 
-            <Button
-                android:id="@+id/btnSatStart"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/btn_track_start"
-                android:text="🔴  Start TRACK"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-
+            <!-- 📊 Saved Satellite Tracks 헤더 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -507,7 +559,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:padding="24dp"
-                android:text="No saved satellite tracks yet.\nConnect BLE device and tap &quot;Start TRACK&quot;."
+                android:text="No saved satellite tracks yet.\nStart tracking from Settings."
                 android:textAlignment="center"
                 android:textColor="#666666"
                 android:textSize="13sp"
@@ -516,7 +568,8 @@
         </LinearLayout>
 
 
-        <!-- State: Tracking -->
+        <!-- ═══════ State: Tracking (⭐ UI-2026-04-23 재설계) ═══════ -->
+        <!-- 세션 정보 집중: 장비 상태는 헤더에 있으므로 제외 -->
         <LinearLayout
             android:id="@+id/satStateTracking"
             android:layout_width="match_parent"
@@ -525,65 +578,177 @@
             android:padding="10dp"
             android:visibility="gone">
 
+            <!-- ═══════ 세션 헤더 (타이틀 + LIVE 뱃지) ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_track_card"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="8dp">
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp">
 
                 <TextView
+                    android:id="@+id/tvSatSessionIcon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="🛰"
-                    android:textSize="14sp" />
+                    android:textSize="18sp" />
 
                 <TextView
-                    android:id="@+id/tvSatElapsed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:fontFamily="monospace"
-                    android:text="00:00:00"
-                    android:textColor="#E53935"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <View
+                    android:id="@+id/tvSatSessionTitle"
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <TextView
-                    android:id="@+id/tvSatDistance"
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0.00 km"
-                    android:textColor="#00E5D1"
-                    android:textSize="13sp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="TRACK Active"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <TextView
+                <!-- LIVE 뱃지 -->
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="6dp"
-                    android:text="·"
-                    android:textColor="#95B0D4" />
+                    android:background="@drawable/bg_badge_active"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp">
 
-                <TextView
-                    android:id="@+id/tvSatPoints"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0 pt"
-                    android:textColor="#00E5D1"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="●"
+                        android:textColor="#00E5D1"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:letterSpacing="0.1"
+                        android:text="LIVE"
+                        android:textColor="#00E5D1"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
+            <!-- ═══════ 통계 그리드 (3칸) ═══════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_stats_section"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
+                <!-- TIME -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="⏱ TIME"
+                        android:textColor="#5A7090"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvSatElapsed"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="monospace"
+                        android:text="00:00:00"
+                        android:textColor="#00E5D1"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="#1A2A44" />
+
+                <!-- DISTANCE -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="📏 DISTANCE"
+                        android:textColor="#5A7090"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvSatDistance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="0.00 km"
+                        android:textColor="#00E5D1"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="#1A2A44" />
+
+                <!-- POINTS -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="📍 POINTS"
+                        android:textColor="#5A7090"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvSatPoints"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="0"
+                        android:textColor="#00E5D1"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ═══════ 지도 영역 ═══════ -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -619,6 +784,7 @@
             </FrameLayout>
 
 
+            <!-- ⭐ v4 Phase 3-1: STOP 버튼 유지 -->
             <Button
                 android:id="@+id/btnSatStop"
                 android:layout_width="match_parent"

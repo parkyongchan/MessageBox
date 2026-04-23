@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,6 +15,7 @@ import com.ah.acr.messagebox.database.SatTrackEntity;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -28,8 +30,13 @@ public class SatTrackAdapter extends RecyclerView.Adapter<SatTrackAdapter.TrackV
     private List<SatTrackEntity> tracks = new ArrayList<>();
     private final OnTrackActionListener listener;
 
-    private static final SimpleDateFormat START_FMT =
-            new SimpleDateFormat("MM/dd HH:mm:ss", Locale.US);
+    // ⭐ v4 UI-2026-04-23: 다양한 시간 포맷
+    private static final SimpleDateFormat TIME_RANGE_FMT =
+            new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US);
+    private static final SimpleDateFormat TIME_SHORT_FMT =
+            new SimpleDateFormat("HH:mm", Locale.US);
+    private static final SimpleDateFormat DATE_FMT =
+            new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
 
     public SatTrackAdapter(OnTrackActionListener listener) {
@@ -73,29 +80,81 @@ public class SatTrackAdapter extends RecyclerView.Adapter<SatTrackAdapter.TrackV
     // ═══════════════════════════════════════════════════════
 
     static class TrackViewHolder extends RecyclerView.ViewHolder {
+        // 상단
+        TextView tvModeIcon;
         TextView tvTrackName;
+        LinearLayout layoutStatusBadge;
+        TextView tvStatusIcon;
+        TextView tvStatus;
+
+        // 시간 & IMEI
+        TextView tvTimeRange;
         TextView tvImei;
-        TextView tvTrackDistance;
+
+        // 통계
         TextView tvTrackDuration;
+        TextView tvTrackDistance;
         TextView tvTrackPoints;
-        TextView tvTrackStart;
+
+        // 액션
         ImageButton btnExport;
         ImageButton btnDelete;
 
+        // Fallback (숨김)
+        TextView tvTrackStart;
+
         TrackViewHolder(@NonNull View itemView) {
             super(itemView);
+            tvModeIcon = itemView.findViewById(R.id.tvModeIcon);
             tvTrackName = itemView.findViewById(R.id.tvTrackName);
+            layoutStatusBadge = itemView.findViewById(R.id.layoutStatusBadge);
+            tvStatusIcon = itemView.findViewById(R.id.tvStatusIcon);
+            tvStatus = itemView.findViewById(R.id.tvStatus);
+
+            tvTimeRange = itemView.findViewById(R.id.tvTimeRange);
             tvImei = itemView.findViewById(R.id.tvImei);
-            tvTrackDistance = itemView.findViewById(R.id.tvTrackDistance);
+
             tvTrackDuration = itemView.findViewById(R.id.tvTrackDuration);
+            tvTrackDistance = itemView.findViewById(R.id.tvTrackDistance);
             tvTrackPoints = itemView.findViewById(R.id.tvTrackPoints);
-            tvTrackStart = itemView.findViewById(R.id.tvTrackStart);
+
             btnExport = itemView.findViewById(R.id.btnExport);
             btnDelete = itemView.findViewById(R.id.btnDelete);
+
+            tvTrackStart = itemView.findViewById(R.id.tvTrackStart);
         }
 
         void bind(SatTrackEntity track, OnTrackActionListener listener) {
-            tvTrackName.setText(track.getName());
+            // ⭐ 모드 아이콘 (세션명으로 판별)
+            String name = track.getName() != null ? track.getName() : "";
+            if (name.contains("SOS")) {
+                tvModeIcon.setText("🆘");
+            } else {
+                tvModeIcon.setText("🛰");
+            }
+
+            // 세션명
+            tvTrackName.setText(name);
+
+            // ⭐ 상태 뱃지 (ACTIVE/COMPLETED)
+            String status = track.getStatus();
+            if ("ACTIVE".equalsIgnoreCase(status)) {
+                layoutStatusBadge.setBackgroundResource(R.drawable.bg_badge_active);
+                tvStatusIcon.setText("●");
+                tvStatusIcon.setTextColor(0xFF00E5D1); // 민트
+                tvStatus.setText("ACTIVE");
+                tvStatus.setTextColor(0xFF00E5D1);
+            } else {
+                layoutStatusBadge.setBackgroundResource(R.drawable.bg_badge_completed);
+                tvStatusIcon.setText("✓");
+                tvStatusIcon.setTextColor(0xFF95B0D4); // 회색
+                tvStatus.setText("COMPLETED");
+                tvStatus.setTextColor(0xFF95B0D4);
+            }
+
+            // ⭐ 시간 범위 표시
+            String timeRange = formatTimeRange(track);
+            tvTimeRange.setText(timeRange);
 
             // IMEI
             if (track.getImei() != null && !track.getImei().isEmpty()) {
@@ -105,20 +164,18 @@ public class SatTrackAdapter extends RecyclerView.Adapter<SatTrackAdapter.TrackV
                 tvImei.setVisibility(View.GONE);
             }
 
+            // Distance
             double km = track.getTotalDistance() / 1000.0;
             tvTrackDistance.setText(String.format(Locale.US, "%.2f km", km));
 
+            // Duration
             long durationMs = track.getDurationMillis();
             tvTrackDuration.setText(formatDuration(durationMs));
 
-            tvTrackPoints.setText(String.format(Locale.US, "%d pts", track.getPointCount()));
+            // Points
+            tvTrackPoints.setText(String.format(Locale.US, "%d", track.getPointCount()));
 
-            if (track.getStartTime() != null) {
-                tvTrackStart.setText("Started: " + START_FMT.format(track.getStartTime()));
-            } else {
-                tvTrackStart.setText("");
-            }
-
+            // 클릭
             itemView.setOnClickListener(v -> {
                 if (listener != null) listener.onTrackClick(track);
             });
@@ -130,6 +187,39 @@ public class SatTrackAdapter extends RecyclerView.Adapter<SatTrackAdapter.TrackV
             btnDelete.setOnClickListener(v -> {
                 if (listener != null) listener.onTrackDelete(track);
             });
+        }
+
+        /**
+         * 시간 범위 포매팅
+         * - 활성: "2026-04-23 16:00 ~ 진행중"
+         * - 완료 (같은 날): "2026-04-23 16:00 ~ 17:15"
+         * - 완료 (다른 날): "2026-04-23 16:00 ~ 04/24 02:15"
+         * - startTime 없음: "-"
+         */
+        private String formatTimeRange(SatTrackEntity track) {
+            Date start = track.getStartTime();
+            Date end = track.getEndTime();
+
+            if (start == null) return "-";
+
+            String startStr = TIME_RANGE_FMT.format(start);
+
+            if (end == null) {
+                // 활성 세션 (완료 안 됨)
+                return startStr + " ~ 진행중";
+            }
+
+            // 같은 날인지 체크
+            String startDate = DATE_FMT.format(start);
+            String endDate = DATE_FMT.format(end);
+
+            if (startDate.equals(endDate)) {
+                // 같은 날 → 시작 전체 + 종료 시간만
+                return startStr + " ~ " + TIME_SHORT_FMT.format(end);
+            } else {
+                // 다른 날 → 둘 다 날짜 포함
+                return startStr + " ~ " + TIME_RANGE_FMT.format(end);
+            }
         }
 
         private String formatDuration(long ms) {

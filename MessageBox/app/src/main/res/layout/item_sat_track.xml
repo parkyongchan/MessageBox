@@ -8,16 +8,26 @@
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground"
     android:orientation="vertical"
-    android:layout_marginBottom="8dp"
-    android:padding="12dp">
+    android:layout_marginBottom="10dp"
+    android:padding="14dp">
 
-    <!-- Row 1: Name + Export + Delete -->
+    <!-- ═══════ Row 1: 제목 + 상태 뱃지 + 액션 ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <!-- 모드 아이콘 -->
+        <TextView
+            android:id="@+id/tvModeIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:text="🛰"
+            android:textSize="16sp" />
+
+        <!-- 세션명 -->
         <TextView
             android:id="@+id/tvTrackName"
             android:layout_width="0dp"
@@ -30,10 +40,47 @@
             android:textSize="14sp"
             android:textStyle="bold" />
 
+        <!-- 상태 뱃지 -->
+        <LinearLayout
+            android:id="@+id/layoutStatusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_badge_active"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp">
+
+            <TextView
+                android:id="@+id/tvStatusIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="●"
+                android:textColor="#00E5D1"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:letterSpacing="0.05"
+                android:text="ACTIVE"
+                android:textColor="#00E5D1"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Export 버튼 -->
         <ImageButton
             android:id="@+id/btnExport"
             android:layout_width="32dp"
             android:layout_height="32dp"
+            android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Export"
             android:padding="6dp"
@@ -41,11 +88,11 @@
             android:src="@android:drawable/ic_menu_share"
             app:tint="#00E5D1" />
 
+        <!-- Delete 버튼 -->
         <ImageButton
             android:id="@+id/btnDelete"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete"
             android:padding="6dp"
@@ -55,75 +102,145 @@
 
     </LinearLayout>
 
-    <!-- Row 2: IMEI -->
+    <!-- ═══════ Row 2: 시간 범위 ═══════ -->
+    <TextView
+        android:id="@+id/tvTimeRange"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="2026-04-23 16:00 ~ 17:15"
+        android:textColor="#95B0D4"
+        android:textSize="11sp" />
+
+    <!-- ═══════ Row 3: IMEI ═══════ -->
     <TextView
         android:id="@+id/tvImei"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
+        android:fontFamily="monospace"
         android:text="📡 865123456789012"
         android:textColor="#378ADD"
-        android:textSize="12sp" />
+        android:textSize="11sp" />
 
-    <!-- Row 3: Stats -->
+    <!-- ═══════ Row 4: 통계 카드 (3 grids) ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="horizontal">
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_stats_section"
+        android:orientation="horizontal"
+        android:padding="10dp">
 
-        <TextView
-            android:id="@+id/tvTrackDistance"
-            android:layout_width="wrap_content"
+        <!-- Duration -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="0.00 km"
-            android:textColor="#00E5D1"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="6dp"
-            android:text="·"
-            android:textColor="#95B0D4"
-            android:textSize="13sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⏱ TIME"
+                android:textColor="#5A7090"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
 
-        <TextView
-            android:id="@+id/tvTrackDuration"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:text="00:00:00"
-            android:textColor="#95B0D4"
-            android:textSize="13sp" />
+            <TextView
+                android:id="@+id/tvTrackDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:text="00:00:00"
+                android:textColor="#00E5D1"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="6dp"
-            android:text="·"
-            android:textColor="#95B0D4"
-            android:textSize="13sp" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvTrackPoints"
-            android:layout_width="wrap_content"
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#1A2A44" />
+
+        <!-- Distance -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="0 pts"
-            android:textColor="#95B0D4"
-            android:textSize="13sp" />
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📏 DISTANCE"
+                android:textColor="#5A7090"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/tvTrackDistance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="0.00 km"
+                android:textColor="#00E5D1"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#1A2A44" />
+
+        <!-- Points -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📍 POINTS"
+                android:textColor="#5A7090"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/tvTrackPoints"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="0"
+                android:textColor="#00E5D1"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Row 4: Started time -->
+    <!-- ═══════ Row 5: 시작 시간 (fallback용, 보통 숨김) ═══════ -->
     <TextView
         android:id="@+id/tvTrackStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Started: 04/18 10:54:32"
+        android:text=""
         android:textColor="#666666"
-        android:textSize="11sp" />
+        android:textSize="11sp"
+        android:visibility="gone" />
 
 </LinearLayout>

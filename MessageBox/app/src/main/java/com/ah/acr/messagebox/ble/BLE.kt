@@ -57,6 +57,10 @@ object BLE {
     val writeQueue = EventsQueue()
     var outboxMsgStatus: MutableLiveData<String> = MutableLiveData()
 
+    // ⭐ v4 Phase B-2-3: lastReceivedPacket LiveData 방식은 폐기됨
+    // → 메인 스레드 경합 이슈로 Broadcast 방식으로 전환
+    // Service로 패킷 전달은 MainActivity에서 sendBroadcast() 사용
+
     // ==================== v2 자동 재연결 관련 변수 ====================
 
     /** 최대 재연결 시도 횟수 */
