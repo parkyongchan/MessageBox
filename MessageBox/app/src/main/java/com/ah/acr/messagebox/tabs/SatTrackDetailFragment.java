@@ -39,6 +39,7 @@ import org.osmdroid.views.overlay.Polyline;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -355,11 +356,7 @@ public class SatTrackDetailFragment extends DialogFragment {
             }
             // 포인트가 이미 로드된 상태라면 마커도 재생성
             if (!currentPoints.isEmpty()) {
-                List<GeoPoint> gps = new ArrayList<>();
-                for (SatTrackPointEntity p : currentPoints) {
-                    gps.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
-                }
-                redrawNumberedMarkers(gps);
+                redrawNumberedMarkersFromPoints(currentPoints);
             }
         });
 
@@ -430,8 +427,8 @@ public class SatTrackDetailFragment extends DialogFragment {
             }
         }
 
-        // ⭐ UI-2026-04-23: 숫자 마커 생성
-        redrawNumberedMarkers(geoPoints);
+        // ⭐ UI-2026-04-24: 숫자 마커 생성 (시간/좌표 말풍선 포함)
+        redrawNumberedMarkersFromPoints(points);
 
         if (geoPoints.size() >= 2) {
             double padLat = (maxLat - minLat) * 0.2;
@@ -468,12 +465,18 @@ public class SatTrackDetailFragment extends DialogFragment {
 
 
     /**
-     * ⭐ UI-2026-04-23: 숫자 마커 재생성
+     * ⭐ UI-2026-04-24: 숫자 마커 재생성 (시간 + 좌표 말풍선 포함)
+     *
+     * 변경사항:
+     * - 마커 클릭 시 말풍선에 시간/위도/경도 표시
+     * - setTitle(): "📍 #1  14:56:23" (번호 + 시간)
+     * - setSnippet(): "37.507234, 126.919345" (위도, 경도)
+     *
      * 위성 TRACK = COLOR_TRACK (청록)
      * 위성 SOS = COLOR_SOS (빨강)
      * 세션명에 "SOS" 포함 여부로 판별
      */
-    private void redrawNumberedMarkers(List<GeoPoint> geoPoints) {
+    private void redrawNumberedMarkersFromPoints(List<SatTrackPointEntity> points) {
         if (mapView == null) return;
 
         // 1) 기존 숫자 마커 제거
@@ -482,7 +485,7 @@ public class SatTrackDetailFragment extends DialogFragment {
         }
         numberedMarkers.clear();
 
-        int total = geoPoints.size();
+        int total = points.size();
         if (total == 0) return;
 
         Context ctx = requireContext();
@@ -492,9 +495,13 @@ public class SatTrackDetailFragment extends DialogFragment {
                 ? NumberedMarkerUtil.COLOR_SOS
                 : NumberedMarkerUtil.COLOR_TRACK;
 
+        // 시간 표시 포맷
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm:ss", Locale.US);
+
         // 3) 각 포인트에 숫자 마커 생성
         for (int i = 0; i < total; i++) {
-            GeoPoint pt = geoPoints.get(i);
+            SatTrackPointEntity point = points.get(i);
+            GeoPoint pt = new GeoPoint(point.getLatitude(), point.getLongitude());
 
             // 번호: 최신=1, 오래됨=N
             int number = total - i;
@@ -509,6 +516,21 @@ public class SatTrackDetailFragment extends DialogFragment {
             marker.setPosition(pt);
             NumberedMarkerUtil.applyToMarker(
                     marker, ctx, number, color, alpha, isLatest);
+
+            // ⭐ UI-2026-04-24: 말풍선 내용 설정 (시간 + 좌표)
+            // 시간 우선순위: timestamp > receivedAt > 현재시간 (fallback)
+            Date pointTime = point.getTimestamp() != null
+                    ? point.getTimestamp()
+                    : (point.getReceivedAt() != null
+                        ? point.getReceivedAt()
+                        : new Date());
+
+            String title = "📍 #" + number + "  " + timeFmt.format(pointTime);
+            String snippet = String.format(Locale.US, "%.6f, %.6f",
+                    point.getLatitude(), point.getLongitude());
+
+            marker.setTitle(title);
+            marker.setSnippet(snippet);
 
             mapView.getOverlays().add(marker);
             numberedMarkers.add(marker);

@@ -69,6 +69,12 @@ public class TytoConnectService extends Service {
     public static final String BROADCAST_ACTIVITY_POINT_SAVED =
             "com.ah.acr.messagebox.ACTIVITY_POINT_SAVED";
 
+    // ⭐ v4 Phase B-3: 자동 수신 상태 Broadcast (UI 애니메이션용)
+    public static final String BROADCAST_AUTO_RECV_STARTED =
+            "com.ah.acr.messagebox.AUTO_RECV_STARTED";
+    public static final String BROADCAST_AUTO_RECV_COMPLETED =
+            "com.ah.acr.messagebox.AUTO_RECV_COMPLETED";
+
     // ═════════════════════════════════════════════════════════
     //   Service 시작/종료 명령
     // ═════════════════════════════════════════════════════════
@@ -233,6 +239,23 @@ public class TytoConnectService extends Service {
     private long mLastBroadTime = 0;
     private int mBroadCount = 0;
 
+    // ⭐ v4 Phase B-3: 자동 수신 상태 (Service에서 백그라운드 안전 처리)
+    //
+    // 문제 배경:
+    // - MainActivity에서 자동 수신했음 → 백그라운드에서 작동 안 함
+    // - 휴대폰 화면 꺼지거나 앱 백그라운드 시 INBOX 증가해도 자동 fetch 실패
+    //
+    // 해결:
+    // - Service는 백그라운드에서도 살아있음 (Foreground Service)
+    // - BROAD 수신 → inbox 변화 감지 → 자동 RECEIVED=0,OK 전송
+    // - MainActivity는 UI 애니메이션만 담당 (Broadcast로 통지)
+    private static final long AUTO_RECEIVE_TIMEOUT_MS = 30000; // 30초
+    private int mAutoReceiveLastInbox = 0;
+    private boolean mIsAutoReceiving = false;
+    private long mAutoReceiveStartTime = 0;
+    private android.os.Handler mAutoReceiveTimeoutHandler;
+    private Runnable mAutoReceiveTimeoutRunnable;
+
     private void handleReceivedPacket(String packet) {
         // 패킷 종류 분류
         String type;
@@ -243,6 +266,19 @@ public class TytoConnectService extends Service {
             type = "ℹ INFO";
         } else if (packet.startsWith("RECEIVED=")) {
             type = "📥 RECEIVED";
+
+            // ⭐ v4 Phase B-3: 자동 수신 완료 체크
+            // RECEIVED=0,OK → 받기 완료 (Service의 mIsAutoReceiving 리셋)
+            // RECEIVED=N,... → 남은 메시지 있음 (계속 대기)
+            try {
+                String remaining = packet.substring(9).split(",")[0];
+                if ("0".equals(remaining) && mIsAutoReceiving) {
+                    completeAutoReceive(true);
+                }
+            } catch (Exception e) {
+                Log.v(TAG, "RECEIVED 파싱 실패: " + e.getMessage());
+            }
+
             // ⭐ v4 Phase B-2-4-B: Activity 없을 때만 Service가 저장
             // (중복 저장 방지)
             if (!sIsActivityAlive) {
@@ -436,6 +472,140 @@ public class TytoConnectService extends Service {
     }
 
     /**
+     * ⭐ v4 Phase B-3: 자동 수신 로직 (Service 주도)
+     *
+     * BROAD 패킷의 inbox 카운트 변화를 감지하여
+     * 자동으로 RECEIVED=0,OK 명령을 장비에 전송
+     *
+     * 배경:
+     * - MainActivity에 있던 로직은 백그라운드에서 작동 안 함
+     * - Service는 백그라운드에서도 살아있으므로 안정적
+     *
+     * 로직:
+     * 1. inbox > 0 이고
+     * 2. 아직 자동 수신 중이 아니고
+     * 3. inbox가 증가했으면
+     * → RECEIVED=0,OK 전송
+     * → 30초 타임아웃 설정
+     * → MainActivity에 Broadcast (UI 애니메이션용)
+     *
+     * @param currentInbox 현재 BROAD에서 받은 inbox 카운트
+     */
+    private void checkAutoReceive(int currentInbox) {
+        // AutoReceive 설정 확인 (MainActivity와 동일한 DefaultSharedPreferences 사용)
+        android.content.SharedPreferences prefs =
+                android.preference.PreferenceManager.getDefaultSharedPreferences(this);
+        boolean isEnabled = prefs.getBoolean("pref_auto_receive_enabled", true);
+
+        if (!isEnabled) {
+            // 설정 OFF면 스킵
+            if (mAutoReceiveLastInbox != 0) {
+                mAutoReceiveLastInbox = 0;
+            }
+            return;
+        }
+
+        if (currentInbox <= 0) {
+            // INBOX 비었음 - 상태 리셋
+            mAutoReceiveLastInbox = 0;
+            return;
+        }
+
+        if (mIsAutoReceiving) {
+            // 이미 수신 중
+            Log.v(TAG, "🔄 AUTO-RECV: 이미 받는 중 (inbox=" + currentInbox + ")");
+            return;
+        }
+
+        // inbox 증가 감지 (또는 첫 감지)
+        boolean shouldTrigger = (currentInbox > mAutoReceiveLastInbox)
+                || (mAutoReceiveLastInbox == 0);
+        if (!shouldTrigger) {
+            return;
+        }
+
+        Log.v(TAG, "★ AUTO-RECV: 자동 받기 시작 (inbox=" + currentInbox + ")");
+        mIsAutoReceiving = true;
+        mAutoReceiveStartTime = System.currentTimeMillis();
+        mAutoReceiveLastInbox = currentInbox;
+
+        // RECEIVED=? 전송 (장비에게 INBOX 시작 요청)
+        // ⚠️ 주의: "RECEIVED=0,OK"는 "완료" 신호이므로 시작에 쓰면 안 됨!
+        // 수동 "새로고침"/"Refresh" 버튼도 동일하게 "RECEIVED=?"를 사용
+        try {
+            com.ah.acr.messagebox.ble.BLE.INSTANCE.getWriteQueue()
+                    .offer("RECEIVED=?");
+            Log.v(TAG, "📤 AUTO-RECV: RECEIVED=? 전송 완료");
+        } catch (Exception e) {
+            Log.v(TAG, "⚠ AUTO-RECV: 전송 실패 - " + e.getMessage());
+            mIsAutoReceiving = false;
+            return;
+        }
+
+        // UI에게 시작 알림 (MainActivity 있으면 애니메이션 시작)
+        Intent startedIntent = new Intent(BROADCAST_AUTO_RECV_STARTED);
+        startedIntent.setPackage(getPackageName());
+        sendBroadcast(startedIntent);
+
+        // 타임아웃 설정
+        startAutoReceiveTimeout();
+    }
+
+    /**
+     * ⭐ v4 Phase B-3: 자동 수신 타임아웃 시작
+     * 30초 내에 RECEIVED 응답 없으면 상태 리셋
+     */
+    private void startAutoReceiveTimeout() {
+        if (mAutoReceiveTimeoutHandler == null) {
+            mAutoReceiveTimeoutHandler = new android.os.Handler(
+                    android.os.Looper.getMainLooper());
+        }
+
+        if (mAutoReceiveTimeoutRunnable != null) {
+            mAutoReceiveTimeoutHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+        }
+
+        mAutoReceiveTimeoutRunnable = () -> {
+            if (mIsAutoReceiving) {
+                long elapsed = System.currentTimeMillis() - mAutoReceiveStartTime;
+                Log.v(TAG, "⚠ AUTO-RECV: 타임아웃 (" + elapsed + "ms) - 리셋");
+                completeAutoReceive(false); // 실패 처리
+            }
+        };
+
+        mAutoReceiveTimeoutHandler.postDelayed(
+                mAutoReceiveTimeoutRunnable, AUTO_RECEIVE_TIMEOUT_MS);
+    }
+
+    /**
+     * ⭐ v4 Phase B-3: 자동 수신 완료 처리
+     *
+     * @param success true=정상 완료, false=타임아웃/실패
+     */
+    private void completeAutoReceive(boolean success) {
+        if (!mIsAutoReceiving) return;
+
+        long elapsed = System.currentTimeMillis() - mAutoReceiveStartTime;
+        Log.v(TAG, (success ? "✓" : "⚠") +
+                " AUTO-RECV: 완료 (" + elapsed + "ms, success=" + success + ")");
+
+        mIsAutoReceiving = false;
+        mAutoReceiveLastInbox = 0;
+
+        // 타임아웃 취소
+        if (mAutoReceiveTimeoutRunnable != null
+                && mAutoReceiveTimeoutHandler != null) {
+            mAutoReceiveTimeoutHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+        }
+
+        // UI에게 완료 알림 (MainActivity 있으면 애니메이션 정지)
+        Intent completedIntent = new Intent(BROADCAST_AUTO_RECV_COMPLETED);
+        completedIntent.setPackage(getPackageName());
+        completedIntent.putExtra("success", success);
+        sendBroadcast(completedIntent);
+    }
+
+    /**
      * BROAD 패킷 파싱 + 상태 업데이트 + Notification 갱신
      * 형식: BROAD=battery,inbox,unsent,signal,gpsTime,gpsLat,gpsLng,sos,tracking
      */
@@ -453,6 +623,10 @@ public class TytoConnectService extends Service {
                 mLastSignal = Integer.parseInt(vals[3]);
                 mLastBroadTime = System.currentTimeMillis();
                 mBroadCount++;
+
+                // ⭐ v4 Phase B-3: INBOX 변화 감지 → 자동 수신 트리거
+                // 백그라운드에서도 안전하게 작동 (Service가 주체)
+                checkAutoReceive(mLastInbox);
 
                 // 세션 상태 (tracking, sos)
                 boolean prevTracking = mIsTracking;
@@ -600,6 +774,12 @@ public class TytoConnectService extends Service {
     public void onDestroy() {
         Log.v(TAG, "onDestroy");
         isServiceRunning = false;
+
+        // ⭐ v4 Phase B-3: 자동 수신 타임아웃 정리
+        if (mAutoReceiveTimeoutRunnable != null
+                && mAutoReceiveTimeoutHandler != null) {
+            mAutoReceiveTimeoutHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
+        }
 
         // ⭐ v4 Phase B-2-3: Receiver 해제
         unregisterPacketReceiver();

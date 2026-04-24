@@ -66,13 +66,11 @@ public class DevicesTabFragment extends Fragment {
     private static final int TAB_SATELLITE = 1;
     private int currentTab = TAB_MY_LOCATION;
 
-    // Segment tabs
     private TextView segMyLocation;
     private TextView segSatellite;
     private View containerMyLocation;
     private View containerSatellite;
 
-    // ─── Tab 1: My Location ───
     private View stateNotTracking;
     private Spinner spinnerInterval;
     private Spinner spinnerDistance;
@@ -92,12 +90,9 @@ public class DevicesTabFragment extends Fragment {
 
     private View mapModeToggleMyLoc;
 
-    // ─── Tab 2: Satellite TRACK ───
     private View satStateNotTracking;
     private View linkSettings;
     private TextView tvSatConnectedImei;
-    // ⭐ v4 Phase 3-1: btnSatStart 제거 (세션 시작은 Settings에서)
-    // private Button btnSatStart;
     private RecyclerView rvSatTracks;
     private TextView tvSatTrackCount;
     private TextView tvEmptySatTracks;
@@ -110,17 +105,14 @@ public class DevicesTabFragment extends Fragment {
     private MapView mapViewSatTracking;
     private Button btnSatStop;
 
-    // ⭐ UI-2026-04-23: State B 세션 헤더 (아이콘/제목)
     private TextView tvSatSessionIcon;
     private TextView tvSatSessionTitle;
 
-    // ⭐ UI-2026-04-23: 숫자 마커 리스트 (매번 재생성)
     private final List<Marker> satNumberedMarkers = new ArrayList<>();
 
     private View mapModeToggleSat;
 
 
-    // ViewModels & state
     private MyTrackViewModel myTrackViewModel;
     private MyTrackAdapter trackAdapter;
     private int currentTrackId = -1;
@@ -132,15 +124,12 @@ public class DevicesTabFragment extends Fragment {
     private long satTrackingStartTime = 0;
     private String connectedImei = null;
 
-    // Map overlays (my location)
     private Polyline pathPolyline;
     private Marker currentLocationMarker;
     private List<GeoPoint> pathPoints = new ArrayList<>();
 
-    // ⭐ UI-2026-04-23: My Location 숫자 마커 리스트
     private final List<Marker> myNumberedMarkers = new ArrayList<>();
 
-    // Map overlays (satellite)
     private Polyline satPolyline;
     private Marker satCurrentMarker;
     private List<GeoPoint> satPathPoints = new ArrayList<>();
@@ -152,10 +141,6 @@ public class DevicesTabFragment extends Fragment {
     private final int[] INTERVAL_SECONDS = {10, 30, 60, 120, 300, 600};
     private final int[] MIN_DISTANCES = {5, 10, 20, 50, 100};
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   BROADCAST RECEIVER (My Location)
-    // ═══════════════════════════════════════════════════════════════
 
     private final BroadcastReceiver locationReceiver = new BroadcastReceiver() {
         @Override
@@ -171,9 +156,27 @@ public class DevicesTabFragment extends Fragment {
     };
 
 
+    // ⭐ v4 Phase B-3-fix (2026-04-24): Satellite 탭 자동 새로고침용 Broadcast 수신기
+    // 장비에서 SOS/TRACK 포인트 수신 시 Service가 BROADCAST_ECHO_RECEIVED 발송
+    // → Satellite 지도 자동 갱신
+    private BroadcastReceiver satEchoReceiver;
+
+
     // ═══════════════════════════════════════════════════════════════
-    //   LIFECYCLE
+    //   ⭐ v4 Phase B-3-fix (2026-04-24): 현재 세션이 SOS 인지 판별
+    //
+    //   버그: stopSatTracking 에서 LOCATION=3 (TRACK 종료)만 전송
+    //        → SOS 세션인 경우 종료 안 됨, LED도 안 꺼짐
+    //   해결: tvSatSessionTitle 체크해서 SOS 세션 여부 판별
+    //         → SOS면 LOCATION=5, TRACK이면 LOCATION=3 전송
     // ═══════════════════════════════════════════════════════════════
+    private boolean isCurrentSessionSos() {
+        if (tvSatSessionTitle == null) return false;
+        CharSequence title = tvSatSessionTitle.getText();
+        if (title == null) return false;
+        return title.toString().contains("SOS");
+    }
+
 
     @Nullable
     @Override
@@ -234,6 +237,9 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .registerReceiver(locationReceiver, filter);
 
+        // ⭐ v4 Phase B-3-fix: Satellite 탭 자동 새로고침용 Broadcast 등록
+        registerSatEchoReceiver();
+
         if (mapViewTracking != null) mapViewTracking.onResume();
         if (mapViewSatTracking != null) mapViewSatTracking.onResume();
 
@@ -258,11 +264,77 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .unregisterReceiver(locationReceiver);
 
+        // ⭐ v4 Phase B-3-fix: Satellite 탭 Broadcast 해제
+        unregisterSatEchoReceiver();
+
         if (mapViewTracking != null) mapViewTracking.onPause();
         if (mapViewSatTracking != null) mapViewSatTracking.onPause();
 
         stopElapsedTimer();
         stopSatElapsedTimer();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ v4 Phase B-3-fix (2026-04-24): Satellite 탭 자동 새로고침
+    //
+    //   기존 문제:
+    //   - Satellite 탭 지도가 장비 수신 데이터를 자동 반영 안 함
+    //   - 수동으로 탭/클릭해야 지도에 마커 추가됨
+    //
+    //   해결:
+    //   - Service가 새 포인트 저장 시 BROADCAST_ECHO_RECEIVED 발송
+    //   - 이 수신기가 받으면 reloadSatPathFromDb() 호출
+    //   - 지도 자동 갱신됨
+    // ═══════════════════════════════════════════════════════════════
+
+    private void registerSatEchoReceiver() {
+        if (satEchoReceiver != null) return;
+
+        satEchoReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null) return;
+                String action = intent.getAction();
+                if (com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_ECHO_RECEIVED.equals(action)) {
+                    Log.v(TAG, "📨 ECHO 수신 → Satellite 지도 자동 새로고침");
+                    // 현재 활성 세션이 있으면 DB에서 다시 로드
+                    if (currentSatTrackId > 0) {
+                        reloadSatPathFromDb();
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(
+                com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_ECHO_RECEIVED);
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requireContext().registerReceiver(
+                        satEchoReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                requireContext().registerReceiver(satEchoReceiver, filter);
+            }
+            Log.v(TAG, "📡 Sat ECHO 수신기 등록");
+        } catch (Exception e) {
+            Log.e(TAG, "Sat ECHO 수신기 등록 실패: " + e.getMessage());
+        }
+    }
+
+
+    private void unregisterSatEchoReceiver() {
+        if (satEchoReceiver != null) {
+            try {
+                requireContext().unregisterReceiver(satEchoReceiver);
+                Log.v(TAG, "📡 Sat ECHO 수신기 해제");
+            } catch (Exception e) {
+                // 이미 해제 or 등록 안 됨
+            }
+            satEchoReceiver = null;
+        }
     }
 
 
@@ -282,12 +354,7 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   ⭐ 지도 모드 토글 설정 (2개 지도 공통)
-    // ═══════════════════════════════════════════════════════════════
-
     private void setupMapModeToggles(View root) {
-        // My Location 지도 토글
         if (mapModeToggleMyLoc != null) {
             MapModeToggleHelper.setup(
                     mapModeToggleMyLoc,
@@ -300,7 +367,6 @@ public class DevicesTabFragment extends Fragment {
             );
         }
 
-        // Satellite 지도 토글
         if (mapModeToggleSat != null) {
             MapModeToggleHelper.setup(
                     mapModeToggleSat,
@@ -315,7 +381,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /** 2개 지도 모두 현재 모드로 업데이트 */
     private void applyMapSourceToAllMaps() {
         if (mapViewTracking != null) {
             MapModeManager.applyToMapView(requireContext(), mapViewTracking);
@@ -326,17 +391,12 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /** 다른 쪽 토글 UI 동기화 */
     private void syncOtherToggleUI(View toggleRoot) {
         if (toggleRoot != null) {
             MapModeToggleHelper.setup(toggleRoot, requireContext(), null);
         }
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   SETUP
-    // ═══════════════════════════════════════════════════════════════
 
     private void bindViews(View root) {
         segMyLocation = root.findViewById(R.id.segMyLocation);
@@ -366,8 +426,6 @@ public class DevicesTabFragment extends Fragment {
         satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
         linkSettings = root.findViewById(R.id.linkSettings);
         tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
-        // ⭐ v4 Phase 3-1: btnSatStart 제거됨 (xml에서도 삭제됨)
-        // btnSatStart = root.findViewById(R.id.btnSatStart);
         rvSatTracks = root.findViewById(R.id.rvSatTracks);
         tvSatTrackCount = root.findViewById(R.id.tvSatTrackCount);
         tvEmptySatTracks = root.findViewById(R.id.tvEmptySatTracks);
@@ -380,7 +438,6 @@ public class DevicesTabFragment extends Fragment {
         mapViewSatTracking = root.findViewById(R.id.mapViewSatTracking);
         btnSatStop = root.findViewById(R.id.btnSatStop);
 
-        // ⭐ UI-2026-04-23: 세션 헤더
         tvSatSessionIcon = root.findViewById(R.id.tvSatSessionIcon);
         tvSatSessionTitle = root.findViewById(R.id.tvSatSessionTitle);
 
@@ -420,28 +477,24 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /**
-     * ⭐ Phase 1-1: Spinner 커스텀 레이아웃 적용
-     * 다크 테마 배경(#0A1628)에 맞춰 흰색 텍스트 사용
-     */
     private void setupSpinners() {
         String[] intervals = {"10s", "30s", "1m", "2m", "5m", "10m"};
         ArrayAdapter<String> intervalAdapter = new ArrayAdapter<>(
                 requireContext(),
-                R.layout.spinner_item_dark,            // ⭐ 커스텀 (닫힌 상태)
+                R.layout.spinner_item_dark,
                 intervals);
         intervalAdapter.setDropDownViewResource(
-                R.layout.spinner_dropdown_item_dark);   // ⭐ 커스텀 (드롭다운)
+                R.layout.spinner_dropdown_item_dark);
         spinnerInterval.setAdapter(intervalAdapter);
         spinnerInterval.setSelection(1);
 
         String[] distances = {"5m", "10m", "20m", "50m", "100m"};
         ArrayAdapter<String> distanceAdapter = new ArrayAdapter<>(
                 requireContext(),
-                R.layout.spinner_item_dark,            // ⭐ 커스텀 (닫힌 상태)
+                R.layout.spinner_item_dark,
                 distances);
         distanceAdapter.setDropDownViewResource(
-                R.layout.spinner_dropdown_item_dark);   // ⭐ 커스텀 (드롭다운)
+                R.layout.spinner_dropdown_item_dark);
         spinnerDistance.setAdapter(distanceAdapter);
         spinnerDistance.setSelection(2);
     }
@@ -480,8 +533,6 @@ public class DevicesTabFragment extends Fragment {
         btnStartTracking.setOnClickListener(v -> onStartClicked());
         btnStopTracking.setOnClickListener(v -> onStopClicked());
 
-        // ⭐ v4 Phase 3-1: btnSatStart 제거됨
-        // btnSatStart.setOnClickListener(v -> onSatStartClicked());
         btnSatStop.setOnClickListener(v -> onSatStopClicked());
 
         if (linkSettings != null) {
@@ -606,16 +657,11 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   MAP SETUP
-    // ═══════════════════════════════════════════════════════════════
-
     private void setupMap() {
         mapViewTracking.setMultiTouchControls(true);
         mapViewTracking.setBuiltInZoomControls(false);
         mapViewTracking.setTilesScaledToDpi(true);
 
-        // ⭐ 유틸 사용 - 한 줄로 간결!
         MapModeManager.applyToMapView(requireContext(), mapViewTracking);
 
         mapViewTracking.getController().setZoom(16.0);
@@ -638,7 +684,6 @@ public class DevicesTabFragment extends Fragment {
         mapViewSatTracking.setBuiltInZoomControls(false);
         mapViewSatTracking.setTilesScaledToDpi(true);
 
-        // ⭐ 유틸 사용 - 한 줄로 간결!
         MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
 
         mapViewSatTracking.getController().setZoom(14.0);
@@ -655,10 +700,6 @@ public class DevicesTabFragment extends Fragment {
         mapViewSatTracking.getOverlays().add(satCurrentMarker);
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   MY LOCATION - START/STOP
-    // ═══════════════════════════════════════════════════════════════
 
     private void onStartClicked() {
         if (!LocationPermissionHelper.hasLocationPermission(requireContext())) {
@@ -728,15 +769,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   SATELLITE - START/STOP
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * ⭐ v4 Phase 3-1: btnSatStart는 제거되었지만 메서드는 유지
-     * Phase 4에서 Settings의 Start 버튼이 이 메서드를 호출하거나
-     * 유사한 플로우를 재사용할 예정
-     */
     private void onSatStartClicked() {
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
             Toast.makeText(requireContext(),
@@ -784,18 +816,54 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
+    /**
+     * ⭐ v4 Phase B-3-fix (2026-04-24): Stop & Save 다이얼로그 메시지 개선
+     * 세션 모드(TRACK/SOS)에 따라 다이얼로그 텍스트 변경
+     */
     private void onSatStopClicked() {
+        boolean isSos = isCurrentSessionSos();
+        String modeLabel = isSos ? "SOS" : "TRACK";
+
         new AlertDialog.Builder(requireContext())
-                .setTitle("Stop Satellite TRACK")
-                .setMessage("Stop TRACK mode and save this session?")
+                .setTitle("Stop Satellite " + modeLabel)
+                .setMessage("Stop " + modeLabel + " mode and save this session?")
                 .setPositiveButton("Stop & Save", (d, w) -> stopSatTracking())
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
 
+    /**
+     * ⭐ v4 Phase B-3-fix (2026-04-24): SOS 세션 종료 버그 수정
+     *
+     * 기존 문제:
+     * - LOCATION=3 (TRACK 종료) 만 전송
+     * - SOS 세션인 경우:
+     *   · save 는 되지만
+     *   · SOS 종료 명령 안 보냄
+     *   · SOS LED 안 꺼짐
+     *
+     * 수정:
+     * - SOS 세션: LOCATION=5 (SOS 종료)
+     * - TRACK 세션: LOCATION=3 (TRACK 종료)
+     *
+     * BLE 프로토콜 참고 (MainActivity 에서 확인):
+     *   LOCATION=2: TRACK 시작
+     *   LOCATION=3: TRACK 종료
+     *   LOCATION=4: SOS 시작
+     *   LOCATION=5: SOS 종료
+     */
     private void stopSatTracking() {
-        BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
+        boolean isSos = isCurrentSessionSos();
+
+        // ⭐ 모드에 맞는 BLE 종료 명령 전송
+        if (isSos) {
+            BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
+            Log.v("SAT-SESSION", "⏹ SOS 종료 명령 전송: LOCATION=5");
+        } else {
+            BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
+            Log.v("SAT-SESSION", "⏹ TRACK 종료 명령 전송: LOCATION=3");
+        }
 
         if (currentSatTrackId > 0) {
             satTrackViewModel.stopTrack(currentSatTrackId);
@@ -803,8 +871,9 @@ public class DevicesTabFragment extends Fragment {
 
         SatTrackStateHolder.stopSession();
 
+        String modeLabel = isSos ? "SOS" : "Satellite TRACK";
         Toast.makeText(requireContext(),
-                "✅ Satellite TRACK saved",
+                "✅ " + modeLabel + " saved",
                 Toast.LENGTH_SHORT).show();
 
         currentSatTrackId = -1;
@@ -813,24 +882,12 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   ⭐ v4 Phase 3A: 헤더 TRACK/SOS와 연동된 세션 관리
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * MainActivity에서 호출:
-     * 헤더 TRACK/SOS 버튼으로 시작된 세션
-     *
-     * @param mode 1=TRACK, 2=SOS
-     */
     public void startSatSessionFromHeader(int mode) {
-        // 이미 활성 세션 있으면 skip
         if (currentSatTrackId > 0) {
             Log.v("SAT-SESSION", "이미 활성 세션 있음, skip");
             return;
         }
 
-        // 연결 확인
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
             Log.v("SAT-SESSION", "⚠ BLE 미연결, 세션 시작 skip");
             return;
@@ -853,18 +910,13 @@ public class DevicesTabFragment extends Fragment {
 
             SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
 
-            // LOCATION=2 (헤더 버튼이 이미 전송했으므로 skip)
-            // 여기서 UI만 전환
-
             if (isAdded() && getActivity() != null) {
                 requireActivity().runOnUiThread(() -> {
-                    // Satellite TRACK 세그먼트로 자동 이동
                     if (currentTab != TAB_SATELLITE) {
                         switchTab(TAB_SATELLITE);
                     }
                     switchToSatTrackingState();
 
-                    // ⭐ UI-2026-04-23: 세션 헤더 모드별 설정
                     if (tvSatSessionIcon != null && tvSatSessionTitle != null) {
                         if (mode == 2) {
                             tvSatSessionIcon.setText("🆘");
@@ -884,12 +936,6 @@ public class DevicesTabFragment extends Fragment {
         });
     }
 
-    /**
-     * MainActivity에서 호출:
-     * 헤더 TRACK/SOS 종료 시 저장 다이얼로그 표시
-     *
-     * @param prevMode 종료 직전 모드 (1=TRACK, 2=SOS)
-     */
     public void stopSatSessionFromHeader(int prevMode) {
         if (currentSatTrackId <= 0) {
             Log.v("SAT-SESSION", "활성 세션 없음, skip");
@@ -899,7 +945,6 @@ public class DevicesTabFragment extends Fragment {
         String modeLabel = (prevMode == 2) ? "SOS" : "TRACK";
         Log.v("SAT-SESSION", "⏹ 헤더 " + modeLabel + " 종료, 저장 다이얼로그 표시");
 
-        // UI 스레드에서 다이얼로그
         if (isAdded() && getActivity() != null) {
             requireActivity().runOnUiThread(() -> {
                 showSaveShareDialog(prevMode);
@@ -907,9 +952,6 @@ public class DevicesTabFragment extends Fragment {
         }
     }
 
-    /**
-     * 세션 저장/공유/버리기 다이얼로그
-     */
     private void showSaveShareDialog(int mode) {
         if (!isAdded() || getActivity() == null) return;
 
@@ -950,7 +992,6 @@ public class DevicesTabFragment extends Fragment {
         }
         SatTrackStateHolder.stopSession();
 
-        // 공유 기능 (간단 구현: 저장 후 공유 intent)
         try {
             android.content.Intent shareIntent = new android.content.Intent(
                     android.content.Intent.ACTION_SEND);
@@ -976,7 +1017,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
     private void discardSatSession() {
-        // 세션만 종료 (저장은 됨, 사용자가 나중에 리스트에서 삭제 가능)
         if (currentSatTrackId > 0) {
             satTrackViewModel.stopTrack(currentSatTrackId);
         }
@@ -996,10 +1036,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   UI STATE (My Location)
-    // ═══════════════════════════════════════════════════════════════
-
     private void switchToTrackingState() {
         stateNotTracking.setVisibility(View.GONE);
         stateTracking.setVisibility(View.VISIBLE);
@@ -1013,7 +1049,6 @@ public class DevicesTabFragment extends Fragment {
         pathPoints.clear();
         if (pathPolyline != null) pathPolyline.setPoints(pathPoints);
 
-        // ⭐ UI-2026-04-23: 숫자 마커 청소
         if (mapViewTracking != null) {
             for (Marker m : myNumberedMarkers) {
                 mapViewTracking.getOverlays().remove(m);
@@ -1033,23 +1068,18 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   UI STATE (Satellite)
-    // ═══════════════════════════════════════════════════════════════
-
     private void switchToSatTrackingState() {
         satStateNotTracking.setVisibility(View.GONE);
         satStateTracking.setVisibility(View.VISIBLE);
 
         tvSatDistance.setText("0.00 km");
-        tvSatPoints.setText("0");   // ⭐ UI-2026-04-23: "0 pt" → "0" (그리드 하단에 라벨)
+        tvSatPoints.setText("0");
         tvSatElapsed.setText("00:00:00");
         tvSatWaitingGps.setVisibility(View.VISIBLE);
 
         satPathPoints.clear();
         if (satPolyline != null) satPolyline.setPoints(satPathPoints);
 
-        // ⭐ UI-2026-04-23: 숫자 마커 청소
         if (mapViewSatTracking != null) {
             for (Marker m : satNumberedMarkers) {
                 mapViewSatTracking.getOverlays().remove(m);
@@ -1068,10 +1098,6 @@ public class DevicesTabFragment extends Fragment {
         stopSatElapsedTimer();
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   TIMERS
-    // ═══════════════════════════════════════════════════════════════
 
     private void startElapsedTimer() {
         stopElapsedTimer();
@@ -1148,10 +1174,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   LOCATION UPDATE (My Location)
-    // ═══════════════════════════════════════════════════════════════
-
     private void handleLocationUpdate(Intent intent) {
         double lat = intent.getDoubleExtra(LocationTrackingService.EXTRA_LATITUDE, 0);
         double lng = intent.getDoubleExtra(LocationTrackingService.EXTRA_LONGITUDE, 0);
@@ -1164,10 +1186,8 @@ public class DevicesTabFragment extends Fragment {
 
         pathPolyline.setPoints(pathPoints);
         currentLocationMarker.setPosition(newPoint);
-        // ⭐ UI-2026-04-23: 숫자 마커가 대체하므로 기존 단일 마커 숨김
         currentLocationMarker.setVisible(false);
 
-        // ⭐ UI-2026-04-23: 숫자 마커 재생성
         redrawMyNumberedMarkers();
 
         if (pathPoints.size() <= 3) {
@@ -1218,13 +1238,11 @@ public class DevicesTabFragment extends Fragment {
                     }
                     pathPolyline.setPoints(pathPoints);
 
-                    // ⭐ UI-2026-04-23: 숫자 마커 재생성
                     redrawMyNumberedMarkers();
 
                     if (!pathPoints.isEmpty()) {
                         GeoPoint last = pathPoints.get(pathPoints.size() - 1);
                         currentLocationMarker.setPosition(last);
-                        // ⭐ UI-2026-04-23: 기존 단일 마커 숨김
                         currentLocationMarker.setVisible(false);
                         mapViewTracking.getController().animateTo(last);
                         tvWaitingGps.setVisibility(View.GONE);
@@ -1234,15 +1252,9 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /**
-     * ⭐ UI-2026-04-23: My Location 숫자 마커 재생성
-     * 내 위치 = COLOR_MY (민트 #00E5D1)
-     * 최신=1, 오래됨=N, alpha 페이딩
-     */
     private void redrawMyNumberedMarkers() {
         if (mapViewTracking == null) return;
 
-        // 1) 기존 숫자 마커 제거
         for (Marker m : myNumberedMarkers) {
             mapViewTracking.getOverlays().remove(m);
         }
@@ -1253,21 +1265,13 @@ public class DevicesTabFragment extends Fragment {
 
         Context ctx = requireContext();
 
-        // 2) 각 포인트에 숫자 마커 생성
         for (int i = 0; i < total; i++) {
             GeoPoint pt = pathPoints.get(i);
 
-            // 번호: 최신=1, 오래됨=N
             int number = total - i;
-
-            // 알파: 인덱스가 높을수록(최신) 뚜렷
             float alpha = com.ah.acr.messagebox.util.NumberedMarkerUtil
                     .calculateAlpha(i, total);
-
-            // 최신 포인트 여부
             boolean isLatest = (i == total - 1);
-
-            // 내 위치 = 민트
             int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_MY;
 
             Marker marker = new Marker(mapViewTracking);
@@ -1283,10 +1287,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   SATELLITE POINT UPDATE
-    // ═══════════════════════════════════════════════════════════════
-
     private void reloadSatPathFromDb() {
         if (currentSatTrackId <= 0) return;
 
@@ -1300,13 +1300,11 @@ public class DevicesTabFragment extends Fragment {
                     }
                     satPolyline.setPoints(satPathPoints);
 
-                    // ⭐ UI-2026-04-23: 숫자 마커 재생성
                     redrawSatNumberedMarkers();
 
                     if (!satPathPoints.isEmpty()) {
                         GeoPoint last = satPathPoints.get(satPathPoints.size() - 1);
                         satCurrentMarker.setPosition(last);
-                        // 기존 최신 위치 마커는 숨김 (숫자 마커가 대체)
                         satCurrentMarker.setVisible(false);
                         mapViewSatTracking.getController().animateTo(last);
                         tvSatWaitingGps.setVisibility(View.GONE);
@@ -1319,7 +1317,6 @@ public class DevicesTabFragment extends Fragment {
             if (track == null) return;
             double distanceKm = track.getTotalDistance() / 1000.0;
             tvSatDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
-            // ⭐ UI-2026-04-23: 그리드에 POINTS 라벨 있으므로 숫자만
             tvSatPoints.setText(String.format(Locale.US, "%d", track.getPointCount()));
             if (satTrackingStartTime == 0) {
                 satTrackingStartTime = track.getStartTime().getTime();
@@ -1328,18 +1325,9 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /**
-     * ⭐ UI-2026-04-23: 숫자 마커 재생성
-     * satPathPoints 기반으로 각 포인트에 숫자 마커 표시
-     * - 최신=1, 오래됨=N
-     * - alpha 페이딩 (오래될수록 희미)
-     * - 최신 마커는 크고 흰 테두리
-     * - TRACK: 청록, SOS: 빨강
-     */
     private void redrawSatNumberedMarkers() {
         if (mapViewSatTracking == null) return;
 
-        // 1) 기존 숫자 마커 제거
         for (Marker m : satNumberedMarkers) {
             mapViewSatTracking.getOverlays().remove(m);
         }
@@ -1350,34 +1338,46 @@ public class DevicesTabFragment extends Fragment {
 
         Context ctx = requireContext();
 
-        // ⭐ UI-2026-04-23: 세션 모드에 따라 색상 결정
-        // tvSatSessionTitle 확인 (SOS Active / TRACK Active)
         int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_TRACK;
+        boolean isSos = false;
         if (tvSatSessionTitle != null) {
             CharSequence title = tvSatSessionTitle.getText();
             if (title != null && title.toString().contains("SOS")) {
                 color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_SOS;
+                isSos = true;
             }
         }
 
-        // 2) 각 포인트에 숫자 마커 생성
+        final boolean isSosFinal = isSos;
+        java.text.SimpleDateFormat timeFmt = new java.text.SimpleDateFormat(
+                "HH:mm:ss", Locale.US);
+
         for (int i = 0; i < total; i++) {
-            GeoPoint pt = satPathPoints.get(i);
+            final GeoPoint pt = satPathPoints.get(i);
+            final int number = total - i;
 
-            // 번호: 최신=1, 오래됨=N
-            int number = total - i;
-
-            // 알파: 인덱스가 높을수록(최신) 뚜렷
             float alpha = com.ah.acr.messagebox.util.NumberedMarkerUtil
                     .calculateAlpha(i, total);
-
-            // 최신 포인트 여부
             boolean isLatest = (i == total - 1);
 
             Marker marker = new Marker(mapViewSatTracking);
             marker.setPosition(pt);
             com.ah.acr.messagebox.util.NumberedMarkerUtil.applyToMarker(
                     marker, ctx, number, color, alpha, isLatest);
+
+            // ⭐ UI-2026-04-24: 말풍선 + 클릭 리스너
+            String title = "📍 #" + number;
+            String snippet = String.format(Locale.US,
+                    "%.6f, %.6f\n(탭하여 상세보기)",
+                    pt.getLatitude(), pt.getLongitude());
+            marker.setTitle(title);
+            marker.setSnippet(snippet);
+
+            marker.setOnMarkerClickListener((m, mv) -> {
+                Log.v(TAG, "🔵 Sat 마커 탭: #" + number);
+                showSatMarkerDialog(number, pt, isSosFinal);
+                return true;
+            });
 
             mapViewSatTracking.getOverlays().add(marker);
             satNumberedMarkers.add(marker);
@@ -1387,9 +1387,45 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   PERMISSIONS
-    // ═══════════════════════════════════════════════════════════════
+    /**
+     * ⭐ UI-2026-04-24: Satellite 마커 탭 → 상세 다이얼로그
+     */
+    private void showSatMarkerDialog(int number, GeoPoint point, boolean isSos) {
+        String modeLabel = isSos ? "SOS" : "TRACK";
+        String currentTime = new java.text.SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("🛰 모드: ").append(modeLabel).append("\n\n");
+        sb.append("📍 좌표: ").append(String.format(Locale.US,
+                "%.6f, %.6f",
+                point.getLatitude(), point.getLongitude())).append("\n\n");
+        sb.append("🕐 조회 시각: ").append(currentTime);
+
+        if (connectedImei != null && !connectedImei.isEmpty()) {
+            sb.append("\n\n📡 IMEI: ").append(connectedImei);
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📍 " + modeLabel + " 포인트 #" + number)
+                .setMessage(sb.toString())
+                .setPositiveButton("좌표 복사", (d, w) -> {
+                    android.content.ClipboardManager clipboard =
+                            (android.content.ClipboardManager) requireContext()
+                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                    String coords = String.format(Locale.US, "%f,%f",
+                            point.getLatitude(), point.getLongitude());
+                    android.content.ClipData clip =
+                            android.content.ClipData.newPlainText("좌표", coords);
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(requireContext(),
+                            "좌표가 복사되었습니다",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
 
     private void requestLocationPermission() {
         new AlertDialog.Builder(requireContext())

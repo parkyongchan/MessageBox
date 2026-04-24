@@ -66,6 +66,12 @@ import java.util.Locale;
  * - 검색 포커스 시 지도 숨겨 목록 확대
  * - 지도 모드 수동 토글 (온라인/오프라인)
  *
+ * ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그 추가
+ *    - 마커 클릭 시 AlertDialog 팝업
+ *    - 상세 정보 (IMEI, 시간, 좌표, 모드 등)
+ *    - "트랙 상세 보기" 버튼 (DeviceTrackDetail 호출)
+ *    - "좌표 복사" 버튼
+ *
  * ⭐ 마커 아이콘 구분 (프로토콜 ver 값 기준):
  *
  *   수신 (다른 장비):
@@ -247,7 +253,7 @@ public class MapTabFragment extends Fragment {
         }
 
         for (LocationWithAddress item : locations) {
-            LocationEntity loc = item.getLocation();
+            final LocationEntity loc = item.getLocation();
             if (loc.getLatitude() == null || loc.getLongitude() == null) continue;
 
             GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
@@ -255,7 +261,7 @@ public class MapTabFragment extends Fragment {
             marker.setPosition(point);
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
 
-            String displayName;
+            final String displayName;
             if (item.getAddress() != null
                     && item.getAddress().getNumbersNic() != null) {
                 displayName = item.getAddress().getNumbersNic();
@@ -270,11 +276,20 @@ public class MapTabFragment extends Fragment {
                 snippet += "\n" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
                         Locale.getDefault()).format(loc.getCreateAt());
             }
+            // ⭐ UI-2026-04-24: "탭하여 상세보기" 안내
+            snippet += "\n(탭하여 상세보기)";
             marker.setSnippet(snippet);
 
             // ⭐ 마커 아이콘: trackMode 와 isIncomeLoc 으로 판별
             Drawable icon = getMarkerIcon(loc.getTrackMode(), loc.isIncomeLoc());
             if (icon != null) marker.setIcon(icon);
+
+            // ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그
+            marker.setOnMarkerClickListener((m, mv) -> {
+                Log.v(TAG, "🔵 마커 탭: " + displayName);
+                showMarkerDetailDialog(loc, displayName);
+                return true;
+            });
 
             mMarkers.add(marker);
             mMapView.getOverlays().add(marker);
@@ -290,58 +305,132 @@ public class MapTabFragment extends Fragment {
 
 
     /**
+     * ⭐ UI-2026-04-24: 마커 탭 시 상세 다이얼로그
+     * - 상세 정보 표시 (IMEI, 시간, 좌표, 고도, 모드)
+     * - "트랙 상세 보기" 버튼 → DeviceTrackDetailFragment 호출
+     * - "좌표 복사" 버튼 → 클립보드 복사
+     */
+    private void showMarkerDetailDialog(LocationEntity loc, String displayName) {
+        SimpleDateFormat fmt = new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US);
+        String time = loc.getCreateAt() != null
+                ? fmt.format(loc.getCreateAt())
+                : "-";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📡 IMEI: ").append(
+                loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
+        if (!displayName.equals(loc.getCodeNum())) {
+            sb.append("📝 이름: ").append(displayName).append("\n\n");
+        }
+        sb.append("🕐 시간: ").append(time).append("\n\n");
+        sb.append("📍 좌표: ").append(String.format(Locale.US,
+                "%.6f, %.6f",
+                loc.getLatitude(), loc.getLongitude())).append("\n\n");
+
+        if (loc.getAltitude() != 0.0) {
+            sb.append("⬆️ 고도: ").append(String.format(Locale.US,
+                    "%.1f m", loc.getAltitude())).append("\n\n");
+        }
+
+        String modeText = getTrackModeText(loc.getTrackMode(), loc.isIncomeLoc());
+        sb.append("🛰 모드: ").append(modeText);
+
+        final String devName = displayName;
+        final String codeNum = loc.getCodeNum();
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📍 위치 상세 정보")
+                .setMessage(sb.toString())
+                .setPositiveButton("트랙 상세 보기", (d, w) -> {
+                    if (codeNum != null) {
+                        DeviceTrackDetailFragment dialog =
+                                DeviceTrackDetailFragment.newInstance(codeNum, devName);
+                        dialog.show(getParentFragmentManager(), "DeviceTrackDetail");
+                    } else {
+                        Toast.makeText(requireContext(),
+                                "IMEI 정보가 없습니다",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNeutralButton("좌표 복사", (d, w) -> {
+                    ClipboardManager clipboard =
+                            (ClipboardManager) requireContext()
+                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                    String coords = String.format(Locale.US, "%f,%f",
+                            loc.getLatitude(), loc.getLongitude());
+                    ClipData clip = ClipData.newPlainText("좌표", coords);
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(requireContext(),
+                            "좌표가 복사되었습니다",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-24: trackMode 값을 읽기 쉬운 텍스트로 변환
+     *
+     * ⚠️ 수정: isIncomeLoc = true → "수신" (Income = 들어오는)
+     *          isIncomeLoc = false → "송신"
+     */
+    private String getTrackModeText(int trackMode, boolean isIncomeLoc) {
+        if (isIncomeLoc) {
+            // 수신 (다른 장비로부터)
+            switch (trackMode) {
+                case 0x10: return "상대방 SOS 수신";
+                case 0x11: return "상대방 CAR TRACK 수신";
+                case 0x12: return "상대방 UAV TRACK 수신";
+                case 0x13: return "상대방 UAT TRACK 수신";
+                case 2: return "TRACK 수신 (Legacy)";
+                case 4:
+                case 5: return "SOS 수신 (Legacy)";
+                default: return "수신 (0x" + String.format("%02X", trackMode) + ")";
+            }
+        } else {
+            // 송신 (내 장비)
+            switch (trackMode) {
+                case 0x00: return "내 SOS 송신";
+                case 0x01: return "내 CAR TRACK 송신";
+                case 0x02: return "내 UAV TRACK 송신";
+                case 0x03: return "내 UAT TRACK 송신";
+                default: return "내 송신 (0x" + String.format("%02X", trackMode) + ")";
+            }
+        }
+    }
+
+
+    /**
      * ⭐ 마커 아이콘 선택 (프로토콜 ver 기반 + 송수신 구분)
      *
-     * TYTO 프로토콜 ver 코드:
-     *   수신 (다른 장비로부터):
-     *     0x10 (16) → 🚨 SOS 빨강
-     *     0x11 (17) → 🚗 CAR TRACK 파랑
-     *     0x12 (18) → ✈️ UAV TRACK 파랑
-     *     0x13 (19) → 🚙 UAT TRACK 파랑
-     *
-     *   송신 (내 장비):
-     *     0x00 (0)  → 🆘 내 SOS 주황
-     *     0x01 (1)  → 🎯 내 CAR TRACK 초록
-     *     0x02 (2)  → 🎯 내 UAV TRACK 초록
-     *     0x03 (3)  → 🎯 내 UAT TRACK 초록
-     *
-     *   Legacy (테스트):
-     *     4, 5 → SOS 빨강
-     *     2    → TRACK 파랑 (⚠️ 0x02 와 충돌 - isIncomeLoc 으로 구분)
-     *
-     * @param trackMode DB 에 저장된 track_mode 값 (프로토콜 ver)
-     * @param isIncomeLoc true=송신(내 장비), false=수신(다른 장비)
+     * ⚠️ 수정: isIncomeLoc = true → 수신 / false → 송신
      */
     private Drawable getMarkerIcon(int trackMode, boolean isIncomeLoc) {
         int iconRes;
 
-        // ═══ 송신 (내 위치) - isIncomeLoc = true ═══
+        // ═══ 수신 (다른 장비로부터) - isIncomeLoc = true ═══
         if (isIncomeLoc) {
-            // 🆘 내 SOS: 0x00
-            if (trackMode == 0x00) {
-                iconRes = R.drawable.ic_marker_my_sos;
-            }
-            // 🎯 내 TRACK: 0x01, 0x02, 0x03
-            else if (trackMode == 0x01 || trackMode == 0x02 || trackMode == 0x03) {
-                iconRes = R.drawable.ic_marker_my_track;
-            }
-            // 기본 (송신이지만 알 수 없는 모드)
-            else {
-                iconRes = R.drawable.ic_marker_device;
-            }
-        }
-        // ═══ 수신 (다른 장비) - isIncomeLoc = false ═══
-        else {
-            // 🚨 SOS 수신: 0x10 + Legacy 4, 5
             if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
                 iconRes = R.drawable.ic_marker_sos;
             }
-            // 🚗 TRACK 수신: 0x11, 0x12, 0x13 + Legacy 2
             else if (trackMode == 0x11 || trackMode == 0x12
                     || trackMode == 0x13 || trackMode == 2) {
                 iconRes = R.drawable.ic_marker_track;
             }
-            // 기본
+            else {
+                iconRes = R.drawable.ic_marker_device;
+            }
+        }
+        // ═══ 송신 (내 장비) - isIncomeLoc = false ═══
+        else {
+            if (trackMode == 0x00) {
+                iconRes = R.drawable.ic_marker_my_sos;
+            }
+            else if (trackMode == 0x01 || trackMode == 0x02 || trackMode == 0x03) {
+                iconRes = R.drawable.ic_marker_my_track;
+            }
             else {
                 iconRes = R.drawable.ic_marker_device;
             }

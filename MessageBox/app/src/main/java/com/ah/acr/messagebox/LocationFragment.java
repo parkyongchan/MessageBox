@@ -3,9 +3,13 @@ package com.ah.acr.messagebox;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -59,6 +63,20 @@ public class LocationFragment extends Fragment {
     private static final int MODE_ALL = 0;
     private static final int MODE_TRACK = 2;
     private static final int MODE_SOS = 4;
+
+    // ⭐ v4 Phase B-3-fix (2026-04-24): 자동 새로고침용 Broadcast 수신기
+    //
+    // 문제:
+    // - LocationViewModel의 endDate가 앱 시작 시 고정됨
+    // - DB에 새 메시지 들어와도 Room LiveData 자동 갱신은 됨
+    // - 하지만 endDate 이후 시각 메시지는 필터에서 탈락!
+    // - 결과: 수동으로 노란색 탭 눌러야만 목록에 보임
+    //
+    // 해결:
+    // - Service가 LocationEntity 저장할 때 BROADCAST_ECHO_RECEIVED 발송
+    // - LocationFragment가 이 Broadcast 받으면 refresh() 호출
+    // - refresh()가 endDate를 현재 시각으로 갱신 → 새 메시지 포함
+    private BroadcastReceiver mEchoReceiver;
 
 
     @Override
@@ -287,6 +305,83 @@ public class LocationFragment extends Fragment {
                 binding.tvEndDate.setText(dateFmt.format(date));
             }
         });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ v4 Phase B-3-fix: 자동 새로고침 Broadcast 수신기
+    // ═══════════════════════════════════════════════════════════════
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        registerEchoReceiver();
+        // 화면 복귀 시 즉시 한 번 refresh (놓친 것 갱신)
+        if (locationViewModel != null) {
+            locationViewModel.refresh();
+        }
+    }
+
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        unregisterEchoReceiver();
+    }
+
+
+    /**
+     * Service가 새 메시지를 DB에 저장할 때 발송하는 Broadcast를 수신
+     * → 즉시 refresh() 호출 → 새 메시지가 목록에 반영됨
+     */
+    private void registerEchoReceiver() {
+        if (mEchoReceiver != null) return;
+
+        mEchoReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null) return;
+                String action = intent.getAction();
+
+                if (com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_ECHO_RECEIVED.equals(action)) {
+                    Log.v(TAG, "📨 ECHO 수신 → 위치 목록 자동 새로고침");
+                    if (locationViewModel != null) {
+                        locationViewModel.refresh();
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(
+                com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_ECHO_RECEIVED);
+
+        Context ctx = requireContext();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ctx.registerReceiver(mEchoReceiver, filter,
+                        Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                ctx.registerReceiver(mEchoReceiver, filter);
+            }
+            Log.v(TAG, "📡 ECHO 수신기 등록");
+        } catch (Exception e) {
+            Log.e(TAG, "ECHO 수신기 등록 실패: " + e.getMessage());
+        }
+    }
+
+
+    private void unregisterEchoReceiver() {
+        if (mEchoReceiver != null) {
+            try {
+                requireContext().unregisterReceiver(mEchoReceiver);
+                Log.v(TAG, "📡 ECHO 수신기 해제");
+            } catch (Exception e) {
+                // 이미 해제됨 or 등록 안 됨
+            }
+            mEchoReceiver = null;
+        }
     }
 
 

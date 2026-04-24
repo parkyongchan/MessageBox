@@ -13,6 +13,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -337,10 +338,35 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * BROAD 응답에서 inbox 카운트 변화 감지하여 자동 받기 시작
+     *
+     * ⭐ v4 Phase B-3: 실제 수신 로직은 Service로 이관됨!
+     *
+     * 변경 이유:
+     * - MainActivity가 백그라운드로 가면 이 메서드 작동 안 함
+     * - 결과: 백그라운드에서 INBOX 증가해도 자동 수신 실패
+     *
+     * 현재 동작:
+     * - Service의 parseBroad() → checkAutoReceive()가 주도 (백그라운드 안전)
+     * - MainActivity는 UI 애니메이션 관리만
+     * - Broadcast로 Service ↔ Activity UI 동기화
+     *   (BROADCAST_AUTO_RECV_STARTED / COMPLETED)
+     *
+     * 이 메서드는 포그라운드에서 Activity가 받은 BROAD 처리 시 호출됨.
+     * Service도 동일한 BROAD를 받으므로, 중복 전송 방지를 위해
+     * 실제 RECEIVED=0,OK 전송은 Service에서만 수행함.
      */
     private void checkAndTriggerAutoReceive(int currentInboxCount) {
+        // Service가 실제 수신을 담당하므로 MainActivity는 UI 상태만 추적
+        // (중복 전송 방지)
+        //
+        // 실제 트리거 로직:
+        // → TytoConnectService.checkAutoReceive()
+        //
+        // UI 업데이트:
+        // → BroadcastReceiver가 AUTO_RECV_STARTED / COMPLETED 받아서 처리
+        //   (mAutoReceiveStateReceiver 참조)
+
         if (!isAutoReceiveEnabled()) {
-            Log.v("AUTO-RECV", "자동 받기 비활성화 상태");
             return;
         }
 
@@ -349,29 +375,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (mIsAutoReceiving) {
-            Log.v("AUTO-RECV", "이미 받는 중 (inbox=" + currentInboxCount + ")");
-            return;
+        // 로컬 상태만 업데이트 (Service가 실제 전송)
+        if (currentInboxCount > mLastInboxCount || mLastInboxCount == 0) {
+            mLastInboxCount = currentInboxCount;
+            Log.v("AUTO-RECV", "📍 inbox 변화 감지 → Service가 자동 수신 담당");
         }
-
-        boolean shouldTrigger = (currentInboxCount > mLastInboxCount) || (mLastInboxCount == 0);
-        if (!shouldTrigger) {
-            Log.v("AUTO-RECV", "inbox 변화 없음 (inbox=" + currentInboxCount + ")");
-            return;
-        }
-
-        Log.v("AUTO-RECV", "★ 자동 받기 시작 (inbox=" + currentInboxCount + ")");
-        mIsAutoReceiving = true;
-        mLastAutoReceiveTime = System.currentTimeMillis();
-        mLastInboxCount = currentInboxCount;
-
-        // ⭐ 애니메이션 시작
-        startAutoReceiveAnimation();
-
-        // RECEIVED 요청
-        BLE.INSTANCE.getWriteQueue().offer("RECEIVED=0,OK");
-
-        startAutoReceiveTimeout();
     }
 
     private void startAutoReceiveTimeout() {
@@ -1238,6 +1246,10 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         stopPeriodicSync();
         resetAutoReceive();
+
+        // ⭐ v4 Phase B-3: AutoRecv Broadcast 수신기 해제
+        unregisterAutoRecvReceiver();
+
         // ⭐ v4 Phase B-2-1: destroyBle() 제거!
         // BLE는 이제 TytoConnectService가 관리
         // Activity 종료해도 BLE 연결 유지됨 (백그라운드 작동)
@@ -1253,6 +1265,10 @@ public class MainActivity extends AppCompatActivity {
         // ⭐ v4 Phase B-2-4-B: Activity 활성 상태 알림
         // Service는 Activity가 살아있으면 저장 skip (중복 방지)
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(true);
+
+        // ⭐ v4 Phase B-3: AutoRecv Broadcast 수신기 등록
+        // Service의 자동 수신 상태 변화를 받아서 UI 애니메이션 관리
+        registerAutoRecvReceiver();
     }
 
     @Override
@@ -1261,6 +1277,68 @@ public class MainActivity extends AppCompatActivity {
         // ⭐ v4 Phase B-2-4-B: Activity 비활성 상태 알림
         // 백그라운드 진입 → Service가 저장 담당
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(false);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ v4 Phase B-3: Service AutoRecv Broadcast 수신기
+    //   Service가 자동 수신을 시작/완료할 때 UI 업데이트
+    // ═════════════════════════════════════════════════════════════
+
+    private android.content.BroadcastReceiver mAutoRecvReceiver;
+
+    private void registerAutoRecvReceiver() {
+        if (mAutoRecvReceiver != null) return; // 이미 등록됨
+
+        mAutoRecvReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                if (intent == null) return;
+                String action = intent.getAction();
+
+                if (com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_AUTO_RECV_STARTED.equals(action)) {
+                    Log.v("AUTO-RECV", "🔔 Service에서 자동 수신 시작 알림");
+                    mIsAutoReceiving = true;
+                    mLastAutoReceiveTime = System.currentTimeMillis();
+                    startAutoReceiveAnimation();
+
+                } else if (com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_AUTO_RECV_COMPLETED.equals(action)) {
+                    boolean success = intent.getBooleanExtra("success", false);
+                    Log.v("AUTO-RECV", "🔔 Service에서 자동 수신 완료 알림 (success=" + success + ")");
+                    mIsAutoReceiving = false;
+                    mLastInboxCount = 0;
+                    stopAutoReceiveAnimation();
+                }
+            }
+        };
+
+        android.content.IntentFilter filter = new android.content.IntentFilter();
+        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService
+                .BROADCAST_AUTO_RECV_STARTED);
+        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService
+                .BROADCAST_AUTO_RECV_COMPLETED);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mAutoRecvReceiver, filter,
+                    Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mAutoRecvReceiver, filter);
+        }
+
+        Log.v("AUTO-RECV", "📡 AutoRecv 수신기 등록 완료");
+    }
+
+    private void unregisterAutoRecvReceiver() {
+        if (mAutoRecvReceiver != null) {
+            try {
+                unregisterReceiver(mAutoRecvReceiver);
+                Log.v("AUTO-RECV", "📡 AutoRecv 수신기 해제");
+            } catch (Exception e) {
+                // 이미 해제됨 or 등록 안 됨
+            }
+            mAutoRecvReceiver = null;
+        }
     }
 
     boolean checkExternalStorage() {

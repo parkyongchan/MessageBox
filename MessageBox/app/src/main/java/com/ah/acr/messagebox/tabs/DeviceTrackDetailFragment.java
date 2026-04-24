@@ -390,11 +390,11 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         // 리스트 순서: mTrackPoints 는 시간순 오래된 것 → 최신
         // 번호: 최신=1, 오래됨=N
         for (int i = 0; i < validTotal; i++) {
-            LocationEntity loc = validLocations.get(i);
+            final LocationEntity loc = validLocations.get(i);
             GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
 
             // 번호: 최신=1, 오래됨=N
-            int number = validTotal - i;
+            final int number = validTotal - i;
 
             // 알파: 인덱스가 높을수록(최신) 뚜렷
             float alpha = NumberedMarkerUtil.calculateAlpha(i, validTotal);
@@ -409,9 +409,24 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             marker.setPosition(point);
             NumberedMarkerUtil.applyToMarker(
                     marker, requireContext(), number, color, alpha, isLatest);
-            marker.setTitle(timeFmt.format(
-                    loc.getCreateAt() != null ? loc.getCreateAt() : new Date()
-            ));
+
+            // ⭐ UI-2026-04-24: 말풍선에 시간 + 좌표 표시
+            SimpleDateFormat fullFmt = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.US);
+            String title = "#" + number + "  " + fullFmt.format(
+                    loc.getCreateAt() != null ? loc.getCreateAt() : new Date());
+            String snippet = String.format(Locale.US,
+                    "%.6f, %.6f  (탭하여 상세보기)",
+                    loc.getLatitude(), loc.getLongitude());
+            marker.setTitle(title);
+            marker.setSnippet(snippet);
+
+            // ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그
+            marker.setOnMarkerClickListener((m, mv) -> {
+                // 기본 말풍선 표시 + 상세 다이얼로그 팝업
+                showPointDetailDialog(loc, number);
+                return true;
+            });
 
             mMarkers.add(marker);
             mMapView.getOverlays().add(marker);
@@ -419,6 +434,73 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
         mMapView.invalidate();
         mMapView.post(this::fitAllMarkers);
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-24: 포인트 상세 다이얼로그
+     * 마커 탭하면 나타나는 상세 정보창
+     */
+    private void showPointDetailDialog(LocationEntity loc, int number) {
+        SimpleDateFormat fullFmt = new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US);
+        String time = loc.getCreateAt() != null
+                ? fullFmt.format(loc.getCreateAt())
+                : "-";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📡 IMEI: ").append(
+                loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
+        sb.append("🕐 시간: ").append(time).append("\n\n");
+        sb.append("📍 좌표: ").append(String.format(Locale.US,
+                "%.6f, %.6f", loc.getLatitude(), loc.getLongitude())).append("\n\n");
+
+        if (loc.getAltitude() != 0.0) {
+            sb.append("⬆️ 고도: ").append(String.format(Locale.US,
+                    "%.1f m", loc.getAltitude())).append("\n\n");
+        }
+
+        String modeText = getTrackModeText(loc.getTrackMode());
+        sb.append("🛰 모드: ").append(modeText);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📍 포인트 #" + number)
+                .setMessage(sb.toString())
+                .setPositiveButton("좌표 복사", (d, w) -> {
+                    android.content.ClipboardManager clipboard =
+                            (android.content.ClipboardManager) requireContext()
+                                    .getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                    String coords = String.format(Locale.US, "%f,%f",
+                            loc.getLatitude(), loc.getLongitude());
+                    android.content.ClipData clip =
+                            android.content.ClipData.newPlainText("좌표", coords);
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(requireContext(),
+                            "좌표가 복사되었습니다",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
+
+    /**
+     * ⭐ UI-2026-04-24: trackMode 값을 읽기 쉬운 텍스트로 변환
+     */
+    private String getTrackModeText(int trackMode) {
+        switch (trackMode) {
+            case 0: return "내 SOS 송신 (0x00)";
+            case 1: return "내 CAR TRACK (0x01)";
+            case 2: return "내 UAV TRACK (0x02)";
+            case 3: return "내 UAT TRACK (0x03)";
+            case 4:
+            case 5: return "레거시 SOS (0x0" + trackMode + ")";
+            case 16: return "상대방 SOS 수신 (0x10)";
+            case 17: return "상대방 CAR TRACK (0x11)";
+            case 18: return "상대방 UAV TRACK (0x12)";
+            case 19: return "상대방 UAT TRACK (0x13)";
+            default: return "기타 (0x" + String.format("%02X", trackMode) + ")";
+        }
     }
 
 

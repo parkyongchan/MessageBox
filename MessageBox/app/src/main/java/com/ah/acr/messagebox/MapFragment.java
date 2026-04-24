@@ -1,10 +1,15 @@
 package com.ah.acr.messagebox;
 
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +27,9 @@ import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class MapFragment extends Fragment {
     private static final String TAG = MapFragment.class.getSimpleName();
@@ -87,19 +95,36 @@ public class MapFragment extends Fragment {
                 && args.containsKey("lat")
                 && args.containsKey("lng")) {
 
-            String title = args.getString("title");
-            double lat = args.getDouble("lat");
-            double lng = args.getDouble("lng");
+            final String title = args.getString("title");
+            final double lat = args.getDouble("lat");
+            final double lng = args.getDouble("lng");
 
             Log.v(TAG, title + " " + lat + ", " + lng);
 
             GeoPoint point = new GeoPoint(lat, lng);
 
+            // ⭐ UI-2026-04-24: 말풍선 정보 분리 (시간 + 좌표)
+            SimpleDateFormat fmt = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.US);
+            String currentTime = fmt.format(new Date());
+
             // 마커 추가
             Marker marker = new Marker(mMapView);
             marker.setPosition(point);
+            // 타이틀: IMEI/이름 (간단하게)
             marker.setTitle(title);
+            // 스니펫: 좌표 + 시간 (2줄)
+            marker.setSnippet(String.format(Locale.US,
+                    "📍 %.6f, %.6f\n🕐 %s\n(탭하여 상세보기)",
+                    lat, lng, currentTime));
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+
+            // ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그
+            marker.setOnMarkerClickListener((m, mv) -> {
+                showLocationDetailDialog(title, lat, lng);
+                return true;
+            });
+
             mMapView.getOverlays().add(marker);
 
             // 해당 위치로 이동
@@ -107,6 +132,57 @@ public class MapFragment extends Fragment {
             mMapView.getController().setCenter(point);
         }
     }
+
+
+    /**
+     * ⭐ UI-2026-04-24: 위치 상세 다이얼로그
+     * 마커 탭하면 나타나는 상세 정보창 (트랙 정보 + 좌표 복사 등)
+     */
+    private void showLocationDetailDialog(String title, double lat, double lng) {
+        SimpleDateFormat fmt = new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US);
+        String currentTime = fmt.format(new Date());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📡 IMEI/이름: ").append(title != null ? title : "-").append("\n\n");
+        sb.append("📍 좌표: ").append(String.format(Locale.US,
+                "%.6f, %.6f", lat, lng)).append("\n\n");
+        sb.append("🕐 조회 시각: ").append(currentTime);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📍 위치 상세 정보")
+                .setMessage(sb.toString())
+                .setPositiveButton("좌표 복사", (d, w) -> {
+                    ClipboardManager clipboard =
+                            (ClipboardManager) requireContext()
+                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                    String coords = String.format(Locale.US, "%f,%f", lat, lng);
+                    ClipData clip = ClipData.newPlainText("좌표", coords);
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(requireContext(),
+                            "좌표가 복사되었습니다: " + coords,
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("지도 앱에서 열기", (d, w) -> {
+                    try {
+                        String uri = String.format(Locale.US,
+                                "geo:%f,%f?q=%f,%f(%s)",
+                                lat, lng, lat, lng,
+                                title != null ? title : "Location");
+                        android.content.Intent mapIntent = new android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(uri));
+                        startActivity(mapIntent);
+                    } catch (Exception e) {
+                        Toast.makeText(requireContext(),
+                                "지도 앱을 찾을 수 없습니다",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
 
     // 오프라인 MBTiles 파일 탐색 및 적용
     private void setupOfflineMap() {

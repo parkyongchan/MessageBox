@@ -15,12 +15,27 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     val allLocationAddress: LiveData<List<LocationWithAddress>>
 
 
+    companion object {
+        /**
+         * ⭐ v4 Phase B-3-fix (2026-04-24):
+         * Quick 필터(1h, 24h, 3d, 7d, 30d) 선택 시 endDate를 이 시간만큼
+         * 미래로 설정하여 "새로 들어오는 메시지도 자동 포함" 되도록 함.
+         *
+         * 배경:
+         * - 기존: endDate = Date() (앱 시작 시각 고정)
+         * - 문제: 이후 수신되는 메시지는 endDate 이후 시각 → 필터 탈락
+         * - 해결: endDate를 충분히 먼 미래(100년)로 설정
+         */
+        private const val FUTURE_YEARS = 100
+    }
+
+
     // ═══════════════════════════════════════════════════════
     // 필터 상태 관리
     // ═══════════════════════════════════════════════════════
 
     private val _startDate = MutableLiveData<Date>(defaultStartDate())
-    private val _endDate = MutableLiveData<Date>(Date())
+    private val _endDate = MutableLiveData<Date>(defaultFarFuture())
     private val _searchText = MutableLiveData<String>("")
     private val _filterMode = MutableLiveData<Int>(0)
 
@@ -57,20 +72,36 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         refresh()
     }
 
+    /**
+     * ⭐ Quick 시간 범위 설정 (1h, 24h)
+     *
+     * 변경:
+     * - 기존: endDate = 현재 시각 (고정됨, 미래 메시지 필터 탈락)
+     * - 수정: endDate = 먼 미래 (자동으로 새 메시지 포함)
+     */
     fun setQuickRange(hours: Int) {
         val now = Date()
         val cal = Calendar.getInstance()
         cal.time = now
         cal.add(Calendar.HOUR, -hours)
-        setDateRange(cal.time, now)
+        // ⭐ endDate를 먼 미래로 설정 → 새 메시지 자동 포함
+        setDateRange(cal.time, defaultFarFuture())
     }
 
+    /**
+     * ⭐ Quick 일 범위 설정 (3d, 7d, 30d)
+     *
+     * 변경:
+     * - 기존: endDate = 현재 시각 (고정됨)
+     * - 수정: endDate = 먼 미래 (자동으로 새 메시지 포함)
+     */
     fun setQuickDays(days: Int) {
         val now = Date()
         val cal = Calendar.getInstance()
         cal.time = now
         cal.add(Calendar.DAY_OF_MONTH, -days)
-        setDateRange(cal.time, now)
+        // ⭐ endDate를 먼 미래로 설정 → 새 메시지 자동 포함
+        setDateRange(cal.time, defaultFarFuture())
     }
 
 
@@ -97,7 +128,8 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         currentQuerySource?.let { _filteredLocations.removeSource(it) }
 
         val start = _startDate.value ?: defaultStartDate()
-        val end = _endDate.value ?: Date()
+        // ⭐ endDate가 없거나 과거 값이면 먼 미래로 보정
+        val end = _endDate.value ?: defaultFarFuture()
         val search = _searchText.value ?: ""
         val mode = _filterMode.value ?: 0
 
@@ -117,7 +149,7 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     /** 특정 장비의 전체 트랙 조회 (메인 필터 무관) */
     fun getTrackByDevice(codeNum: String): LiveData<List<LocationWithAddress>> {
         val start = _startDate.value ?: defaultStartDate()
-        val end = _endDate.value ?: Date()
+        val end = _endDate.value ?: defaultFarFuture()
         return repository.getTrackByDevice(codeNum, start, end)
     }
 
@@ -140,6 +172,23 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     private fun defaultStartDate(): Date {
         val cal = Calendar.getInstance()
         cal.add(Calendar.DAY_OF_MONTH, -7)
+        return cal.time
+    }
+
+
+    /**
+     * ⭐ v4 Phase B-3-fix: 먼 미래 날짜 반환 (100년 후)
+     *
+     * 왜 먼 미래?
+     * - 앱 사용 중 새로 들어오는 메시지의 create_at이
+     *   endDate를 초과하면 필터에서 탈락됨
+     * - endDate를 충분히 먼 미래로 설정하여 이 문제 방지
+     * - 사용자가 "지금까지의 데이터"를 원하는 경우
+     *   endDate picker로 수동 설정 가능 (기존 동작 유지)
+     */
+    private fun defaultFarFuture(): Date {
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.YEAR, FUTURE_YEARS)
         return cal.time
     }
 
