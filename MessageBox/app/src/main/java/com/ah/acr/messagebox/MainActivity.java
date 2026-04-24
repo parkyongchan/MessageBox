@@ -46,6 +46,7 @@ import com.ah.acr.messagebox.tabs.DevicesTabFragment;
 import com.ah.acr.messagebox.tabs.MapTabFragment;
 import com.ah.acr.messagebox.tabs.SettingsTabFragment;
 import com.ah.acr.messagebox.util.ImeiStorage;
+import com.ah.acr.messagebox.util.LocaleHelper;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 import com.clj.fastble.BleManager;
 import com.clj.fastble.callback.BleNotifyCallback;
@@ -75,23 +76,19 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_BLUETOOTH_ADVERTISE = 3;
     private static final int PERMISSION_ACCESS_FINE_LOCATION = 2;
     private static final int PERMISSION_ACCESS_COARSE_LOCATION = 1;
-    // ⭐ v4 Phase B-1: Android 13+ Notification 권한
     private static final int PERMISSION_POST_NOTIFICATIONS = 6;
 
-    // Test data IMEIs
     private static final String TEST_IMEI_TRACK = "TEST-001";
     private static final String TEST_IMEI_SOS = "TEST-002";
     private static final String TEST_IMEI_MSG = "1111111111111111";
 
-    // ⭐ 스마트 자동 받기 (Smart Auto Receive)
     public static final String PREF_AUTO_RECEIVE = "pref_auto_receive_enabled";
-    public static final boolean DEFAULT_AUTO_RECEIVE = true;  // 기본 ON
-    private static final long RECEIVE_TIMEOUT_MS = 30000;     // 30초 타임아웃
+    public static final boolean DEFAULT_AUTO_RECEIVE = true;
+    private static final long RECEIVE_TIMEOUT_MS = 30000;
 
-    // ⭐ 색상 (자동 받기 토글)
-    private static final int COLOR_AUTO_ON = 0xFF00E5D1;       // 민트 (활성)
-    private static final int COLOR_AUTO_OFF = 0xFF95B0D4;      // 회색 (비활성)
-    private static final int COLOR_AUTO_RECEIVING = 0xFFFFB300; // 주황 (받는 중)
+    private static final int COLOR_AUTO_ON = 0xFF00E5D1;
+    private static final int COLOR_AUTO_OFF = 0xFF95B0D4;
+    private static final int COLOR_AUTO_RECEIVING = 0xFFFFB300;
 
     private ActivityMainBinding binding;
 
@@ -103,11 +100,9 @@ public class MainActivity extends AppCompatActivity {
     private int mTestTapCount = 0;
     private boolean mIsTestMode = false;
 
-    // 헤더 버튼 토글 상태
     private boolean mIsTrackingMode = false;
     private boolean mIsSosMode = false;
 
-    // 주기 동기화 Handler
     private Handler mSyncHandler;
     private Runnable mBroadRetryRunnable;
     private Runnable mInfoRetryRunnable;
@@ -117,20 +112,77 @@ public class MainActivity extends AppCompatActivity {
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
 
-    // ⭐ 스마트 자동 받기 상태 관리
     private boolean mIsAutoReceiving = false;
     private int mLastInboxCount = 0;
     private long mLastAutoReceiveTime = 0;
     private Runnable mAutoReceiveTimeoutRunnable;
-    private Animation mAutoReceiveRotation;  // 회전 애니메이션
+    private Animation mAutoReceiveRotation;
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ NEW: 다국어 지원 (2026-04-24)
+    //   attachBaseContext는 Activity 생성 시 가장 먼저 호출됨
+    //   저장된 언어(en/ja)를 Context에 적용
+    // ═════════════════════════════════════════════════════════════
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.onAttach(newBase));
+    }
+
+    /**
+     * ⭐ Resources.getResources()도 override
+     * 일부 상황에서 getResources()가 원본 반환하는 것 방지
+     */
+    @Override
+    public android.content.res.Resources getResources() {
+        android.content.res.Resources resources = super.getResources();
+        try {
+            String lang = LocaleHelper.getLanguage(this);
+            java.util.Locale locale = new java.util.Locale(lang);
+            java.util.Locale.setDefault(locale);
+
+            android.content.res.Configuration config = new android.content.res.Configuration(
+                    resources.getConfiguration());
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                config.setLocale(locale);
+            } else {
+                config.locale = locale;
+            }
+
+            resources.updateConfiguration(config, resources.getDisplayMetrics());
+        } catch (Exception e) {
+            // ignore
+        }
+        return resources;
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // ⭐⭐⭐ 디버그 로그 - 실제 Locale과 리소스 값 확인 ⭐⭐⭐
+        try {
+            Log.v("LOCALE-DEBUG", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Log.v("LOCALE-DEBUG", "저장된 언어: " + LocaleHelper.getLanguage(this));
+            Log.v("LOCALE-DEBUG", "현재 Locale: " +
+                    getResources().getConfiguration().getLocales().get(0).toString());
+            Log.v("LOCALE-DEBUG", "기본 Locale: " +
+                    java.util.Locale.getDefault().toString());
+            Log.v("LOCALE-DEBUG", "ble_login_title: " +
+                    getString(R.string.ble_login_title));
+            Log.v("LOCALE-DEBUG", "ble_login_subtitle: " +
+                    getString(R.string.ble_login_subtitle));
+            Log.v("LOCALE-DEBUG", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        } catch (Exception e) {
+            Log.e("LOCALE-DEBUG", "Debug log error: " + e.getMessage());
+        }
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // ⭐ v4 Phase B-1: Android 13+ Notification 권한 요청
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (this.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -140,11 +192,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // ⭐ v4 Phase B-1: Foreground Service 시작
-        // 앱 시작과 동시에 Service 시작 (백그라운드에서도 BLE 유지)
         com.ah.acr.messagebox.service.TytoConnectService.start(this);
 
-        // Permission checks
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (this.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -238,44 +287,31 @@ public class MainActivity extends AppCompatActivity {
 
         setupFixedHeaderObservers();
         setupReconnectUI();
-        setupAutoReceiveToggle();  // ⭐ 자동 받기 토글 설정
+        setupAutoReceiveToggle();
         setupHeaderButtons();
         setupBottomTabs();
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ 스마트 자동 받기 (Smart Auto Receive) - Phase A + B
+    //   스마트 자동 받기
     // ═════════════════════════════════════════════════════════════
 
-    /**
-     * 자동 받기 활성화 상태 조회
-     */
     private boolean isAutoReceiveEnabled() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         return prefs.getBoolean(PREF_AUTO_RECEIVE, DEFAULT_AUTO_RECEIVE);
     }
 
-    /**
-     * 자동 받기 설정 저장
-     */
     private void setAutoReceiveEnabled(boolean enabled) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.edit().putBoolean(PREF_AUTO_RECEIVE, enabled).apply();
         Log.v("AUTO-RECV", "설정 변경: " + (enabled ? "ON" : "OFF"));
     }
 
-    /**
-     * ⭐ Phase B: 자동 받기 토글 UI 설정
-     */
     private void setupAutoReceiveToggle() {
-        // 회전 애니메이션 로드
         mAutoReceiveRotation = AnimationUtils.loadAnimation(this, R.anim.rotate_auto_receive);
-
-        // 초기 UI 상태 설정
         updateAutoReceiveToggleUI(isAutoReceiveEnabled(), false);
 
-        // 토글 클릭 리스너
         binding.statusArea.btnAutoReceive.setOnClickListener(v -> {
             boolean newState = !isAutoReceiveEnabled();
             setAutoReceiveEnabled(newState);
@@ -284,41 +320,28 @@ public class MainActivity extends AppCompatActivity {
             String msg = newState ? "자동 받기 ON" : "자동 받기 OFF";
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
 
-            // OFF로 변경했는데 받는 중이면 중지 표시 (실제 통신은 이미 진행 중)
             if (!newState && mIsAutoReceiving) {
                 stopAutoReceiveAnimation();
-                Log.v("AUTO-RECV", "사용자가 OFF로 변경 (진행 중인 수신은 계속됨)");
+                Log.v("AUTO-RECV", "사용자가 OFF로 변경");
             }
         });
     }
 
-    /**
-     * ⭐ 자동 받기 토글 UI 업데이트
-     *
-     * @param enabled    활성화 여부
-     * @param isReceiving 현재 받는 중인지
-     */
     private void updateAutoReceiveToggleUI(boolean enabled, boolean isReceiving) {
         if (!enabled) {
-            // OFF 상태: 회색, 정지
             binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_OFF);
             binding.statusArea.btnAutoReceive.clearAnimation();
         } else if (isReceiving) {
-            // ON + 받는 중: 주황, 회전
             binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_RECEIVING);
             if (binding.statusArea.btnAutoReceive.getAnimation() == null) {
                 binding.statusArea.btnAutoReceive.startAnimation(mAutoReceiveRotation);
             }
         } else {
-            // ON + 대기: 민트, 정지
             binding.statusArea.btnAutoReceive.setColorFilter(COLOR_AUTO_ON);
             binding.statusArea.btnAutoReceive.clearAnimation();
         }
     }
 
-    /**
-     * ⭐ 자동 받기 애니메이션 시작 (회전)
-     */
     private void startAutoReceiveAnimation() {
         runOnUiThread(() -> {
             if (isAutoReceiveEnabled()) {
@@ -327,45 +350,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * ⭐ 자동 받기 애니메이션 정지
-     */
     private void stopAutoReceiveAnimation() {
         runOnUiThread(() -> {
             updateAutoReceiveToggleUI(isAutoReceiveEnabled(), false);
         });
     }
 
-    /**
-     * BROAD 응답에서 inbox 카운트 변화 감지하여 자동 받기 시작
-     *
-     * ⭐ v4 Phase B-3: 실제 수신 로직은 Service로 이관됨!
-     *
-     * 변경 이유:
-     * - MainActivity가 백그라운드로 가면 이 메서드 작동 안 함
-     * - 결과: 백그라운드에서 INBOX 증가해도 자동 수신 실패
-     *
-     * 현재 동작:
-     * - Service의 parseBroad() → checkAutoReceive()가 주도 (백그라운드 안전)
-     * - MainActivity는 UI 애니메이션 관리만
-     * - Broadcast로 Service ↔ Activity UI 동기화
-     *   (BROADCAST_AUTO_RECV_STARTED / COMPLETED)
-     *
-     * 이 메서드는 포그라운드에서 Activity가 받은 BROAD 처리 시 호출됨.
-     * Service도 동일한 BROAD를 받으므로, 중복 전송 방지를 위해
-     * 실제 RECEIVED=0,OK 전송은 Service에서만 수행함.
-     */
     private void checkAndTriggerAutoReceive(int currentInboxCount) {
-        // Service가 실제 수신을 담당하므로 MainActivity는 UI 상태만 추적
-        // (중복 전송 방지)
-        //
-        // 실제 트리거 로직:
-        // → TytoConnectService.checkAutoReceive()
-        //
-        // UI 업데이트:
-        // → BroadcastReceiver가 AUTO_RECV_STARTED / COMPLETED 받아서 처리
-        //   (mAutoReceiveStateReceiver 참조)
-
         if (!isAutoReceiveEnabled()) {
             return;
         }
@@ -375,7 +366,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 로컬 상태만 업데이트 (Service가 실제 전송)
         if (currentInboxCount > mLastInboxCount || mLastInboxCount == 0) {
             mLastInboxCount = currentInboxCount;
             Log.v("AUTO-RECV", "📍 inbox 변화 감지 → Service가 자동 수신 담당");
@@ -390,10 +380,8 @@ public class MainActivity extends AppCompatActivity {
         mAutoReceiveTimeoutRunnable = () -> {
             if (mIsAutoReceiving) {
                 long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
-                Log.w("AUTO-RECV", "⚠ 자동 받기 타임아웃 (" + elapsed + "ms) - 리셋");
+                Log.w("AUTO-RECV", "⚠ 타임아웃 (" + elapsed + "ms) - 리셋");
                 mIsAutoReceiving = false;
-
-                // ⭐ 애니메이션 정지
                 stopAutoReceiveAnimation();
             }
         };
@@ -404,7 +392,7 @@ public class MainActivity extends AppCompatActivity {
     private void completeAutoReceive() {
         if (mIsAutoReceiving) {
             long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
-            Log.v("AUTO-RECV", "✓ 자동 받기 완료 (" + elapsed + "ms 소요)");
+            Log.v("AUTO-RECV", "✓ 완료 (" + elapsed + "ms)");
             mIsAutoReceiving = false;
             mLastInboxCount = 0;
 
@@ -412,7 +400,6 @@ public class MainActivity extends AppCompatActivity {
                 mSyncHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
             }
 
-            // ⭐ 애니메이션 정지
             stopAutoReceiveAnimation();
         }
     }
@@ -424,15 +411,13 @@ public class MainActivity extends AppCompatActivity {
             mSyncHandler.removeCallbacks(mAutoReceiveTimeoutRunnable);
         }
 
-        // ⭐ 애니메이션 정지
         stopAutoReceiveAnimation();
-
         Log.v("AUTO-RECV", "상태 리셋");
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   헤더 버튼 (TRACK, SOS, 종료)
+    //   헤더 버튼
     // ═════════════════════════════════════════════════════════════
 
     private void setupHeaderButtons() {
@@ -453,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("추적(Tracking) 모드를 중지하시겠습니까?")
                     .setPositiveButton("중지", (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
-                        Log.v("TRACK", "LOCATION=3 (추적 중지 요청)");
+                        Log.v("TRACK", "LOCATION=3");
                     })
                     .setNegativeButton("취소", null)
                     .show();
@@ -468,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("추적(Tracking) 모드를 시작하시겠습니까?\n\n설정된 주기에 따라 위치가 전송됩니다.")
                     .setPositiveButton("시작", (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
-                        Log.v("TRACK", "LOCATION=2 (추적 시작 요청)");
+                        Log.v("TRACK", "LOCATION=2");
                     })
                     .setNegativeButton("취소", null)
                     .show();
@@ -487,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("SOS 긴급 모드를 중지하시겠습니까?")
                     .setPositiveButton("중지", (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
-                        Log.v("SOS", "LOCATION=5 (SOS 중지 요청)");
+                        Log.v("SOS", "LOCATION=5");
                     })
                     .setNegativeButton("취소", null)
                     .show();
@@ -497,7 +482,7 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("SOS 긴급 신호를 전송하시겠습니까?\n\n3분 주기로 전송됩니다.")
                     .setPositiveButton("전송", (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=4");
-                        Log.v("SOS", "LOCATION=4 (SOS 시작 요청)");
+                        Log.v("SOS", "LOCATION=4");
                     })
                     .setNegativeButton("취소", null)
                     .show();
@@ -509,21 +494,12 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("앱 종료")
                 .setMessage("TYTO Connect 를 종료하시겠습니까?")
                 .setPositiveButton("종료", (d, w) -> {
-                    Log.v("EXIT", "사용자가 앱 종료 선택");
-
-                    // ⭐ v4 Phase B-2-5-fix: Service 완전 종료
-                    // Service.stop → ACTION_STOP → stopForegroundService()
-                    //   → stopForeground (알림 제거)
-                    //   → stopSelf (Service 종료)
-                    //   → onDestroy (BLE 리소스 정리)
+                    Log.v("EXIT", "앱 종료");
                     try {
                         com.ah.acr.messagebox.service.TytoConnectService.stop(this);
-                        Log.v("EXIT", "🔴 TytoConnectService 중지 요청");
                     } catch (Exception e) {
                         Log.v("EXIT", "Service 중지 실패: " + e.getMessage());
                     }
-
-                    // Activity 종료 + Task 제거
                     finishAndRemoveTask();
                 })
                 .setNegativeButton("취소", null)
@@ -554,55 +530,28 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ v4 Phase 3A: Satellite TRACK 세션 자동 동기화
-    // ═════════════════════════════════════════════════════════════
-    //
-    // 원칙: 헤더 TRACK/SOS 상태 = Satellite TRACK 세션 상태
-    //
-    //   tracking=false, sos=false  → IDLE (세션 없음)
-    //   tracking=true              → TRACK 세션
-    //   sos=true                   → SOS 세션 (TRACK보다 우선)
-    //
-    // BROAD 수신 시마다 호출되며, 상태 변화 시만 실제 전환
+    //   Satellite TRACK 세션 동기화
     // ═════════════════════════════════════════════════════════════
 
-    // 세션 이전 상태 추적 (변화 감지용)
     private boolean mPrevSatSessionActive = false;
-    private int mPrevSatSessionMode = 0; // 0=IDLE, 1=TRACK, 2=SOS
+    private int mPrevSatSessionMode = 0;
 
     private void syncSatTrackSession(boolean isTracking, boolean isSos) {
-        // 현재 세션 모드 결정
         int currentMode;
-        if (isSos) currentMode = 2;        // SOS (우선)
-        else if (isTracking) currentMode = 1; // TRACK
-        else currentMode = 0;               // IDLE
+        if (isSos) currentMode = 2;
+        else if (isTracking) currentMode = 1;
+        else currentMode = 0;
 
         boolean currentActive = (currentMode != 0);
 
-        // 상태 변화 없으면 skip (중복 호출 방지)
-        if (currentMode == mPrevSatSessionMode) {
-            return;
-        }
+        if (currentMode == mPrevSatSessionMode) return;
 
-        Log.v("SAT-SESSION", "상태 변화 감지: " +
-                modeToString(mPrevSatSessionMode) + " → " + modeToString(currentMode));
+        Log.v("SAT-SESSION", "상태 변화: " + modeToString(mPrevSatSessionMode) + " → " + modeToString(currentMode));
 
-        // 변화 타입 판별
         if (!mPrevSatSessionActive && currentActive) {
-            // IDLE → TRACK/SOS : 세션 시작
-            Log.v("SAT-SESSION", "⭐ Satellite TRACK 세션 시작 (" + modeToString(currentMode) + ")");
             startSatTrackSession(currentMode);
-
         } else if (mPrevSatSessionActive && !currentActive) {
-            // TRACK/SOS → IDLE : 세션 종료
-            Log.v("SAT-SESSION", "⏹ Satellite TRACK 세션 종료 요청 (" +
-                    modeToString(mPrevSatSessionMode) + " → IDLE)");
             stopSatTrackSession(mPrevSatSessionMode);
-
-        } else if (mPrevSatSessionActive && currentActive) {
-            // TRACK ↔ SOS : 모드 전환 (세션은 유지)
-            Log.v("SAT-SESSION", "세션 모드 전환: " +
-                    modeToString(mPrevSatSessionMode) + " → " + modeToString(currentMode));
         }
 
         mPrevSatSessionActive = currentActive;
@@ -617,57 +566,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 세션 시작 요청:
-     * DevicesTabFragment를 찾아 직접 호출
-     */
     private void startSatTrackSession(int mode) {
         runOnUiThread(() -> {
             try {
-                // DevicesTabFragment 찾기
-                androidx.fragment.app.Fragment devicesFragment =
-                        findDevicesTabFragment();
+                androidx.fragment.app.Fragment devicesFragment = findDevicesTabFragment();
                 if (devicesFragment != null) {
-                    // reflection으로 메서드 호출
                     java.lang.reflect.Method m = devicesFragment.getClass().getMethod(
                             "startSatSessionFromHeader", int.class);
                     m.invoke(devicesFragment, mode);
-                    Log.v("SAT-SESSION", "✅ DevicesTabFragment에 시작 신호 전달");
-                } else {
-                    Log.v("SAT-SESSION", "⚠ DevicesTabFragment 없음 (탭 미방문 상태)");
                 }
             } catch (Exception e) {
-                Log.v("SAT-SESSION", "세션 시작 호출 실패: " + e.getMessage());
+                Log.v("SAT-SESSION", "세션 시작 실패: " + e.getMessage());
             }
         });
     }
 
-    /**
-     * 세션 종료 요청:
-     * DevicesTabFragment가 저장 다이얼로그 표시
-     */
     private void stopSatTrackSession(int prevMode) {
         runOnUiThread(() -> {
             try {
-                androidx.fragment.app.Fragment devicesFragment =
-                        findDevicesTabFragment();
+                androidx.fragment.app.Fragment devicesFragment = findDevicesTabFragment();
                 if (devicesFragment != null) {
                     java.lang.reflect.Method m = devicesFragment.getClass().getMethod(
                             "stopSatSessionFromHeader", int.class);
                     m.invoke(devicesFragment, prevMode);
-                    Log.v("SAT-SESSION", "✅ DevicesTabFragment에 종료 신호 전달");
-                } else {
-                    Log.v("SAT-SESSION", "⚠ DevicesTabFragment 없음");
                 }
             } catch (Exception e) {
-                Log.v("SAT-SESSION", "세션 종료 호출 실패: " + e.getMessage());
+                Log.v("SAT-SESSION", "세션 종료 실패: " + e.getMessage());
             }
         });
     }
 
-    /**
-     * 현재 표시 중인 DevicesTabFragment 찾기
-     */
     private androidx.fragment.app.Fragment findDevicesTabFragment() {
         try {
             androidx.fragment.app.FragmentManager fm = getSupportFragmentManager();
@@ -676,7 +604,6 @@ public class MainActivity extends AppCompatActivity {
                 if (f.getClass().getSimpleName().equals("DevicesTabFragment")) {
                     return f;
                 }
-                // 중첩 탐색 (NavHost 등)
                 if (f.getChildFragmentManager() != null) {
                     for (androidx.fragment.app.Fragment child : f.getChildFragmentManager().getFragments()) {
                         if (child != null &&
@@ -694,14 +621,12 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   v2 재연결 UI (자동 재접속 메커니즘 연동)
+    //   재연결 UI
     // ═════════════════════════════════════════════════════════════
 
     private void setupReconnectUI() {
         BLE.INSTANCE.getConnectionStatus().observe(this, status -> {
             if (status == null || mIsTestMode) return;
-
-            Log.v("BLE-UI", "ConnectionStatus changed: " + status);
 
             switch (status) {
                 case BLE.CONNECT_STATUS_RECONNECTING: {
@@ -712,9 +637,7 @@ public class MainActivity extends AppCompatActivity {
                     binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);
                     binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
 
-                    binding.statusArea.textReconnectCount.setText(
-                            String.format("(%d/%d)", attempts, max)
-                    );
+                    binding.statusArea.textReconnectCount.setText(String.format("(%d/%d)", attempts, max));
                     binding.statusArea.textReconnectCount.setVisibility(View.VISIBLE);
 
                     binding.statusArea.btnConnectionAction.setText("취소");
@@ -734,10 +657,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                case BLE.CONNECT_STATUS_CONNECTED:
-                case BLE.CONNECT_STATUS_DISCONNECTED:
-                case BLE.CONNECT_STATUS_LOST:
-                case BLE.CONNECT_STATUS_TRYING:
                 default: {
                     binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                     binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
@@ -748,24 +667,16 @@ public class MainActivity extends AppCompatActivity {
 
         binding.statusArea.btnConnectionAction.setOnClickListener(v -> {
             String currentStatus = BLE.INSTANCE.getConnectionStatus().getValue();
-            Log.v("BLE-UI", "Action button clicked, status: " + currentStatus);
 
             if (BLE.CONNECT_STATUS_RECONNECTING.equals(currentStatus)) {
                 BLE.INSTANCE.cancelReconnect();
                 Toast.makeText(this, "재연결을 취소했습니다.", Toast.LENGTH_SHORT).show();
             } else if (BLE.CONNECT_STATUS_FAILED.equals(currentStatus)) {
-                Log.v("BLE-UI", "Retry → Reset selectedDevice & navigate to BLE tab");
-
                 BLE.INSTANCE.getSelectedDevice().postValue(null);
-
                 binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                 binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
-
                 binding.bottomNav.setSelectedItemId(R.id.tab_ble);
-
-                Toast.makeText(this,
-                        "장비를 다시 검색합니다. TYTO2 전원을 확인해주세요.",
-                        Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "장비를 다시 검색합니다.", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -776,7 +687,7 @@ public class MainActivity extends AppCompatActivity {
     // ═════════════════════════════════════════════════════════════
 
     private void startPeriodicSync() {
-        Log.v("SYNC", "▶ Starting periodic sync");
+        Log.v("SYNC", "▶ Starting");
         mLastBroadReceivedTime = System.currentTimeMillis();
         mLastInfoReceivedTime = System.currentTimeMillis();
 
@@ -791,7 +702,6 @@ public class MainActivity extends AppCompatActivity {
                 public void run() {
                     long elapsed = System.currentTimeMillis() - mLastBroadReceivedTime;
                     if (elapsed >= BROAD_TIMEOUT_MS && BLE.INSTANCE.getSelectedDevice().getValue() != null) {
-                        Log.v("SYNC", "⚠ BROAD timeout (" + elapsed + "ms) - re-requesting BROAD=5");
                         BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
                     }
                     mSyncHandler.postDelayed(this, BROAD_TIMEOUT_MS);
@@ -804,12 +714,10 @@ public class MainActivity extends AppCompatActivity {
             mInfoRetryRunnable = new Runnable() {
                 @Override
                 public void run() {
-                    long elapsed = System.currentTimeMillis() - mLastInfoReceivedTime;
                     DeviceInfo currentInfo = BLE.INSTANCE.getDeviceInfo().getValue();
                     boolean noImei = currentInfo == null || currentInfo.getImei() == null || currentInfo.getImei().isEmpty();
 
                     if (noImei && BLE.INSTANCE.getSelectedDevice().getValue() != null) {
-                        Log.v("SYNC", "⚠ INFO not received - re-requesting INFO=?");
                         BLE.INSTANCE.getWriteQueue().offer("INFO=?");
                         mSyncHandler.postDelayed(this, INFO_TIMEOUT_MS);
                     }
@@ -822,16 +730,10 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable mPeriodicSyncRunnable = new Runnable() {
         @Override
         public void run() {
-            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-                Log.v("SYNC", "■ Device disconnected - stopping periodic sync");
-                return;
-            }
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) return;
 
             long broadElapsed = System.currentTimeMillis() - mLastBroadReceivedTime;
-            Log.v("SYNC", "▶ Periodic check - BROAD last received " + broadElapsed + "ms ago");
-
             if (broadElapsed >= BROAD_TIMEOUT_MS) {
-                Log.v("SYNC", "⚠ BROAD stale - re-requesting BROAD=5");
                 BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
             }
 
@@ -840,7 +742,6 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void stopPeriodicSync() {
-        Log.v("SYNC", "■ Stopping all sync handlers");
         if (mSyncHandler != null) {
             mSyncHandler.removeCallbacksAndMessages(null);
         }
@@ -853,8 +754,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupFixedHeaderObservers() {
         BLE.INSTANCE.getDeviceInfo().observe(this, info -> {
-            Log.v("OBS-INFO", "DeviceInfo observer fired: " + (info != null ? info.getImei() : "null"));
-
             if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
                 binding.headerArea.textHeaderSub.setText("IMEI  " + info.getImei());
                 ImeiStorage.save(this, info.getImei());
@@ -910,9 +809,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mBleViewModel.getDeviceStatus().observe(this, status -> {
-            Log.v("OBS-STATUS", "DeviceStatus observer fired: " +
-                    (status != null ? ("battery=" + status.getBattery() + " signal=" + status.getSignal()) : "null"));
-
             if (status == null) return;
             binding.statusArea.textMainBattery.setText(String.format("%d%%", status.getBattery()));
             updateSignalBar(status.getSignal());
@@ -926,8 +822,6 @@ public class MainActivity extends AppCompatActivity {
             else if (status.isTrackingMode()) updateLocationStatus(1);
             else updateLocationStatus(0);
 
-            // ⭐⭐⭐ v4 Phase 3A: 헤더 TRACK/SOS ↔ Satellite TRACK 세션 자동 동기화
-            // BROAD의 tracking/sos 상태로 세션 자동 시작/종료
             syncSatTrackSession(status.isTrackingMode(), status.isSosMode());
         });
 
@@ -1013,7 +907,7 @@ public class MainActivity extends AppCompatActivity {
 
             deleteTestLocationData();
             deleteTestMessages();
-            Toast.makeText(this, "🧪 Test mode OFF (data cleared)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "🧪 Test mode OFF", Toast.LENGTH_SHORT).show();
         } else {
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
@@ -1033,8 +927,7 @@ public class MainActivity extends AppCompatActivity {
 
             insertTestLocationData();
             insertTestMessages();
-            Toast.makeText(this, "🧪 Test data injected (20 locations + 10 messages)",
-                    Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "🧪 Test data injected", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1084,10 +977,7 @@ public class MainActivity extends AppCompatActivity {
             );
             locationViewModel.insert(entity);
         }
-
-        Log.v("TEST_MODE", "Inserted 20 test locations");
     }
-
 
     private void deleteTestLocationData() {
         locationViewModel.getAllLocations().observe(this, new androidx.lifecycle.Observer<List<LocationEntity>>() {
@@ -1096,15 +986,12 @@ public class MainActivity extends AppCompatActivity {
                 if (allLocations == null) return;
                 locationViewModel.getAllLocations().removeObserver(this);
 
-                int deleted = 0;
                 for (LocationEntity loc : allLocations) {
                     if (TEST_IMEI_TRACK.equals(loc.getCodeNum())
                             || TEST_IMEI_SOS.equals(loc.getCodeNum())) {
                         locationViewModel.delete(loc);
-                        deleted++;
                     }
                 }
-                Log.v("TEST_MODE", "Deleted " + deleted + " test locations");
             }
         });
     }
@@ -1113,14 +1000,14 @@ public class MainActivity extends AppCompatActivity {
         String[][] testMsgs = {
                 {"안녕하세요",         "오늘도 좋은 하루 보내세요! 😊"},
                 {"날씨 확인",           "서울 현재 맑음, 기온 15도입니다."},
-                {"미팅 변경 안내",      "내일 오후 2시 미팅이 3시로 변경되었습니다. 확인 부탁드려요."},
-                {"Status OK",          "Base camp check-in at 10:30. All systems green."},
-                {"복귀 예정",           "오늘 18시경 베이스캠프 복귀 예정입니다."},
-                {"좌표 수신 확인",      "전송해주신 GPS 좌표 정상 수신했습니다."},
-                {"Weather Alert",      "Heavy rain expected in your area after 16:00. Stay safe."},
-                {"저녁 식사",           "7시에 저녁 준비 완료됩니다. 시간 맞춰 오세요."},
-                {"Signal Test",        "통신 테스트 - 신호 양호, 응답 부탁드립니다."},
-                {"작전 브리핑",         "내일 08시 작전 브리핑 예정. 참석 필수입니다."}
+                {"미팅 변경 안내",      "내일 오후 2시 미팅이 3시로 변경되었습니다."},
+                {"Status OK",          "Base camp check-in at 10:30."},
+                {"복귀 예정",           "오늘 18시경 복귀 예정입니다."},
+                {"좌표 수신 확인",      "GPS 좌표 정상 수신했습니다."},
+                {"Weather Alert",      "Heavy rain expected after 16:00."},
+                {"저녁 식사",           "7시에 저녁 준비 완료됩니다."},
+                {"Signal Test",        "통신 테스트 - 신호 양호."},
+                {"작전 브리핑",         "내일 08시 작전 브리핑 예정."}
         };
 
         Calendar cal = Calendar.getInstance();
@@ -1142,15 +1029,9 @@ public class MainActivity extends AppCompatActivity {
                     sentTime, sentTime, sentTime,
                     isRead, false, false
             );
-            msgViewModel.insert(msg, success -> {
-                if (success) Log.v("TEST_MSG", "Test message " + (testMsgs.length) + " saved");
-                return null;
-            });
+            msgViewModel.insert(msg, success -> null);
         }
-
-        Log.v("TEST_MODE", "Inserted 10 test messages from " + TEST_IMEI_MSG);
     }
-
 
     private void deleteTestMessages() {
         msgViewModel.getAllMsgs().observe(this, new androidx.lifecycle.Observer<List<MsgEntity>>() {
@@ -1159,14 +1040,11 @@ public class MainActivity extends AppCompatActivity {
                 if (allMsgs == null) return;
                 msgViewModel.getAllMsgs().removeObserver(this);
 
-                int deleted = 0;
                 for (MsgEntity m : allMsgs) {
                     if (TEST_IMEI_MSG.equals(m.getCodeNum())) {
                         msgViewModel.delete(m);
-                        deleted++;
                     }
                 }
-                Log.v("TEST_MODE", "Deleted " + deleted + " test messages");
             }
         });
     }
@@ -1204,7 +1082,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   뒤로가기 가드
+    //   뒤로가기
     // ═════════════════════════════════════════════════════════════
 
     @Override
@@ -1234,7 +1112,7 @@ public class MainActivity extends AppCompatActivity {
             case PERMISSION_BLUETOOTH_CONNECT:
             case PERMISSION_BLUETOOTH_SCAN: {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d("debug", "coarse location permission granted");
+                    Log.d("debug", "permission granted");
                 }
                 break;
             }
@@ -1246,48 +1124,32 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         stopPeriodicSync();
         resetAutoReceive();
-
-        // ⭐ v4 Phase B-3: AutoRecv Broadcast 수신기 해제
         unregisterAutoRecvReceiver();
-
-        // ⭐ v4 Phase B-2-1: destroyBle() 제거!
-        // BLE는 이제 TytoConnectService가 관리
-        // Activity 종료해도 BLE 연결 유지됨 (백그라운드 작동)
-        // BLE.INSTANCE.destroyBle();  ← 제거
-
-        // ⭐ v4 Phase B-2-4-B: Service에 Activity 종료 알림
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(false);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // ⭐ v4 Phase B-2-4-B: Activity 활성 상태 알림
-        // Service는 Activity가 살아있으면 저장 skip (중복 방지)
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(true);
-
-        // ⭐ v4 Phase B-3: AutoRecv Broadcast 수신기 등록
-        // Service의 자동 수신 상태 변화를 받아서 UI 애니메이션 관리
         registerAutoRecvReceiver();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        // ⭐ v4 Phase B-2-4-B: Activity 비활성 상태 알림
-        // 백그라운드 진입 → Service가 저장 담당
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(false);
     }
 
+
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ v4 Phase B-3: Service AutoRecv Broadcast 수신기
-    //   Service가 자동 수신을 시작/완료할 때 UI 업데이트
+    //   AutoRecv Broadcast 수신기
     // ═════════════════════════════════════════════════════════════
 
     private android.content.BroadcastReceiver mAutoRecvReceiver;
 
     private void registerAutoRecvReceiver() {
-        if (mAutoRecvReceiver != null) return; // 이미 등록됨
+        if (mAutoRecvReceiver != null) return;
 
         mAutoRecvReceiver = new android.content.BroadcastReceiver() {
             @Override
@@ -1297,15 +1159,11 @@ public class MainActivity extends AppCompatActivity {
 
                 if (com.ah.acr.messagebox.service.TytoConnectService
                         .BROADCAST_AUTO_RECV_STARTED.equals(action)) {
-                    Log.v("AUTO-RECV", "🔔 Service에서 자동 수신 시작 알림");
                     mIsAutoReceiving = true;
                     mLastAutoReceiveTime = System.currentTimeMillis();
                     startAutoReceiveAnimation();
-
                 } else if (com.ah.acr.messagebox.service.TytoConnectService
                         .BROADCAST_AUTO_RECV_COMPLETED.equals(action)) {
-                    boolean success = intent.getBooleanExtra("success", false);
-                    Log.v("AUTO-RECV", "🔔 Service에서 자동 수신 완료 알림 (success=" + success + ")");
                     mIsAutoReceiving = false;
                     mLastInboxCount = 0;
                     stopAutoReceiveAnimation();
@@ -1314,28 +1172,22 @@ public class MainActivity extends AppCompatActivity {
         };
 
         android.content.IntentFilter filter = new android.content.IntentFilter();
-        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService
-                .BROADCAST_AUTO_RECV_STARTED);
-        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService
-                .BROADCAST_AUTO_RECV_COMPLETED);
+        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_AUTO_RECV_STARTED);
+        filter.addAction(com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_AUTO_RECV_COMPLETED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(mAutoRecvReceiver, filter,
-                    Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(mAutoRecvReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(mAutoRecvReceiver, filter);
         }
-
-        Log.v("AUTO-RECV", "📡 AutoRecv 수신기 등록 완료");
     }
 
     private void unregisterAutoRecvReceiver() {
         if (mAutoRecvReceiver != null) {
             try {
                 unregisterReceiver(mAutoRecvReceiver);
-                Log.v("AUTO-RECV", "📡 AutoRecv 수신기 해제");
             } catch (Exception e) {
-                // 이미 해제됨 or 등록 안 됨
+                // ignore
             }
             mAutoRecvReceiver = null;
         }
@@ -1343,18 +1195,12 @@ public class MainActivity extends AppCompatActivity {
 
     boolean checkExternalStorage() {
         String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return false;
-        } else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
-        } else {
-            return false;
-        }
+        return Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   위치 파싱 헬퍼 메서드
+    //   위치 파싱
     // ═════════════════════════════════════════════════════════════
 
     private String parseAddress(ByteBuf buffer, int senderLen) {
@@ -1372,7 +1218,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void receivePacketProcess(String packet) throws Exception {
-
         Log.v("RECEVICE", packet);
 
         if (packet.startsWith("INFO=")) {
@@ -1383,14 +1228,12 @@ public class MainActivity extends AppCompatActivity {
             info.setBudaeNum(vals[1]);
             info.setImei(vals[2]);
             info.setVersion(vals[3]);
-
             info.setPwChanged(!vals[8].equals("0"));
             if (vals.length > 9) info.setSosStarted(!vals[9].equals("0"));
             if (vals.length > 10) info.setTrackingMode((!vals[10].equals("0")));
 
             BLE.INSTANCE.getDeviceInfo().postValue(info);
             mLastInfoReceivedTime = System.currentTimeMillis();
-            Log.v("SYNC", "✓ INFO received - imei=" + info.getImei());
 
             if (info.isPwChanged()) {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_TRY);
@@ -1407,7 +1250,6 @@ public class MainActivity extends AppCompatActivity {
                 BLE.INSTANCE.isLogon().postValue(true);
                 mSyncHandler.postDelayed(() -> {
                     BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
-                    Log.v("SYNC", "▶ Post-login BROAD=5 sent");
                 }, 500);
             }
         } else if (packet.startsWith("CHANGELOGIN=")) {
@@ -1418,7 +1260,6 @@ public class MainActivity extends AppCompatActivity {
                 BLE.INSTANCE.isLogon().postValue(true);
                 mSyncHandler.postDelayed(() -> {
                     BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
-                    Log.v("SYNC", "▶ Post-changelogin BROAD=5 sent");
                 }, 500);
             } else {
                 BLE.INSTANCE.getBleLoginStatus().postValue(BLE.BLE_LOGIN_CHANGE_FAIL);
@@ -1426,7 +1267,6 @@ public class MainActivity extends AppCompatActivity {
         } else if (packet.startsWith("UOPEN=")) {
             String msg = packet.substring(6);
             String[] vals = msg.split(",");
-            int size = Integer.parseInt(vals[0]);
             if (vals[1].equals("START")) {
                 FirmUpdate state = new FirmUpdate(1, "START");
                 BLE.INSTANCE.getFirmwareUdateState().postValue(state);
@@ -1463,11 +1303,11 @@ public class MainActivity extends AppCompatActivity {
         } else if (packet.startsWith("LOCATION=")) {
             String msg = packet.substring(9);
             String[] vals = msg.split(",");
-            if (vals[0].equals("1")) Toast.makeText(this, "A single location request has been sent to the terminal.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("2")) Toast.makeText(this, "The terminal was told to start tracking mode.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("3")) Toast.makeText(this, "The terminal has been told to stop tracking mode.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("4")) Toast.makeText(this, "The terminal was told to start SOS mode.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("5")) Toast.makeText(this, "The terminal was told to stop SOS mode.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("1")) Toast.makeText(this, "A single location request has been sent.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("2")) Toast.makeText(this, "Tracking mode started.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("3")) Toast.makeText(this, "Tracking mode stopped.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("4")) Toast.makeText(this, "SOS mode started.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("5")) Toast.makeText(this, "SOS mode stopped.", Toast.LENGTH_LONG).show();
         } else if (packet.startsWith("SENDING=")) {
             String msg = packet.substring(8);
             String[] vals = msg.split(",");
@@ -1484,18 +1324,15 @@ public class MainActivity extends AppCompatActivity {
             String sms = packet.substring(9);
             String[] vals = sms.split(",");
             try {
-                Log.v("RECEIVE", "number of remaining  : " + vals[1]);
                 if (vals[1].equals("0")) {
                     Toast.makeText(this, getString(R.string.inbox_receive_complite), Toast.LENGTH_LONG).show();
-                    completeAutoReceive();  // ⭐ 자동 받기 완료
+                    completeAutoReceive();
                     return;
                 }
                 byte[] data = Base64.decode(vals[2], Base64.NO_WRAP);
-                Log.v("RECEIVE-HEX", HexUtil.formatHexString(data));
                 ByteBuf buffer = Unpooled.wrappedBuffer(data);
                 byte ver = buffer.getByte(0);
 
-                // CAR / SOS 모드
                 if (ver == 0x00 || ver == 0x01) {
                     buffer.readByte();
                     double lat = buffer.readFloat();
@@ -1507,22 +1344,15 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, 0, 0, 0, now,
                             now, false, false, false);
-                    Log.v("LOC SEND " + String.format("0x%02X", ver),
-                            "myImei=" + myImei + " lat=" + lat + " lng=" + lng);
                     locationViewModel.insert(addLoc, success -> {
                         if (success) {
-                            Log.v("Location ADD", "내 위치 저장 (" + String.format("0x%02X", ver) + ")");
-
-                            // ⭐ v4 Phase B-2-5: Service에 저장 완료 알림
                             com.ah.acr.messagebox.service.TytoConnectService
                                     .notifyPointSavedByActivity(MainActivity.this);
                         }
                         return null;
                     });
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, 0.0, 0.0, 0.0, null, ver
-                    );
+                    SatTrackStateHolder.recordPoint(this, lat, lng, 0.0, 0.0, 0.0, null, ver);
 
                 } else if (ver == 0x11 || ver == 0x10) {
                     int senderLen = buffer.readableBytes() - 10;
@@ -1533,57 +1363,25 @@ public class MainActivity extends AppCompatActivity {
                     byte etc = buffer.readByte();
 
                     Date now = new Date();
-
-                    // ⭐ v4 Phase 5-B: Echo back 판별
-                    // sender가 내 IMEI와 같으면 "내가 발송한 것의 echo back"
-                    // → isMy=true로 저장 (실제로 내 위치임)
                     String myImei = ImeiStorage.getLast(this);
-                    boolean isMyEcho = sender != null
-                            && myImei != null
-                            && sender.equals(myImei);
+                    boolean isMyEcho = sender != null && myImei != null && sender.equals(myImei);
 
                     LocationEntity addLoc = new LocationEntity(
-                            0,
-                            isMyEcho,      // ⭐ Echo면 isMy=true, 아니면 false
-                            ver,
-                            sender,        // sender 주소 (내 IMEI 또는 상대방)
-                            lat, lng,
-                            0, 0, 0,
-                            now,           // sendDate = 앱 수신 시간 (new Date)
-                            now,           // recvDate = 앱 수신 시간
+                            0, isMyEcho, ver, sender,
+                            lat, lng, 0, 0, 0, now, now,
                             false, false, false);
-
-                    if (isMyEcho) {
-                        Log.v("LOC ECHO " + String.format("0x%02X", ver),
-                                "⭐ 내 Echo back! sender=" + sender +
-                                " lat=" + lat + " lng=" + lng);
-                    } else {
-                        Log.v("LOC RECV " + String.format("0x%02X", ver),
-                                "상대방 수신 sender=" + sender +
-                                " lat=" + lat + " lng=" + lng);
-                    }
 
                     locationViewModel.insert(addLoc, success -> {
                         if (success) {
-                            String label = isMyEcho ? "내 Echo 저장" : "수신 위치 저장";
-                            Log.v("Location ADD",
-                                    label + " (" + String.format("0x%02X", ver) + ")");
-
-                            // ⭐ v4 Phase B-2-5: Service에 저장 완료 알림
-                            // Notification의 pt 카운트 동기화
                             com.ah.acr.messagebox.service.TytoConnectService
                                     .notifyPointSavedByActivity(MainActivity.this);
                         }
                         return null;
                     });
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, 0.0, 0.0, 0.0, null, ver
-                    );
+                    SatTrackStateHolder.recordPoint(this, lat, lng, 0.0, 0.0, 0.0, null, ver);
 
-                }
-                // UAV 모드
-                else if (ver == 0x02) {
+                } else if (ver == 0x02) {
                     buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1597,16 +1395,9 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, alt, dir, speed, now,
                             now, false, false, false);
-                    Log.v("LOC SEND 0x02", "UAV myImei=" + myImei + " lat=" + lat);
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "내 UAV 위치 저장");
-                        return null;
-                    });
+                    locationViewModel.insert(addLoc, success -> null);
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, (double) alt, (double) speed,
-                            (double) dir, null, ver
-                    );
+                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, null, ver);
 
                 } else if (ver == 0x12) {
                     int senderLen = buffer.readableBytes() - 14;
@@ -1620,47 +1411,19 @@ public class MainActivity extends AppCompatActivity {
                     byte etc = buffer.readByte();
 
                     Date now = new Date();
-
-                    // ⭐ v4 Phase 5-B: UAV Echo back 판별
                     String myImeiUav = ImeiStorage.getLast(this);
-                    boolean isMyEchoUav = sender != null
-                            && myImeiUav != null
-                            && sender.equals(myImeiUav);
+                    boolean isMyEchoUav = sender != null && myImeiUav != null && sender.equals(myImeiUav);
 
                     LocationEntity addLoc = new LocationEntity(
-                            0,
-                            isMyEchoUav,    // ⭐ Echo면 isMy=true
-                            ver,
-                            sender,
-                            lat, lng,
-                            alt, dir, speed,
-                            now, now,
-                            false, false, false);
+                            0, isMyEchoUav, ver, sender,
+                            lat, lng, alt, dir, speed,
+                            now, now, false, false, false);
 
-                    if (isMyEchoUav) {
-                        Log.v("LOC ECHO 0x12",
-                                "⭐ 내 UAV Echo! sender=" + sender + " lat=" + lat);
-                    } else {
-                        Log.v("LOC RECV 0x12",
-                                "UAV sender=" + sender + " lat=" + lat);
-                    }
+                    locationViewModel.insert(addLoc, success -> null);
 
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) {
-                            String label = isMyEchoUav ? "내 UAV Echo 저장" : "수신 UAV 위치 저장";
-                            Log.v("Location ADD", label);
-                        }
-                        return null;
-                    });
+                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, null, ver);
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, (double) alt, (double) speed,
-                            (double) dir, null, ver
-                    );
-
-                }
-                // UAT 모드
-                else if (ver == 0x03) {
+                } else if (ver == 0x03) {
                     buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1684,16 +1447,9 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, alt, dir, speed, date,
                             new Date(), false, false, false);
-                    Log.v("LOC SEND 0x03", "UAT myImei=" + myImei + " lat=" + lat);
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) Log.v("Location ADD", "내 UAT 위치 저장");
-                        return null;
-                    });
+                    locationViewModel.insert(addLoc, success -> null);
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, (double) alt, (double) speed,
-                            (double) dir, date, ver
-                    );
+                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, date, ver);
 
                 } else if (ver == 0x13) {
                     int senderLen = buffer.readableBytes() - 21;
@@ -1713,53 +1469,24 @@ public class MainActivity extends AppCompatActivity {
                     int min = buffer.readUnsignedByte();
                     int sec = buffer.readUnsignedByte();
 
-                    // ⭐ UAT은 GPS 시간 사용 (펌웨어 제공)
                     LocalDateTime ldt = LocalDateTime.of(year, mon, day, hour, min, sec);
                     ZonedDateTime zdtUtc = ldt.atZone(ZoneId.of("UTC"));
                     Date date = Date.from(zdtUtc.toInstant());
 
-                    // ⭐ v4 Phase 5-B: UAT Echo back 판별
                     String myImeiUat = ImeiStorage.getLast(this);
-                    boolean isMyEchoUat = sender != null
-                            && myImeiUat != null
-                            && sender.equals(myImeiUat);
+                    boolean isMyEchoUat = sender != null && myImeiUat != null && sender.equals(myImeiUat);
 
                     LocationEntity addLoc = new LocationEntity(
-                            0,
-                            isMyEchoUat,    // ⭐ Echo면 isMy=true
-                            ver,
-                            sender,
-                            lat, lng,
-                            alt, dir, speed,
-                            date,           // UAT은 GPS 시간!
-                            new Date(),     // recvDate는 앱 수신 시간
+                            0, isMyEchoUat, ver, sender,
+                            lat, lng, alt, dir, speed,
+                            date, new Date(),
                             false, false, false);
 
-                    if (isMyEchoUat) {
-                        Log.v("LOC ECHO 0x13",
-                                "⭐ 내 UAT Echo! sender=" + sender + " lat=" + lat +
-                                " gps_time=" + date);
-                    } else {
-                        Log.v("LOC RECV 0x13",
-                                "UAT sender=" + sender + " lat=" + lat);
-                    }
+                    locationViewModel.insert(addLoc, success -> null);
 
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) {
-                            String label = isMyEchoUat ? "내 UAT Echo 저장" : "수신 UAT 위치 저장";
-                            Log.v("Location ADD", label);
-                        }
-                        return null;
-                    });
+                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, date, ver);
 
-                    SatTrackStateHolder.recordPoint(
-                            this, lat, lng, (double) alt, (double) speed,
-                            (double) dir, date, ver
-                    );
-
-                }
-                // 메시지
-                else if (ver == 0x16) {
+                } else if (ver == 0x16) {
                     byte[] header = new byte[21];
                     byte[] body = new byte[data.length - 22];
                     System.arraycopy(data, 1, header, 0, header.length);
@@ -1768,20 +1495,14 @@ public class MainActivity extends AppCompatActivity {
                     String codeNum = new String(header, StandardCharsets.UTF_8).trim();
                     String message = new String(body, StandardCharsets.UTF_8);
 
-                    Log.v("MSG 0x16", "sender=" + codeNum + " msg=" + message);
-
                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", message,
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-                    msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "Message saved (0x16)");
-                        return null;
-                    });
+                    msgViewModel.insert(addMsg, success -> null);
 
                 } else if (ver == 0x17) {
-                    Log.v("MSG 0x17", "Size : " + buffer.readableBytes());
                     buffer.readByte();
 
                     int addrSize = buffer.readUnsignedByte();
@@ -1793,36 +1514,28 @@ public class MainActivity extends AppCompatActivity {
                     int memoSize = buffer.readUnsignedByte();
                     String message = buffer.readCharSequence(memoSize, StandardCharsets.UTF_8).toString().trim();
 
-                    Log.v("MSG 0x17", "sender=" + codeNum + " title=" + title + " msg=" + message);
-
                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-                    msgViewModel.insert(addMsg, success -> {
-                        if (success) Log.v("MSG ADD", "Message saved (0x17)");
-                        return null;
-                    });
+                    msgViewModel.insert(addMsg, success -> null);
                 }
 
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,OK", vals[0]));
             } catch (Exception e) {
                 Log.e("RECEIVE-ERR", "PARSE FAILED: " + e.getMessage(), e);
-                Log.e("RECEIVE-ERR", "raw packet: " + packet);
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,FAIL", vals[0]));
             }
         } else if (packet.startsWith("MSGDEL=")) {
             String msg = packet.substring(7);
             String[] vals = msg.split(",");
             if (vals[0].equals("OK")) {
-                Toast.makeText(getApplicationContext(), "All messages in the terminal have been deleted.", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "All messages deleted.", Toast.LENGTH_LONG).show();
             }
         } else if (packet.startsWith("BROAD=")) {
-            Log.v("BROAD-RX", packet);
             String msg = packet.substring(6);
             String[] vals = msg.split(",");
-            Log.v("BROAD-RX", "battery=" + vals[0] + " inbox=" + vals[1] + " UNSENT=" + vals[2] + " signal=" + vals[3]);
 
             DeviceStatus sta = new DeviceStatus();
             sta.setBattery(Integer.parseInt(vals[0]));
@@ -1838,10 +1551,7 @@ public class MainActivity extends AppCompatActivity {
 
             mBleViewModel.getDeviceStatus().postValue(sta);
             mLastBroadReceivedTime = System.currentTimeMillis();
-            Log.v("SYNC", "✓ BROAD received - battery=" + sta.getBattery() +
-                    " signal=" + sta.getSignal() + " tracking=" + sta.isTrackingMode());
 
-            // ⭐ 스마트 자동 받기 트리거
             int inboxCount = Integer.parseInt(vals[1]);
             checkAndTriggerAutoReceive(inboxCount);
 
@@ -1864,6 +1574,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void bleSendMessage(String msg) {
+        // ⭐ null 체크 (Activity recreate 시 빈 큐 poll → null 가능)
+        if (msg == null || msg.isEmpty()) {
+            return;
+        }
+
         Log.v("BLE Write", msg);
         String sendMsg = String.format("%s\n", Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP));
         BleDevice bleDevice = BLE.INSTANCE.getSelectedDevice().getValue();
@@ -1894,14 +1609,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void setConnectBleDevice(@NonNull BleDevice bleDevice) {
-        // ⭐ v4 Phase B-2-3-fix: BLE 수신 큐 초기화
-        // Activity 재생성 시 이전 패킷 파편이 남아있으면
-        // 새 패킷과 섞여서 파싱 실패 → "무한 커넥팅" 증상 발생
         try {
             BLE.INSTANCE.getReceiveData().clear();
-            Log.v("BLE", "🔄 수신 큐 초기화 (Activity 재시작 대응)");
         } catch (Exception e) {
-            Log.v("BLE", "수신 큐 초기화 실패: " + e.getMessage());
+            // ignore
         }
 
         BluetoothGatt gatt = BleManager.getInstance().getBluetoothGatt(bleDevice);
@@ -1944,22 +1655,15 @@ public class MainActivity extends AppCompatActivity {
                                     BLE.INSTANCE.getReceiveData().clear();
                                     String packet = new String(Base64.decode(reads, Base64.NO_WRAP));
 
-                                    // 기존 로직 (Activity에서 먼저 완전히 처리)
                                     receivePacketProcess(packet);
 
-                                    // ⭐ v4 Phase B-2-3: 처리 완료 후 Service에 Broadcast
-                                    // LiveData 방식(메인 스레드 경합)과 달리
-                                    // Broadcast는 비동기로 전달되어 안전
                                     Intent packetIntent = new Intent(
-                                        com.ah.acr.messagebox.service.TytoConnectService
-                                            .BROADCAST_PACKET_RECEIVED);
+                                        com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_PACKET_RECEIVED);
                                     packetIntent.putExtra("packet", packet);
-                                    packetIntent.setPackage(getPackageName()); // 보안
+                                    packetIntent.setPackage(getPackageName());
                                     sendBroadcast(packetIntent);
                                 } catch (Exception e) {
-                                    // ⭐ v4 Phase B-2-3-fix: 파싱 실패 시 큐 초기화
-                                    // 파편 패킷이 계속 쌓여서 "무한 커넥팅" 방지
-                                    Log.v("BLE", "⚠ 패킷 파싱 실패, 큐 초기화: " + e.getMessage());
+                                    Log.v("BLE", "⚠ 패킷 파싱 실패: " + e.getMessage());
                                     BLE.INSTANCE.getReceiveData().clear();
                                 }
                             }

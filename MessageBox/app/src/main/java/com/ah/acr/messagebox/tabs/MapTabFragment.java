@@ -276,8 +276,8 @@ public class MapTabFragment extends Fragment {
                 snippet += "\n" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
                         Locale.getDefault()).format(loc.getCreateAt());
             }
-            // ⭐ UI-2026-04-24: "탭하여 상세보기" 안내
-            snippet += "\n(탭하여 상세보기)";
+            // ⭐ UI-2026-04-24: "탭하여 상세보기" 안내 (다국어)
+            snippet += "\n" + getString(R.string.marker_snippet_tap_for_details);
             marker.setSnippet(snippet);
 
             // ⭐ 마커 아이콘: trackMode 와 isIncomeLoc 으로 판별
@@ -318,54 +318,55 @@ public class MapTabFragment extends Fragment {
                 : "-";
 
         StringBuilder sb = new StringBuilder();
-        sb.append("📡 IMEI: ").append(
+        sb.append(getString(R.string.dialog_label_imei)).append(
                 loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
         if (!displayName.equals(loc.getCodeNum())) {
-            sb.append("📝 이름: ").append(displayName).append("\n\n");
+            sb.append(getString(R.string.dialog_label_name)).append(displayName).append("\n\n");
         }
-        sb.append("🕐 시간: ").append(time).append("\n\n");
-        sb.append("📍 좌표: ").append(String.format(Locale.US,
+        sb.append(getString(R.string.dialog_label_time)).append(time).append("\n\n");
+        sb.append(getString(R.string.dialog_label_coordinates)).append(String.format(Locale.US,
                 "%.6f, %.6f",
                 loc.getLatitude(), loc.getLongitude())).append("\n\n");
 
         if (loc.getAltitude() != 0.0) {
-            sb.append("⬆️ 고도: ").append(String.format(Locale.US,
-                    "%.1f m", loc.getAltitude())).append("\n\n");
+            sb.append(getString(R.string.dialog_label_altitude)).append(String.format(Locale.US,
+                    getString(R.string.dialog_altitude_unit), loc.getAltitude())).append("\n\n");
         }
 
         String modeText = getTrackModeText(loc.getTrackMode(), loc.isIncomeLoc());
-        sb.append("🛰 모드: ").append(modeText);
+        sb.append(getString(R.string.dialog_label_mode)).append(modeText);
 
         final String devName = displayName;
         final String codeNum = loc.getCodeNum();
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("📍 위치 상세 정보")
+                .setTitle(getString(R.string.dialog_location_detail_title))
                 .setMessage(sb.toString())
-                .setPositiveButton("트랙 상세 보기", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_view_track_details), (d, w) -> {
                     if (codeNum != null) {
                         DeviceTrackDetailFragment dialog =
                                 DeviceTrackDetailFragment.newInstance(codeNum, devName);
                         dialog.show(getParentFragmentManager(), "DeviceTrackDetail");
                     } else {
                         Toast.makeText(requireContext(),
-                                "IMEI 정보가 없습니다",
+                                getString(R.string.toast_no_imei),
                                 Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNeutralButton("좌표 복사", (d, w) -> {
+                .setNeutralButton(getString(R.string.btn_copy_coordinates), (d, w) -> {
                     ClipboardManager clipboard =
                             (ClipboardManager) requireContext()
                                     .getSystemService(Context.CLIPBOARD_SERVICE);
                     String coords = String.format(Locale.US, "%f,%f",
                             loc.getLatitude(), loc.getLongitude());
-                    ClipData clip = ClipData.newPlainText("좌표", coords);
+                    ClipData clip = ClipData.newPlainText(
+                            getString(R.string.clipboard_label_coordinates), coords);
                     clipboard.setPrimaryClip(clip);
                     Toast.makeText(requireContext(),
-                            "좌표가 복사되었습니다",
+                            getString(R.string.toast_coordinates_copied),
                             Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("닫기", null)
+                .setNegativeButton(getString(R.string.btn_close), null)
                 .show();
     }
 
@@ -380,23 +381,23 @@ public class MapTabFragment extends Fragment {
         if (isIncomeLoc) {
             // 수신 (다른 장비로부터)
             switch (trackMode) {
-                case 0x10: return "상대방 SOS 수신";
-                case 0x11: return "상대방 CAR TRACK 수신";
-                case 0x12: return "상대방 UAV TRACK 수신";
-                case 0x13: return "상대방 UAT TRACK 수신";
-                case 2: return "TRACK 수신 (Legacy)";
+                case 0x10: return getString(R.string.mode_rx_sos);
+                case 0x11: return getString(R.string.mode_rx_car_track);
+                case 0x12: return getString(R.string.mode_rx_uav_track);
+                case 0x13: return getString(R.string.mode_rx_uat_track);
+                case 2: return getString(R.string.mode_rx_track_legacy);
                 case 4:
-                case 5: return "SOS 수신 (Legacy)";
-                default: return "수신 (0x" + String.format("%02X", trackMode) + ")";
+                case 5: return getString(R.string.mode_rx_sos_legacy);
+                default: return getString(R.string.mode_rx_unknown, trackMode);
             }
         } else {
             // 송신 (내 장비)
             switch (trackMode) {
-                case 0x00: return "내 SOS 송신";
-                case 0x01: return "내 CAR TRACK 송신";
-                case 0x02: return "내 UAV TRACK 송신";
-                case 0x03: return "내 UAT TRACK 송신";
-                default: return "내 송신 (0x" + String.format("%02X", trackMode) + ")";
+                case 0x00: return getString(R.string.mode_tx_sos);
+                case 0x01: return getString(R.string.mode_tx_car_track);
+                case 0x02: return getString(R.string.mode_tx_uav_track);
+                case 0x03: return getString(R.string.mode_tx_uat_track);
+                default: return getString(R.string.mode_tx_unknown, trackMode);
             }
         }
     }

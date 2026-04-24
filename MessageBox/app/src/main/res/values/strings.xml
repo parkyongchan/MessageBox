@@ -1,32 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- ════════ App Basic ════════ -->
     <string name="app_name">TYTO Connect</string>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="title_activity_main">Main</string>
     <string name="title_fragment_ble">BLE Set</string>
 
+    <!-- ════════ Login ════════ -->
     <string name="invalid_username">Not a valid username</string>
-    <string name="invalid_password">Password must be >4 characters</string>
-    <string name="login_failed">"Login failed"</string>
+    <string name="invalid_password">Password must be &gt;4 characters</string>
+    <string name="login_failed">Login failed</string>
 
-    <string name="notifyTitle">notify</string>
-    <string name="cancel">cancel</string>
+    <!-- ════════ Notification ════════ -->
+    <string name="notifyTitle">Notify</string>
+    <string name="cancel">Cancel</string>
 
-    <string name="connect">con</string>
-    <string name="connected">con</string>
-    <string name="disconnect">dis</string>
-    <string name="enter">input</string>
-    <string name="connect_fail">fail</string>
-    <string name="active_disconnected">disconnect</string>
-    <string name="disconnected">disconnect</string>
+    <!-- ════════ BLE Connection ════════ -->
+    <string name="connect">Connect</string>
+    <string name="connected">Connected</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="enter">Input</string>
+    <string name="connect_fail">Connection failed</string>
+    <string name="active_disconnected">Disconnected</string>
+    <string name="disconnected">Disconnected</string>
 
+    <!-- ════════ BLE Permission ════════ -->
     <string name="ble_permission_ble_access">Requires access to Bluetooth.</string>
     <string name="gpsNotifyMsg">Please grant access to location information to detect Bluetooth.</string>
 
+    <!-- ════════ BLE Test ════════ -->
     <string name="ble_test_msg">The test message has been sent to the terminal.</string>
     <string name="ble_test_nul_device">The terminal is not connected.</string>
 
+    <!-- ════════ Main Messages ════════ -->
     <string name="main_all_delete_message">Are you sure you want to delete all messages?</string>
 
+    <!-- ════════ Inbox ════════ -->
     <string name="inbox_receive_complite">There are no messages to read from the terminal.</string>
     <string name="inbox_msg_del_alert">Are you sure you want to delete the message?</string>
     <string name="inbox_sub_sender">Sender</string>
@@ -36,6 +47,7 @@
     <string name="inbox_sub_delete">Del</string>
     <string name="inbox_sub_save">Save</string>
 
+    <!-- ════════ Outbox ════════ -->
     <string name="outbox_msg_del_alert">Are you sure you want to delete the created message?</string>
     <string name="outbox_msg_cancel_alert">Are you sure you want to cancel the message being created?</string>
     <string name="out_sub_receiver_empty">Please specify the recipient.</string>
@@ -54,36 +66,157 @@
     <string name="outbox_sub_edit">Edit</string>
     <string name="outbox_sub_cancel">Cancel</string>
     <string name="outbox_sub_save">Save</string>
-    <string name="needs_key">publicKey and publicKey must exist.</string>
 
-    <string name="setting_publickey">public key</string>
+    <!-- ════════ Settings ════════ -->
+    <string name="needs_key">Public key and private key must exist.</string>
+    <string name="setting_publickey">Public Key</string>
     <string name="setting_add">Add</string>
     <string name="setting_save">Save</string>
-    <string name="setting_privatekey">private key</string>
+    <string name="setting_privatekey">Private Key</string>
     <string name="setting_hpass">hpass</string>
     <string name="setting_null_sender">Enter the recipient\'s</string>
-    <string name="setting_key_add">file has been added.</string>
-    <string name="setting_hpass_save">Saved hpss.</string>
+    <string name="setting_key_add">File has been added.</string>
+    <string name="setting_hpass_save">Saved hpass.</string>
     <string name="setting_publickey_del">Are you sure you want to delete the public key?</string>
     <string name="address_del_alert">Are you sure you want to delete the numbers?</string>
 
+    <!-- ════════ Status ════════ -->
     <string name="status_refresh">Call Device Info</string>
     <string name="status_battery">BATTERY</string>
     <string name="status_inbox">InBox Queue</string>
     <string name="status_outbox">OutBox Queue</string>
     <string name="status_signal">Signal</string>
     <string name="status_gps">Current Location</string>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
-    <!-- Strings related to login -->
+
+    <!-- ════════ Login (Auth) ════════ -->
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in or register</string>
     <string name="action_sign_in_short">Sign in</string>
-    <string name="welcome">"Welcome!"</string>
+    <string name="welcome">Welcome!</string>
 
+    <!-- ════════ Location ════════ -->
     <string name="location_del_alert">Are you sure you want to delete the location?</string>
 
-    <string name="google_maps_key">"AIzaSyDuqwkLnWdPIqsSNH_zMMfPLPhq60Nu-bc"</string>
+    <!-- ════════ API Key ════════ -->
+    <string name="google_maps_key">AIzaSyDuqwkLnWdPIqsSNH_zMMfPLPhq60Nu-bc</string>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ NEW: Location Detail Dialog (MapTabFragment) - 2026-04-24 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <string name="dialog_location_detail_title">📍 Location Details</string>
+    <string name="dialog_label_imei">📡 IMEI: </string>
+    <string name="dialog_label_name">📝 Name: </string>
+    <string name="dialog_label_time">🕐 Time: </string>
+    <string name="dialog_label_coordinates">📍 Coordinates: </string>
+    <string name="dialog_label_altitude">⬆️ Altitude: </string>
+    <string name="dialog_label_mode">🛰 Mode: </string>
+    <string name="dialog_altitude_unit">%.1f m</string>
+
+    <!-- Dialog buttons -->
+    <string name="btn_view_track_details">View Track Details</string>
+    <string name="btn_copy_coordinates">Copy Coordinates</string>
+    <string name="btn_close">Close</string>
+
+    <!-- Marker snippet -->
+    <string name="marker_snippet_tap_for_details">(Tap for details)</string>
+
+    <!-- Clipboard &amp; Toast -->
+    <string name="clipboard_label_coordinates">Coordinates</string>
+    <string name="toast_coordinates_copied">Coordinates copied to clipboard</string>
+    <string name="toast_no_imei">No IMEI information</string>
+
+    <!-- ════════ Location Modes (trackMode) ════════ -->
+    <!-- Receive (from other devices) -->
+    <string name="mode_rx_sos">SOS Received</string>
+    <string name="mode_rx_car_track">CAR TRACK Received</string>
+    <string name="mode_rx_uav_track">UAV TRACK Received</string>
+    <string name="mode_rx_uat_track">UAT TRACK Received</string>
+    <string name="mode_rx_track_legacy">TRACK Received (Legacy)</string>
+    <string name="mode_rx_sos_legacy">SOS Received (Legacy)</string>
+    <string name="mode_rx_unknown">Received (0x%1$02X)</string>
+
+    <!-- Transmit (my device) -->
+    <string name="mode_tx_sos">My SOS Transmit</string>
+    <string name="mode_tx_car_track">My CAR TRACK Transmit</string>
+    <string name="mode_tx_uav_track">My UAV TRACK Transmit</string>
+    <string name="mode_tx_uat_track">My UAT TRACK Transmit</string>
+    <string name="mode_tx_unknown">My Transmit (0x%1$02X)</string>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 기존 values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ BLE Login Screen ════════ -->
+    <string name="ble_login_title">BLE Login</string>
+    <string name="ble_login_subtitle">Enter password to connect TYTO2</string>
+    <string name="ble_login_imei_label">IMEI</string>
+    <string name="ble_login_password_label">Password</string>
+    <string name="ble_login_password_hint">Enter 9-digit number password</string>
+    <string name="ble_login_remember_password">Remember password</string>
+    <string name="ble_login_connect_button">Connect to TYTO2</string>
+    <string name="ble_login_status_hint">👆 Tap above to connect</string>
+    <string name="ble_login_connecting">Connecting...</string>
+    <string name="ble_login_connected">Connected ✓</string>
+    <string name="ble_login_moving_devices">✅ Moving to Devices...</string>
+    <string name="ble_login_waiting">⏳ Please wait...</string>
+
+    <!-- Login validation & errors -->
+    <string name="ble_login_password_too_short">⚠️ Password must be at least 9 digits.</string>
+    <string name="ble_login_device_info_not_ready">⚠️ Device info not ready. Try again.</string>
+    <string name="ble_login_connection_failed">❌ Connection failed. Check password.</string>
+
+    <!-- Language selection -->
+    <string name="language_label">Language</string>
+
+    <!-- ════════ Common Dialog Buttons ════════ -->
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_yes">Yes</string>
+    <string name="btn_no">No</string>
+    <string name="btn_start">Start</string>
+    <string name="btn_stop">Stop</string>
+    <string name="btn_exit">Exit</string>
+    <string name="btn_send">Send</string>
+
+    <!-- ════════ App Exit ════════ -->
+    <string name="dialog_exit_title">Exit App</string>
+    <string name="dialog_exit_message">Do you want to exit TYTO Connect?</string>
+
+    <!-- ════════ Header TRACK/SOS Dialogs ════════ -->
+    <string name="dialog_track_start_title">Start Tracking Mode</string>
+    <string name="dialog_track_start_message">Start Tracking mode?\n\nLocation will be sent at the configured interval.</string>
+    <string name="dialog_track_stop_title">Stop Tracking Mode</string>
+    <string name="dialog_track_stop_message">Stop Tracking mode?</string>
+
+    <string name="dialog_sos_start_title">🚨 SOS Emergency</string>
+    <string name="dialog_sos_start_message">Send SOS emergency signal?\n\nSent every 3 minutes.</string>
+    <string name="dialog_sos_stop_title">Stop SOS</string>
+    <string name="dialog_sos_stop_message">Stop SOS emergency mode?</string>
+
+    <!-- Toast messages -->
+    <string name="toast_device_not_connected">Device is not connected.</string>
+    <string name="toast_cannot_track_during_sos">Cannot start tracking during SOS mode.</string>
+    <string name="toast_reconnect_cancelled">Reconnection cancelled.</string>
+    <string name="toast_searching_device">Searching for device. Please check TYTO2 power.</string>
+
+    <!-- ════════ Auto Receive ════════ -->
+    <string name="toast_auto_receive_on">Auto Receive ON</string>
+    <string name="toast_auto_receive_off">Auto Receive OFF</string>
+
+    <!-- ════════ BLE Status ════════ -->
+    <string name="ble_status_connected">Connected</string>
+    <string name="ble_status_disconnected">Disconnected</string>
+    <string name="ble_status_reconnecting">Reconnecting</string>
+    <string name="ble_status_failed">Failed</string>
+    <string name="ble_status_test_mode">Test Mode</string>
+    <string name="btn_retry">Retry</string>
+
 
 </resources>

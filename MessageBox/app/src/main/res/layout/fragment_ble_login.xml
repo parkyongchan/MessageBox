@@ -1,256 +1,213 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A1628"
-    tools:context=".BleLoginFragment">
+    android:fillViewport="true"
+    android:background="#FF0A1628"
+    android:fitsSystemWindows="false">
 
-    <!-- 메인 컨테이너 -->
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/lang_panel"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
+        <!-- ═══════════════ Title ═══════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp"
-            android:paddingTop="40dp"
-            android:paddingBottom="40dp">
+            android:gravity="center_horizontal"
+            android:paddingTop="24dp"
+            android:paddingBottom="32dp">
 
-            <!-- 아이콘 -->
-            <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@mipmap/ic_blue_remote"
-                android:layout_marginBottom="16dp"
-                android:contentDescription="BLE icon" />
-
-            <!-- 타이틀 -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="BLE Login"
-                android:textColor="#FFFFFF"
-                android:textSize="22sp"
+                android:text="@string/ble_login_title"
+                android:textSize="28sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="6dp" />
+                android:textColor="#FFFFFF"
+                android:letterSpacing="0.05" />
 
-            <!-- 서브 타이틀 -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Enter password to connect TYTO2"
-                android:textColor="#95B0D4"
+                android:text="@string/ble_login_subtitle"
                 android:textSize="13sp"
-                android:layout_marginBottom="32dp" />
+                android:textColor="#FF95B0D4"
+                android:paddingTop="8dp" />
+        </LinearLayout>
 
-            <!-- IMEI 카드 -->
-            <LinearLayout
+
+        <!-- ═══════════════ IMEI Display ═══════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FF0F2440"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ble_login_imei_label"
+                android:textSize="11sp"
+                android:textColor="#FF95B0D4"
+                android:letterSpacing="0.15"
+                android:textAllCaps="true" />
+
+            <TextView
+                android:id="@+id/text_id"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#FF00E5D1"
+                android:fontFamily="monospace"
+                android:paddingTop="4dp" />
+        </LinearLayout>
+
+
+        <!-- ═══════════════ Language Selection ═══════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FF0F2440"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/language_label"
+                android:textSize="11sp"
+                android:textColor="#FF95B0D4"
+                android:letterSpacing="0.15"
+                android:textAllCaps="true"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/group_language"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_input_card"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
+                android:orientation="horizontal">
 
-                <TextView
+                <RadioButton
+                    android:id="@+id/radio_en"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="IMEI"
-                    android:textColor="#95B0D4"
-                    android:textSize="11sp"
-                    android:textAllCaps="true" />
+                    android:text="English"
+                    android:textColor="#FFFFFFFF"
+                    android:buttonTint="#FF00E5D1"
+                    android:layout_marginEnd="24dp" />
 
-                <EditText
-                    android:id="@+id/text_id"
-                    android:layout_width="match_parent"
+                <RadioButton
+                    android:id="@+id/radio_ja"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:focusable="false"
-                    android:background="@android:color/transparent"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textColorHint="#5A7090"
-                    android:hint="-"
-                    android:fontFamily="monospace"
-                    android:padding="0dp"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
+                    android:text="日本語"
+                    android:textColor="#FFFFFFFF"
+                    android:buttonTint="#FF00E5D1" />
+            </RadioGroup>
+        </LinearLayout>
 
-            <!-- 비밀번호 카드 -->
-            <LinearLayout
+
+        <!-- ═══════════════ Password Input ═══════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ble_login_password_label"
+                android:textSize="11sp"
+                android:textColor="#FF95B0D4"
+                android:letterSpacing="0.15"
+                android:textAllCaps="true"
+                android:paddingBottom="8dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_input_card"
-                android:padding="14dp"
-                android:layout_marginBottom="14dp">
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:hintEnabled="false"
+                app:boxStrokeColor="#FF1E3A5F"
+                app:boxBackgroundColor="#FF0F2440">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Password"
-                    android:textColor="#95B0D4"
-                    android:textSize="11sp"
-                    android:textAllCaps="true" />
-
-                <EditText
+                <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/text_pw"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Enter 9-digit number password"
                     android:inputType="numberPassword"
-                    android:maxLength="9"
-                    android:digits="0123456789"
-                    android:background="@android:color/transparent"
+                    android:hint="@string/ble_login_password_hint"
                     android:textColor="#FFFFFF"
+                    android:textColorHint="#FF95B0D4"
+                    android:fontFamily="monospace"
                     android:textSize="16sp"
-                    android:textColorHint="#5A7090"
-                    android:padding="0dp"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
+                    android:maxLength="9" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Remember 체크박스 -->
             <CheckBox
                 android:id="@+id/checkbox_remember"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Remember password"
-                android:textColor="#B8CEE8"
-                android:textSize="13sp"
-                android:buttonTint="#00E5D1"
-                android:checked="false"
-                android:layout_marginBottom="20dp" />
+                android:text="@string/ble_login_remember_password"
+                android:textColor="#FFFFFFFF"
+                android:buttonTint="#FF00E5D1"
+                android:paddingStart="4dp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
 
-            <!-- ⭐ 연결 버튼 (CardView - 눈에 띄게) -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
+
+        <!-- ═══════════════ Connect Button ═══════════════ -->
+        <LinearLayout
+            android:id="@+id/button_login"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="#FF00E5D1"
+            android:padding="20dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/text_login_label"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="#00E5D1"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="6dp">
+                android:text="@string/ble_login_connect_button"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#FF0A1628"
+                android:letterSpacing="0.05" />
 
-                <LinearLayout
-                    android:id="@+id/button_login"
-                    android:layout_width="match_parent"
-                    android:layout_height="58dp"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?android:attr/selectableItemBackground">
-
-                    <ImageView
-                        android:id="@+id/img_login_icon"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/ic_tab_ble"
-                        app:tint="#0A1628"
-                        android:layout_marginEnd="12dp"
-                        android:contentDescription="Bluetooth" />
-
-                    <TextView
-                        android:id="@+id/text_login_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Connect to TYTO2"
-                        android:textColor="#0A1628"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textAllCaps="false"
-                        android:letterSpacing="0.02" />
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
-
-            <!-- 상태 힌트 -->
             <TextView
                 android:id="@+id/text_status_hint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="👆 Tap above to connect"
-                android:textColor="#5A7090"
+                android:text="@string/ble_login_status_hint"
                 android:textSize="11sp"
-                android:layout_marginTop="12dp" />
-
+                android:textColor="#FF0A1628"
+                android:alpha="0.8"
+                android:paddingTop="4dp" />
         </LinearLayout>
 
-    </ScrollView>
 
-    <!-- 하단 언어 선택 패널 -->
-    <LinearLayout
-        android:id="@+id/lang_panel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#0D1F3C"
-        android:paddingTop="14dp"
-        android:paddingBottom="16dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Language"
-            android:textColor="#95B0D4"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:layout_gravity="center"
-            android:layout_marginBottom="10dp" />
-
-        <RadioGroup
-            android:id="@+id/group_language"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/radio_en"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="English"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:buttonTint="#00E5D1"
-                android:checked="true"
-                android:layout_marginEnd="20dp" />
-
-            <RadioButton
-                android:id="@+id/radio_ko"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="한국어"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:buttonTint="#00E5D1"
-                android:layout_marginEnd="20dp" />
-
-            <RadioButton
-                android:id="@+id/radio_ja"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="日本語"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:buttonTint="#00E5D1" />
-
-        </RadioGroup>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:minHeight="24dp" />
 
     </LinearLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

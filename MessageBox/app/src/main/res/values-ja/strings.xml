@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 📍 res/values-ja/strings.xml (日本語 - Japanese) -->
+<!-- 전체 복사해서 덮어쓰기 OK! -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<resources>
+
+    <!-- ════════ アプリ基本 ════════ -->
+    <string name="app_name">TYTO Connect</string>
+
+    <string name="title_activity_main">メイン</string>
+    <string name="title_fragment_ble">BLE設定</string>
+
+    <!-- ════════ ログイン ════════ -->
+    <string name="invalid_username">無効なユーザー名です</string>
+    <string name="invalid_password">パスワードは4文字以上必要です</string>
+    <string name="login_failed">ログインに失敗しました</string>
+
+    <!-- ════════ 通知 ════════ -->
+    <string name="notifyTitle">通知</string>
+    <string name="cancel">キャンセル</string>
+
+    <!-- ════════ BLE接続 ════════ -->
+    <string name="connect">接続</string>
+    <string name="connected">接続済み</string>
+    <string name="disconnect">切断</string>
+    <string name="enter">入力</string>
+    <string name="connect_fail">接続失敗</string>
+    <string name="active_disconnected">切断されました</string>
+    <string name="disconnected">切断されました</string>
+
+    <!-- ════════ BLE権限 ════════ -->
+    <string name="ble_permission_ble_access">Bluetoothへのアクセスが必要です。</string>
+    <string name="gpsNotifyMsg">Bluetoothを検出するために位置情報へのアクセスを許可してください。</string>
+
+    <!-- ════════ BLEテスト ════════ -->
+    <string name="ble_test_msg">テストメッセージを端末に送信しました。</string>
+    <string name="ble_test_nul_device">端末が接続されていません。</string>
+
+    <!-- ════════ メインメッセージ ════════ -->
+    <string name="main_all_delete_message">すべてのメッセージを削除しますか？</string>
+
+    <!-- ════════ 受信箱 ════════ -->
+    <string name="inbox_receive_complite">端末から読み取るメッセージはありません。</string>
+    <string name="inbox_msg_del_alert">メッセージを削除しますか？</string>
+    <string name="inbox_sub_sender">送信者</string>
+    <string name="inbox_sub_title">件名</string>
+    <string name="inbox_sub_content">本文</string>
+    <string name="inbox_sub_content_type">タイプ</string>
+    <string name="inbox_sub_delete">削除</string>
+    <string name="inbox_sub_save">保存</string>
+
+    <!-- ════════ 送信箱 ════════ -->
+    <string name="outbox_msg_del_alert">作成したメッセージを削除しますか？</string>
+    <string name="outbox_msg_cancel_alert">作成中のメッセージをキャンセルしますか？</string>
+    <string name="out_sub_receiver_empty">受信者を指定してください。</string>
+    <string name="out_sub_msg_size_alert">メッセージサイズが240を超えました。</string>
+    <string name="out_sub_msg_insert">メッセージを保存しました。</string>
+    <string name="outbox_new_msg">新規</string>
+    <string name="outbox_new_cencel">メッセージの作成をキャンセルしますか？</string>
+    <string name="outbox_ble_send">BLE送信</string>
+    <string name="outbox_msg_delete">全削除</string>
+    <string name="outbox_sub_receiver">受信者</string>
+    <string name="outbox_sub_title">件名</string>
+    <string name="outbox_sub_content">本文</string>
+    <string name="outbox_sub_subject1">新規</string>
+    <string name="outbox_sub_subject2">編集</string>
+    <string name="outbox_sub_delete">削除</string>
+    <string name="outbox_sub_edit">編集</string>
+    <string name="outbox_sub_cancel">キャンセル</string>
+    <string name="outbox_sub_save">保存</string>
+
+    <!-- ════════ 設定 ════════ -->
+    <string name="needs_key">公開鍵と秘密鍵が必要です。</string>
+    <string name="setting_publickey">公開鍵</string>
+    <string name="setting_add">追加</string>
+    <string name="setting_save">保存</string>
+    <string name="setting_privatekey">秘密鍵</string>
+    <string name="setting_hpass">hpass</string>
+    <string name="setting_null_sender">受信者を入力してください</string>
+    <string name="setting_key_add">ファイルが追加されました。</string>
+    <string name="setting_hpass_save">hpassを保存しました。</string>
+    <string name="setting_publickey_del">公開鍵を削除しますか？</string>
+    <string name="address_del_alert">番号を削除しますか？</string>
+
+    <!-- ════════ ステータス ════════ -->
+    <string name="status_refresh">デバイス情報を取得</string>
+    <string name="status_battery">バッテリー</string>
+    <string name="status_inbox">受信箱キュー</string>
+    <string name="status_outbox">送信箱キュー</string>
+    <string name="status_signal">信号</string>
+    <string name="status_gps">現在位置</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- ════════ ログイン(認証) ════════ -->
+    <string name="prompt_email">メール</string>
+    <string name="prompt_password">パスワード</string>
+    <string name="action_sign_in">ログインまたは登録</string>
+    <string name="action_sign_in_short">ログイン</string>
+    <string name="welcome">ようこそ！</string>
+
+    <!-- ════════ 位置 ════════ -->
+    <string name="location_del_alert">位置を削除しますか？</string>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ 位置詳細ダイアログ (MapTabFragment) - 2026-04-24 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <string name="dialog_location_detail_title">📍 位置詳細情報</string>
+    <string name="dialog_label_imei">📡 IMEI: </string>
+    <string name="dialog_label_name">📝 名前: </string>
+    <string name="dialog_label_time">🕐 時刻: </string>
+    <string name="dialog_label_coordinates">📍 座標: </string>
+    <string name="dialog_label_altitude">⬆️ 高度: </string>
+    <string name="dialog_label_mode">🛰 モード: </string>
+    <string name="dialog_altitude_unit">%.1f m</string>
+
+    <!-- ダイアログ ボタン -->
+    <string name="btn_view_track_details">トラック詳細を表示</string>
+    <string name="btn_copy_coordinates">座標をコピー</string>
+    <string name="btn_close">閉じる</string>
+
+    <!-- マーカー スニペット -->
+    <string name="marker_snippet_tap_for_details">(タップして詳細表示)</string>
+
+    <!-- クリップボード &amp; トースト -->
+    <string name="clipboard_label_coordinates">座標</string>
+    <string name="toast_coordinates_copied">座標をクリップボードにコピーしました</string>
+    <string name="toast_no_imei">IMEI情報がありません</string>
+
+    <!-- ════════ 位置モード (trackMode) ════════ -->
+    <!-- 受信 (他の機器から) -->
+    <string name="mode_rx_sos">相手 SOS 受信</string>
+    <string name="mode_rx_car_track">相手 CAR TRACK 受信</string>
+    <string name="mode_rx_uav_track">相手 UAV TRACK 受信</string>
+    <string name="mode_rx_uat_track">相手 UAT TRACK 受信</string>
+    <string name="mode_rx_track_legacy">TRACK 受信 (Legacy)</string>
+    <string name="mode_rx_sos_legacy">SOS 受信 (Legacy)</string>
+    <string name="mode_rx_unknown">受信 (0x%1$02X)</string>
+
+    <!-- 送信 (自機) -->
+    <string name="mode_tx_sos">自機 SOS 送信</string>
+    <string name="mode_tx_car_track">自機 CAR TRACK 送信</string>
+    <string name="mode_tx_uav_track">自機 UAV TRACK 送信</string>
+    <string name="mode_tx_uat_track">自機 UAT TRACK 送信</string>
+    <string name="mode_tx_unknown">自機 送信 (0x%1$02X)</string>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ NEW: BLE ログイン画面 - 2026-04-24 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ BLE ログイン画面 ════════ -->
+    <string name="ble_login_title">BLEログイン</string>
+    <string name="ble_login_subtitle">TYTO2に接続するためパスワードを入力</string>
+    <string name="ble_login_imei_label">IMEI</string>
+    <string name="ble_login_password_label">パスワード</string>
+    <string name="ble_login_password_hint">9桁の数字パスワードを入力</string>
+    <string name="ble_login_remember_password">パスワードを記憶</string>
+    <string name="ble_login_connect_button">TYTO2に接続</string>
+    <string name="ble_login_status_hint">👆 上をタップして接続</string>
+    <string name="ble_login_connecting">接続中...</string>
+    <string name="ble_login_connected">接続済み ✓</string>
+    <string name="ble_login_moving_devices">✅ Devicesに移動中...</string>
+    <string name="ble_login_waiting">⏳ お待ちください...</string>
+
+    <!-- ログイン検証 & エラー -->
+    <string name="ble_login_password_too_short">⚠️ パスワードは9桁以上必要です。</string>
+    <string name="ble_login_device_info_not_ready">⚠️ デバイス情報未準備。再試行してください。</string>
+    <string name="ble_login_connection_failed">❌ 接続失敗。パスワードを確認してください。</string>
+
+    <!-- 言語選択 -->
+    <string name="language_label">言語</string>
+
+    <!-- ════════ 共通ダイアログボタン ════════ -->
+    <string name="btn_ok">OK</string>
+    <string name="btn_cancel">キャンセル</string>
+    <string name="btn_yes">はい</string>
+    <string name="btn_no">いいえ</string>
+    <string name="btn_start">開始</string>
+    <string name="btn_stop">停止</string>
+    <string name="btn_exit">終了</string>
+    <string name="btn_send">送信</string>
+    <string name="btn_retry">再試行</string>
+
+    <!-- ════════ アプリ終了 ════════ -->
+    <string name="dialog_exit_title">アプリ終了</string>
+    <string name="dialog_exit_message">TYTO Connectを終了しますか？</string>
+
+    <!-- ════════ ヘッダー TRACK/SOS ダイアログ ════════ -->
+    <string name="dialog_track_start_title">追跡モード開始</string>
+    <string name="dialog_track_start_message">追跡(Tracking)モードを開始しますか？\n\n設定周期に従って位置が送信されます。</string>
+    <string name="dialog_track_stop_title">追跡モード停止</string>
+    <string name="dialog_track_stop_message">追跡(Tracking)モードを停止しますか？</string>
+
+    <string name="dialog_sos_start_title">🚨 SOS緊急</string>
+    <string name="dialog_sos_start_message">SOS緊急信号を送信しますか？\n\n3分周期で送信されます。</string>
+    <string name="dialog_sos_stop_title">SOS停止</string>
+    <string name="dialog_sos_stop_message">SOS緊急モードを停止しますか？</string>
+
+    <!-- トーストメッセージ -->
+    <string name="toast_device_not_connected">デバイスが接続されていません。</string>
+    <string name="toast_cannot_track_during_sos">SOSモード中は追跡を開始できません。</string>
+    <string name="toast_reconnect_cancelled">再接続をキャンセルしました。</string>
+    <string name="toast_searching_device">デバイスを検索します。TYTO2の電源を確認してください。</string>
+
+    <!-- ════════ 自動受信 ════════ -->
+    <string name="toast_auto_receive_on">自動受信 ON</string>
+    <string name="toast_auto_receive_off">自動受信 OFF</string>
+
+    <!-- ════════ BLE ステータス ════════ -->
+    <string name="ble_status_connected">接続済み</string>
+    <string name="ble_status_disconnected">切断</string>
+    <string name="ble_status_reconnecting">再接続中</string>
+    <string name="ble_status_failed">失敗</string>
+    <string name="ble_status_test_mode">テストモード</string>
+
+</resources>

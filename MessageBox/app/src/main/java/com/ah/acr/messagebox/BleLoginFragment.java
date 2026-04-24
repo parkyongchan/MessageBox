@@ -23,12 +23,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.ah.acr.messagebox.ble.BLE;
 import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.databinding.FragmentBleLoginBinding;
 import com.ah.acr.messagebox.packet.security.SharedUtil;
+import com.ah.acr.messagebox.util.LocaleHelper;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 import com.clj.fastble.BleManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -44,6 +47,10 @@ public class BleLoginFragment extends Fragment {
 
     // ⭐ Observer 등록 여부 (중복 등록 방지)
     private boolean loginButtonObserverAttached = false;
+
+    // ⭐ 언어 변경 중 플래그 (BLE 연결 유지용)
+    // true일 때는 onDestroyView에서 BLE 해제 skip
+    private boolean mIsChangingLanguage = false;
 
 
     @Override
@@ -196,9 +203,133 @@ public class BleLoginFragment extends Fragment {
         });
 
 
+        // ⭐ NEW: 언어 선택 라디오 버튼 초기화 (2026-04-24)
+        setupLanguageSelection();
+
+
         binding.getRoot().setOnClickListener(v -> hideKeyboard());
 
         return binding.getRoot();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ NEW: 언어 선택 (2026-04-24)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * 언어 라디오 버튼 초기화 + 리스너 등록
+     *
+     * ⚠️ 중요: Fragment 생명주기 중 Activity 재시작은 위험!
+     * - BLE 연결 중일 때 recreate() → 크래시 가능
+     * - 대신: 안전한 Activity 완전 재시작 방식 사용
+     */
+    private void setupLanguageSelection() {
+        if (binding == null) return;
+
+        RadioGroup groupLanguage = binding.getRoot().findViewById(R.id.group_language);
+        RadioButton radioEn = binding.getRoot().findViewById(R.id.radio_en);
+        RadioButton radioJa = binding.getRoot().findViewById(R.id.radio_ja);
+
+        if (groupLanguage == null || radioEn == null || radioJa == null) {
+            Log.w(TAG, "Language radio buttons not found");
+            return;
+        }
+
+        // 현재 저장된 언어에 따라 초기 선택
+        String currentLang = LocaleHelper.getLanguage(requireContext());
+        Log.v(TAG, "Current language: " + currentLang);
+
+        // ⚠️ 리스너 해제 후 초기 설정 (중복 호출 방지)
+        groupLanguage.setOnCheckedChangeListener(null);
+
+        if (LocaleHelper.LANG_JAPANESE.equals(currentLang)) {
+            radioJa.setChecked(true);
+        } else {
+            radioEn.setChecked(true);
+        }
+
+        // ⭐ 라디오 버튼 초기 설정이 끝난 후 리스너 등록 (race condition 방지)
+        binding.getRoot().post(() -> {
+            if (groupLanguage == null) return;
+
+            groupLanguage.setOnCheckedChangeListener((group, checkedId) -> {
+                String newLang;
+                if (checkedId == R.id.radio_ja) {
+                    newLang = LocaleHelper.LANG_JAPANESE;
+                } else {
+                    newLang = LocaleHelper.LANG_ENGLISH;
+                }
+
+                // 현재 언어와 같으면 skip
+                String savedLang = LocaleHelper.getLanguage(requireContext());
+                if (newLang.equals(savedLang)) {
+                    return;
+                }
+
+                Log.v(TAG, "Language change requested: " + savedLang + " → " + newLang);
+
+                // 안전한 언어 변경
+                changeLanguageSafely(newLang);
+            });
+        });
+    }
+
+
+    /**
+     * ⭐ 안전한 언어 변경 (C 방식: Fragment만 재생성)
+     *
+     * Activity.recreate() 대신 Fragment만 재생성:
+     * ✅ BLE 연결 유지
+     * ✅ 부드러운 전환
+     * ✅ 사용자 경험 좋음
+     *
+     * 로직:
+     * 1. 언어 저장 (SharedPreferences)
+     * 2. Locale 즉시 적용 (Configuration 업데이트)
+     * 3. 현재 Fragment 제거 후 새 Fragment 생성
+     *    → 새 Fragment는 새 Locale로 렌더링됨
+     */
+    /**
+     * ⭐ 안전한 언어 변경 (저장만 + 재시작 안내)
+     *
+     * 복잡한 recreate 로직 대신:
+     * 1. 언어 저장
+     * 2. 사용자에게 재시작 안내
+     * 3. 사용자가 앱 재시작 → 일본어 적용
+     *
+     * 이유: BLE 연결 끊김/크래시 방지
+     */
+    private void changeLanguageSafely(String newLang) {
+        try {
+            Log.v(TAG, "Language saved: " + newLang);
+
+            // 1. 언어 저장
+            LocaleHelper.setLocale(requireContext(), newLang);
+
+            // 2. 사용자 안내
+            String message;
+            if (LocaleHelper.LANG_JAPANESE.equals(newLang)) {
+                message = "言語設定を保存しました。アプリを再起動すると適用されます。";
+            } else {
+                message = "Language saved. Please restart the app to apply.";
+            }
+
+            Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+
+            Log.v(TAG, "✅ 언어 저장 완료. 앱 재시작 필요.");
+
+        } catch (Exception e) {
+            Log.e(TAG, "changeLanguageSafely error: " + e.getMessage(), e);
+        }
+    }
+
+
+    /**
+     * (사용 안 함)
+     */
+    private void updateAppLocale(String langCode) {
+        // 사용 안 함
     }
 
 
@@ -344,6 +475,12 @@ public class BleLoginFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+
+        // ⭐ 언어 변경 중이면 BLE 해제 skip (연결 유지)
+        if (mIsChangingLanguage) {
+            Log.v(TAG, "🔄 언어 변경 중 → BLE 연결 유지");
+            return;
+        }
 
         String status = BLE.INSTANCE.getBleLoginStatus().getValue();
         if (status != null && !status.equals(BLE.BLE_LOGIN_OK)) {
