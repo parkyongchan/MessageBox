@@ -57,26 +57,27 @@ public class SettingParentFragment extends Fragment {
         viewPager.setAdapter(adapter);
 
         // ⭐ TabLayoutMediator에 아이콘 + 텍스트 설정 (5개 탭)
+        // ⭐ getString()을 사용하여 다국어 지원
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> {
                     if (position == 0) {
-                        tab.setText("Address");
+                        tab.setText(getString(R.string.setting_tab_address));
                         tab.setIcon(R.drawable.ic_tab_address);
                     } else if (position == 1) {
-                        tab.setText("Location");
+                        tab.setText(getString(R.string.setting_tab_location));
                         tab.setIcon(R.drawable.ic_tab_location);
                     } else if (position == 2) {
-                        tab.setText("SOS");
+                        tab.setText(getString(R.string.setting_tab_sos));
                         tab.setIcon(R.drawable.ic_tab_sos);
                     } else if (position == 3) {
-                        tab.setText("Firmware");
+                        tab.setText(getString(R.string.setting_tab_firmware));
                         tab.setIcon(R.drawable.ic_tab_firmware);
                     } else if (position == 4) {
                         // ⭐ 새 탭: 오프라인 지도 관리
-                        tab.setText("Maps");
+                        tab.setText(getString(R.string.setting_tab_maps));
                         tab.setIcon(R.drawable.ic_tab_maps);
                     } else {
-                        tab.setText("Address");
+                        tab.setText(getString(R.string.setting_tab_address));
                         tab.setIcon(R.drawable.ic_tab_address);
                     }
                 }).attach();

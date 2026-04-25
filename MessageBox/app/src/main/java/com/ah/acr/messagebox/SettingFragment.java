@@ -51,6 +51,12 @@ public class SettingFragment extends Fragment {
     private static final int COLOR_CYAN    = 0xFF00E5D1;
     private static final int COLOR_GRAY_BG = 0xFF2A3A5A;
 
+    // ⭐ 최소/최대값 상수
+    private static final int MIN_TIME = 1;
+    private static final int MAX_TIME = 9999;
+    private static final int MIN_DIST = 1;
+    private static final int MAX_DIST = 9999;
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -293,8 +299,9 @@ public class SettingFragment extends Fragment {
 
 
     private void setTimeValue(int minutes, boolean autoEnable) {
-        if (minutes < 3) minutes = 3;
-        if (minutes > 9999) minutes = 9999;
+        // ⭐ 최소값 1로 변경 (기존 3 → 1)
+        if (minutes < MIN_TIME) minutes = MIN_TIME;
+        if (minutes > MAX_TIME) minutes = MAX_TIME;
 
         // EditText (재진입 방지)
         String currentText = binding.textTime.getText().toString().trim();
@@ -338,8 +345,9 @@ public class SettingFragment extends Fragment {
 
 
     private void setDistValue(int x10m, boolean autoEnable) {
-        if (x10m < 2) x10m = 2;
-        if (x10m > 9999) x10m = 9999;
+        // ⭐ 최소값 1로 변경 (기존 2 → 1)
+        if (x10m < MIN_DIST) x10m = MIN_DIST;
+        if (x10m > MAX_DIST) x10m = MAX_DIST;
 
         // EditText (재진입 방지)
         String currentText = binding.textDist.getText().toString().trim();
@@ -427,7 +435,8 @@ public class SettingFragment extends Fragment {
                 try {
                     int val = Integer.parseInt(s.toString());
                     updateTimePresetSelection(val);
-                    if (val >= 3 && !binding.chkTime.isChecked()) {
+                    // ⭐ 최소값 3 → 1로 변경
+                    if (val >= MIN_TIME && !binding.chkTime.isChecked()) {
                         binding.chkTime.setChecked(true);
                     }
                 } catch (NumberFormatException ignored) {}
@@ -445,7 +454,8 @@ public class SettingFragment extends Fragment {
                     int val = Integer.parseInt(s.toString());
                     updateDistDisplay(val);
                     updateDistPresetSelection(val);
-                    if (val >= 2 && !binding.chkDist.isChecked()) {
+                    // ⭐ 최소값 2 → 1로 변경
+                    if (val >= MIN_DIST && !binding.chkDist.isChecked()) {
                         binding.chkDist.setChecked(true);
                     }
                 } catch (NumberFormatException ignored) {}
@@ -504,7 +514,8 @@ public class SettingFragment extends Fragment {
             } catch (NumberFormatException e) {
                 timeValue = 0;
             }
-            if (timeValue < 3) timeValue = 3;
+            // ⭐ 최소값 3 → 1로 변경
+            if (timeValue < MIN_TIME) timeValue = MIN_TIME;
             setting.append(String.format("T%04d", timeValue));
         } else {
             setting.append("T0000");
@@ -521,7 +532,8 @@ public class SettingFragment extends Fragment {
             } catch (NumberFormatException e) {
                 distValue = 0;
             }
-            if (distValue < 2) distValue = 2;
+            // ⭐ 최소값 2 → 1로 변경
+            if (distValue < MIN_DIST) distValue = MIN_DIST;
             setting.append(String.format("D%04d", distValue));
         } else {
             setting.append("D0000");

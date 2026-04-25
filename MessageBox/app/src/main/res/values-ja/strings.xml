@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- 📍 res/values-ja/strings.xml (日本語 - Japanese) -->
-<!-- 전체 복사해서 덮어쓰기 OK! -->
+<!-- ⭐ 정리됨: 영어 중복 제거, 일본어만 유지 -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <resources>
 
@@ -70,7 +70,7 @@
     <string name="outbox_sub_cancel">キャンセル</string>
     <string name="outbox_sub_save">保存</string>
 
-    <!-- ════════ 設定 ════════ -->
+    <!-- ════════ 設定 (旧) ════════ -->
     <string name="needs_key">公開鍵と秘密鍵が必要です。</string>
     <string name="setting_publickey">公開鍵</string>
     <string name="setting_add">追加</string>
@@ -105,7 +105,7 @@
 
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- ⭐ 位置詳細ダイアログ (MapTabFragment) - 2026-04-24 -->
+    <!-- ⭐ 位置詳細ダイアログ (MapTabFragment) -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <string name="dialog_location_detail_title">📍 位置詳細情報</string>
@@ -131,7 +131,6 @@
     <string name="toast_no_imei">IMEI情報がありません</string>
 
     <!-- ════════ 位置モード (trackMode) ════════ -->
-    <!-- 受信 (他の機器から) -->
     <string name="mode_rx_sos">相手 SOS 受信</string>
     <string name="mode_rx_car_track">相手 CAR TRACK 受信</string>
     <string name="mode_rx_uav_track">相手 UAV TRACK 受信</string>
@@ -140,17 +139,12 @@
     <string name="mode_rx_sos_legacy">SOS 受信 (Legacy)</string>
     <string name="mode_rx_unknown">受信 (0x%1$02X)</string>
 
-    <!-- 送信 (自機) -->
     <string name="mode_tx_sos">自機 SOS 送信</string>
     <string name="mode_tx_car_track">自機 CAR TRACK 送信</string>
     <string name="mode_tx_uav_track">自機 UAV TRACK 送信</string>
     <string name="mode_tx_uat_track">自機 UAT TRACK 送信</string>
     <string name="mode_tx_unknown">自機 送信 (0x%1$02X)</string>
 
-
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- ⭐ NEW: BLE ログイン画面 - 2026-04-24 -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- ════════ BLE ログイン画面 ════════ -->
     <string name="ble_login_title">BLEログイン</string>
@@ -166,7 +160,6 @@
     <string name="ble_login_moving_devices">✅ Devicesに移動中...</string>
     <string name="ble_login_waiting">⏳ お待ちください...</string>
 
-    <!-- ログイン検証 & エラー -->
     <string name="ble_login_password_too_short">⚠️ パスワードは9桁以上必要です。</string>
     <string name="ble_login_device_info_not_ready">⚠️ デバイス情報未準備。再試行してください。</string>
     <string name="ble_login_connection_failed">❌ 接続失敗。パスワードを確認してください。</string>
@@ -217,30 +210,82 @@
     <string name="ble_status_failed">失敗</string>
     <string name="ble_status_test_mode">テストモード</string>
 
-    <!-- ════════ Bottom Navigation Tabs ════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ ボトムナビゲーションタブ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="tab_chat">チャット</string>
     <string name="tab_self">自機</string>
     <string name="tab_network">他機</string>
     <string name="tab_settings">設定</string>
     <string name="tab_connect">接続</string>
-    <!-- ════════ Header ════════ -->
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ ヘッダー -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="header_track">追跡</string>
     <string name="header_exit_desc">終了</string>
 
-    <!-- ════════ Status Card ════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ ステータスカード -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="status_battery_label">バッテリー</string>
     <string name="status_inbox_label">受信</string>
     <string name="status_outbox_label">送信</string>
     <string name="auto_receive_toggle_desc">自動受信切替</string>
 
-    <!-- ════════ Location Status ════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ 位置ステータス -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="location_status_off">OFF</string>
     <string name="location_status_tracking">追跡中</string>
     <string name="location_status_sos">SOS</string>
 
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ 設定画面 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <string name="setting_title">位置報告設定</string>
+
+    <string name="setting_send_to">送信先</string>
+    <string name="setting_tracking_mode">追跡モード</string>
+    <string name="setting_time_interval">時間間隔</string>
+    <string name="setting_distance">距離</string>
+
+    <string name="setting_receiver_default_label">Webサーバー</string>
+    <string name="setting_receiver_default_sub">デフォルト (送信先未指定)</string>
+
+    <string name="setting_or_info">時間または距離のいずれかの条件を満たすと位置を報告します</string>
+
+    <string name="setting_enable">有効</string>
+    <string name="setting_minutes">分</string>
+    <string name="setting_distance_unit">× 10 メートル</string>
+
+    <string name="setting_save_button">設定を保存</string>
+    <string name="setting_start_button">開始</string>
+    <string name="setting_stop_button">停止</string>
+
+    <string name="setting_location_desc">位置</string>
+    <string name="setting_receiver_desc">受信者</string>
+    <string name="setting_search_desc">検索</string>
+    <string name="setting_mode_desc">モード</string>
+    <string name="setting_time_desc">時間</string>
+    <string name="setting_distance_desc">距離</string>
+    <string name="setting_save_desc">保存</string>
+    <string name="setting_start_desc">開始</string>
+    <string name="setting_stop_desc">停止</string>
 
 
-
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ 設定 サブタブ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <string name="setting_tab_address">連絡先</string>
+    <string name="setting_tab_location">位置</string>
+    <string name="setting_tab_sos">SOS</string>
+    <string name="setting_tab_firmware">ファームウェア</string>
+    <string name="setting_tab_maps">地図</string>
 
 </resources>

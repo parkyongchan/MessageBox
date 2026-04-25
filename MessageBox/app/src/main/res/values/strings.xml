@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 📍 res/values/strings.xml (English - default) -->
+<!-- ⭐ 정리됨: setting_xxx 중복 제거 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
 <resources>
 
     <!-- ════════ App Basic ════════ -->
@@ -67,7 +71,7 @@
     <string name="outbox_sub_cancel">Cancel</string>
     <string name="outbox_sub_save">Save</string>
 
-    <!-- ════════ Settings ════════ -->
+    <!-- ════════ Settings (Old/Legacy) ════════ -->
     <string name="needs_key">Public key and private key must exist.</string>
     <string name="setting_publickey">Public Key</string>
     <string name="setting_add">Add</string>
@@ -106,7 +110,7 @@
 
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- ⭐ NEW: Location Detail Dialog (MapTabFragment) - 2026-04-24 -->
+    <!-- ⭐ Location Detail Dialog (MapTabFragment) -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <string name="dialog_location_detail_title">📍 Location Details</string>
@@ -132,7 +136,6 @@
     <string name="toast_no_imei">No IMEI information</string>
 
     <!-- ════════ Location Modes (trackMode) ════════ -->
-    <!-- Receive (from other devices) -->
     <string name="mode_rx_sos">SOS Received</string>
     <string name="mode_rx_car_track">CAR TRACK Received</string>
     <string name="mode_rx_uav_track">UAV TRACK Received</string>
@@ -141,17 +144,12 @@
     <string name="mode_rx_sos_legacy">SOS Received (Legacy)</string>
     <string name="mode_rx_unknown">Received (0x%1$02X)</string>
 
-    <!-- Transmit (my device) -->
     <string name="mode_tx_sos">My SOS Transmit</string>
     <string name="mode_tx_car_track">My CAR TRACK Transmit</string>
     <string name="mode_tx_uav_track">My UAV TRACK Transmit</string>
     <string name="mode_tx_uat_track">My UAT TRACK Transmit</string>
     <string name="mode_tx_unknown">My Transmit (0x%1$02X)</string>
 
-
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- 📍 기존 values/strings.xml 의 </resources> 바로 위에 추가 -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- ════════ BLE Login Screen ════════ -->
     <string name="ble_login_title">BLE Login</string>
@@ -167,7 +165,6 @@
     <string name="ble_login_moving_devices">✅ Moving to Devices...</string>
     <string name="ble_login_waiting">⏳ Please wait...</string>
 
-    <!-- Login validation & errors -->
     <string name="ble_login_password_too_short">⚠️ Password must be at least 9 digits.</string>
     <string name="ble_login_device_info_not_ready">⚠️ Device info not ready. Try again.</string>
     <string name="ble_login_connection_failed">❌ Connection failed. Check password.</string>
@@ -184,6 +181,7 @@
     <string name="btn_stop">Stop</string>
     <string name="btn_exit">Exit</string>
     <string name="btn_send">Send</string>
+    <string name="btn_retry">Retry</string>
 
     <!-- ════════ App Exit ════════ -->
     <string name="dialog_exit_title">Exit App</string>
@@ -216,29 +214,83 @@
     <string name="ble_status_reconnecting">Reconnecting</string>
     <string name="ble_status_failed">Failed</string>
     <string name="ble_status_test_mode">Test Mode</string>
-    <string name="btn_retry">Retry</string>
-    <!-- ════════ Bottom Navigation Tabs ════════ -->
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Bottom Navigation Tabs -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="tab_chat">Chat</string>
     <string name="tab_self">Self</string>
     <string name="tab_network">Network</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_connect">Connect</string>
-    <!-- ════════ Header ════════ -->
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Header -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="header_track">TRACK</string>
     <string name="header_exit_desc">Exit</string>
 
-    <!-- ════════ Status Card ════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Status Card -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="status_battery_label">Battery</string>
     <string name="status_inbox_label">Inbox</string>
     <string name="status_outbox_label">Outbox</string>
     <string name="auto_receive_toggle_desc">Auto Receive Toggle</string>
 
-    <!-- ════════ Location Status ════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Location Status -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="location_status_off">OFF</string>
     <string name="location_status_tracking">TRACKING</string>
     <string name="location_status_sos">SOS</string>
 
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Settings Screen -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <string name="setting_title">Location Report Setting</string>
 
+    <string name="setting_send_to">Send To</string>
+    <string name="setting_tracking_mode">Tracking Mode</string>
+    <string name="setting_time_interval">Time Interval</string>
+    <string name="setting_distance">Distance</string>
+
+    <string name="setting_receiver_default_label">Web Server</string>
+    <string name="setting_receiver_default_sub">Default (no specific receiver)</string>
+
+    <string name="setting_or_info">Reports location when EITHER time OR distance condition below is met</string>
+
+    <string name="setting_enable">Enable</string>
+    <string name="setting_minutes">minutes</string>
+    <string name="setting_distance_unit">× 10 meters</string>
+
+    <string name="setting_save_button">Save Settings</string>
+    <string name="setting_start_button">Start</string>
+    <string name="setting_stop_button">Stop</string>
+
+    <string name="setting_location_desc">Location</string>
+    <string name="setting_receiver_desc">Receiver</string>
+    <string name="setting_search_desc">Search</string>
+    <string name="setting_mode_desc">Mode</string>
+    <string name="setting_time_desc">Time</string>
+    <string name="setting_distance_desc">Distance</string>
+    <string name="setting_save_desc">Save</string>
+    <string name="setting_start_desc">Start</string>
+    <string name="setting_stop_desc">Stop</string>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ Settings Sub Tabs -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <string name="setting_tab_address">Address</string>
+    <string name="setting_tab_location">Location</string>
+    <string name="setting_tab_sos">SOS</string>
+    <string name="setting_tab_firmware">Firmware</string>
+    <string name="setting_tab_maps">Maps</string>
 
 </resources>

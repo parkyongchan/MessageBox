@@ -26,12 +26,12 @@
             android:src="@drawable/ic_tab_location"
             app:tint="#00E5D1"
             android:layout_marginEnd="8dp"
-            android:contentDescription="Location" />
+            android:contentDescription="@string/setting_location_desc" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Location Report Setting"
+            android:text="@string/setting_title"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -68,12 +68,12 @@
                     android:src="@drawable/ic_person"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
-                    android:contentDescription="Receiver" />
+                    android:contentDescription="@string/setting_receiver_desc" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SEND TO"
+                    android:text="@string/setting_send_to"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -115,7 +115,7 @@
                         android:id="@+id/text_receiver_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Web Server"
+                        android:text="@string/setting_receiver_default_label"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -124,7 +124,7 @@
                         android:id="@+id/text_receiver_sub"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Default (no specific receiver)"
+                        android:text="@string/setting_receiver_default_sub"
                         android:textColor="#5A7090"
                         android:textSize="11sp" />
 
@@ -155,7 +155,7 @@
                 android:visibility="gone"
                 android:src="@drawable/ic_search"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Search" />
+                android:contentDescription="@string/setting_search_desc" />
 
             <!-- ═══════ TRACKING MODE ═══════ -->
             <LinearLayout
@@ -171,12 +171,12 @@
                     android:src="@drawable/ic_mode_car"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
-                    android:contentDescription="Mode" />
+                    android:contentDescription="@string/setting_mode_desc" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="TRACKING MODE"
+                    android:text="@string/setting_tracking_mode"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -226,7 +226,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Reports location when EITHER time OR distance condition below is met"
+                    android:text="@string/setting_or_info"
                     android:textColor="#B3F0EA"
                     android:textSize="11sp"
                     android:lineSpacingExtra="1dp" />
@@ -247,13 +247,13 @@
                     android:src="@drawable/ic_clock"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
-                    android:contentDescription="Time" />
+                    android:contentDescription="@string/setting_time_desc" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="TIME INTERVAL"
+                    android:text="@string/setting_time_interval"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -264,7 +264,7 @@
                     android:id="@+id/chk_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Enable"
+                    android:text="@string/setting_enable"
                     android:textColor="#E8F1FB"
                     android:textSize="12sp"
                     android:buttonTint="#00E5D1"
@@ -410,7 +410,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="minutes"
+                        android:text="@string/setting_minutes"
                         android:textColor="#95B0D4"
                         android:textSize="13sp"
                         android:layout_marginStart="6dp"
@@ -444,13 +444,13 @@
                     android:src="@drawable/ic_distance"
                     app:tint="#95B0D4"
                     android:layout_marginEnd="6dp"
-                    android:contentDescription="Distance" />
+                    android:contentDescription="@string/setting_distance_desc" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="DISTANCE"
+                    android:text="@string/setting_distance"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -461,7 +461,7 @@
                     android:id="@+id/chk_dist"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Enable"
+                    android:text="@string/setting_enable"
                     android:textColor="#E8F1FB"
                     android:textSize="12sp"
                     android:buttonTint="#00E5D1"
@@ -607,7 +607,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="× 10 meters"
+                        android:text="@string/setting_distance_unit"
                         android:textColor="#95B0D4"
                         android:textSize="13sp"
                         android:layout_marginStart="6dp"
@@ -662,12 +662,12 @@
                         android:src="@drawable/ic_save"
                         app:tint="#0A1628"
                         android:layout_marginEnd="10dp"
-                        android:contentDescription="Save" />
+                        android:contentDescription="@string/setting_save_desc" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Save Settings"
+                        android:text="@string/setting_save_button"
                         android:textColor="#0A1628"
                         android:textSize="14sp"
                         android:textStyle="bold"
@@ -708,12 +708,12 @@
                             android:src="@drawable/ic_play"
                             app:tint="#0A1628"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="Start" />
+                            android:contentDescription="@string/setting_start_desc" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Start"
+                            android:text="@string/setting_start_button"
                             android:textColor="#0A1628"
                             android:textSize="14sp"
                             android:textStyle="bold"
@@ -748,12 +748,12 @@
                             android:src="@drawable/ic_stop"
                             app:tint="#FF5252"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="Stop" />
+                            android:contentDescription="@string/setting_stop_desc" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Stop"
+                            android:text="@string/setting_stop_button"
                             android:textColor="#FF5252"
                             android:textSize="14sp"
                             android:textStyle="bold"
