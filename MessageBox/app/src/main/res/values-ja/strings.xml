@@ -217,4 +217,30 @@
     <string name="ble_status_failed">失敗</string>
     <string name="ble_status_test_mode">テストモード</string>
 
+    <!-- ════════ Bottom Navigation Tabs ════════ -->
+    <string name="tab_chat">チャット</string>
+    <string name="tab_self">自機</string>
+    <string name="tab_network">他機</string>
+    <string name="tab_settings">設定</string>
+    <string name="tab_connect">接続</string>
+    <!-- ════════ Header ════════ -->
+    <string name="header_track">追跡</string>
+    <string name="header_exit_desc">終了</string>
+
+    <!-- ════════ Status Card ════════ -->
+    <string name="status_battery_label">バッテリー</string>
+    <string name="status_inbox_label">受信</string>
+    <string name="status_outbox_label">送信</string>
+    <string name="auto_receive_toggle_desc">自動受信切替</string>
+
+    <!-- ════════ Location Status ════════ -->
+    <string name="location_status_off">OFF</string>
+    <string name="location_status_tracking">追跡中</string>
+    <string name="location_status_sos">SOS</string>
+
+
+
+
+
+
 </resources>

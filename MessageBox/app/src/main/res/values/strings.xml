@@ -217,6 +217,28 @@
     <string name="ble_status_failed">Failed</string>
     <string name="ble_status_test_mode">Test Mode</string>
     <string name="btn_retry">Retry</string>
+    <!-- ════════ Bottom Navigation Tabs ════════ -->
+    <string name="tab_chat">Chat</string>
+    <string name="tab_self">Self</string>
+    <string name="tab_network">Network</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_connect">Connect</string>
+    <!-- ════════ Header ════════ -->
+    <string name="header_track">TRACK</string>
+    <string name="header_exit_desc">Exit</string>
+
+    <!-- ════════ Status Card ════════ -->
+    <string name="status_battery_label">Battery</string>
+    <string name="status_inbox_label">Inbox</string>
+    <string name="status_outbox_label">Outbox</string>
+    <string name="auto_receive_toggle_desc">Auto Receive Toggle</string>
+
+    <!-- ════════ Location Status ════════ -->
+    <string name="location_status_off">OFF</string>
+    <string name="location_status_tracking">TRACKING</string>
+    <string name="location_status_sos">SOS</string>
+
+
 
 
 </resources>

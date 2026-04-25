@@ -4,26 +4,26 @@
     <item
         android:id="@+id/tab_chat"
         android:icon="@drawable/ic_tab_chat"
-        android:title="Chat" />
+        android:title="@string/tab_chat" />
 
     <item
         android:id="@+id/tab_devices"
         android:icon="@drawable/ic_tab_devices"
-        android:title="My GPS" />
+        android:title="@string/tab_self" />
 
     <item
         android:id="@+id/tab_map"
         android:icon="@drawable/ic_tab_map"
-        android:title="Devices" />
+        android:title="@string/tab_network" />
 
     <item
         android:id="@+id/tab_settings"
         android:icon="@drawable/ic_tab_settings"
-        android:title="Settings" />
+        android:title="@string/tab_settings" />
 
     <item
         android:id="@+id/tab_ble"
         android:icon="@drawable/ic_tab_ble"
-        android:title="Connect" />
+        android:title="@string/tab_connect" />
 
 </menu>

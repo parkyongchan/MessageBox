@@ -44,7 +44,7 @@
                     android:id="@+id/text_ble_status_main"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Disconnected"
+                    android:text="@string/ble_status_disconnected"
                     android:textColor="#FF5252"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -67,7 +67,7 @@
                     android:id="@+id/btn_connection_action"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="취소"
+                    android:text="@string/btn_cancel"
                     android:textColor="#378ADD"
                     android:textSize="10sp"
                     android:textStyle="bold"
@@ -145,7 +145,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="자동 받기 토글" />
+                    android:contentDescription="@string/auto_receive_toggle_desc" />
 
             </LinearLayout>
 
@@ -169,7 +169,7 @@
                     android:id="@+id/text_location_status_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="OFF"
+                    android:text="@string/location_status_off"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -225,7 +225,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Battery"
+                        android:text="@string/status_battery_label"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 
@@ -272,7 +272,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Inbox"
+                        android:text="@string/status_inbox_label"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 
@@ -337,7 +337,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Outbox"
+                        android:text="@string/status_outbox_label"
                         android:textColor="#95B0D4"
                         android:textSize="10sp" />
 

@@ -633,26 +633,26 @@ public class MainActivity extends AppCompatActivity {
                     int attempts = BLE.INSTANCE.getReconnectAttempts();
                     int max = BLE.INSTANCE.getMaxReconnectAttempts();
 
-                    binding.statusArea.textBleStatusMain.setText("Reconnecting");
+                    binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_reconnecting));
                     binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);
                     binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
 
                     binding.statusArea.textReconnectCount.setText(String.format("(%d/%d)", attempts, max));
                     binding.statusArea.textReconnectCount.setVisibility(View.VISIBLE);
 
-                    binding.statusArea.btnConnectionAction.setText("취소");
+                    binding.statusArea.btnConnectionAction.setText(getString(R.string.btn_cancel));
                     binding.statusArea.btnConnectionAction.setVisibility(View.VISIBLE);
                     break;
                 }
 
                 case BLE.CONNECT_STATUS_FAILED: {
-                    binding.statusArea.textBleStatusMain.setText("Failed");
+                    binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_failed));
                     binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
                     binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
 
                     binding.statusArea.textReconnectCount.setVisibility(View.GONE);
 
-                    binding.statusArea.btnConnectionAction.setText("재시도");
+                    binding.statusArea.btnConnectionAction.setText(getString(R.string.btn_retry));
                     binding.statusArea.btnConnectionAction.setVisibility(View.VISIBLE);
                     break;
                 }
@@ -774,7 +774,7 @@ public class MainActivity extends AppCompatActivity {
         BLE.INSTANCE.getSelectedDevice().observe(this, device -> {
             if (device != null) {
                 mIsTestMode = false;
-                binding.statusArea.textBleStatusMain.setText("Connected");
+                binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_connected));
                 binding.statusArea.textBleStatusMain.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFF00E5D1);
 
@@ -791,7 +791,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                binding.statusArea.textBleStatusMain.setText("Disconnected");
+                binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_disconnected));
                 binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
                 binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
                 binding.statusArea.textMainBattery.setText("- %");
@@ -873,17 +873,17 @@ public class MainActivity extends AppCompatActivity {
     private void updateLocationStatus(int state) {
         switch (state) {
             case 1:
-                binding.statusArea.textLocationStatusLabel.setText("TRACKING");
+                binding.statusArea.textLocationStatusLabel.setText(getString(R.string.location_status_tracking));
                 binding.statusArea.textLocationStatusLabel.setTextColor(0xFF00E5D1);
                 binding.statusArea.imgLocationStatus.setColorFilter(0xFF00E5D1);
                 break;
             case 2:
-                binding.statusArea.textLocationStatusLabel.setText("SOS");
+                binding.statusArea.textLocationStatusLabel.setText(getString(R.string.location_status_sos));
                 binding.statusArea.textLocationStatusLabel.setTextColor(0xFFFF5252);
                 binding.statusArea.imgLocationStatus.setColorFilter(0xFFFF5252);
                 break;
             default:
-                binding.statusArea.textLocationStatusLabel.setText("OFF");
+                binding.statusArea.textLocationStatusLabel.setText(getString(R.string.location_status_off));
                 binding.statusArea.textLocationStatusLabel.setTextColor(0xFF95B0D4);
                 binding.statusArea.imgLocationStatus.setColorFilter(0xFF95B0D4);
                 break;
@@ -893,7 +893,7 @@ public class MainActivity extends AppCompatActivity {
     private void toggleTestMode() {
         if (mIsTestMode) {
             mIsTestMode = false;
-            binding.statusArea.textBleStatusMain.setText("Disconnected");
+            binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_disconnected));
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFF5252);
             binding.statusArea.imgStatusBle.setColorFilter(0xFFFF5252);
             binding.statusArea.textMainBattery.setText("- %");
@@ -918,7 +918,7 @@ public class MainActivity extends AppCompatActivity {
             test.setTrackingMode(true);
             test.setSosMode(false);
             mBleViewModel.getDeviceStatus().postValue(test);
-            binding.statusArea.textBleStatusMain.setText("Test Mode");
+            binding.statusArea.textBleStatusMain.setText(getString(R.string.ble_status_test_mode));
             binding.statusArea.textBleStatusMain.setTextColor(0xFFFFB300);
             binding.statusArea.imgStatusBle.setColorFilter(0xFFFFB300);
             binding.headerArea.textHeaderSub.setText("IMEI  300434061000001");
