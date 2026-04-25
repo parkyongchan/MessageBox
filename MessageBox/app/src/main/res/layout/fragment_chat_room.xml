@@ -7,7 +7,7 @@
     android:background="#0A1628">
 
     <!-- ─────────────────────────────────────────────── -->
-    <!-- 헤더 (뒤로가기 + 아바타 + 이름 + 새로고침 + 삭제) -->
+    <!-- Header (back + avatar + name + refresh + delete) -->
     <!-- ─────────────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/chat_header"
@@ -24,7 +24,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ⭐ 뒤로가기 버튼 (신규) -->
+        <!-- Back button -->
         <ImageView
             android:id="@+id/btn_chat_back"
             android:layout_width="40dp"
@@ -37,7 +37,7 @@
             android:focusable="true"
             android:contentDescription="Back" />
 
-        <!-- 헤더 아바타 (기존 유지) -->
+        <!-- Header avatar -->
         <FrameLayout
             android:id="@+id/frame_chat_room_avatar"
             android:layout_width="38dp"
@@ -104,7 +104,7 @@
 
         </LinearLayout>
 
-        <!-- ⭐ 새로고침 버튼 (신규) -->
+        <!-- Refresh button -->
         <ImageView
             android:id="@+id/btn_chat_refresh"
             android:layout_width="40dp"
@@ -117,7 +117,7 @@
             android:focusable="true"
             android:contentDescription="Refresh Inbox" />
 
-        <!-- 전체삭제 버튼 (기존 유지) -->
+        <!-- Delete all button -->
         <ImageView
             android:id="@+id/btn_chat_delete_all"
             android:layout_width="40dp"
@@ -133,7 +133,7 @@
 
 
     <!-- ─────────────────────────────────────────────── -->
-    <!-- 말풍선 리스트                                    -->
+    <!-- Bubble list                                      -->
     <!-- ─────────────────────────────────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_chat_room"
@@ -150,7 +150,7 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
 
-    <!-- 구분선 -->
+    <!-- Divider -->
     <View
         android:id="@+id/chat_divider"
         android:layout_width="match_parent"
@@ -160,7 +160,7 @@
 
 
     <!-- ─────────────────────────────────────────────── -->
-    <!-- 입력창 (기존 유지)                                -->
+    <!-- Input area                                       -->
     <!-- ─────────────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/chat_input_area"
@@ -177,7 +177,7 @@
             android:id="@+id/edit_chat_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Title (max 20 bytes)"
+            android:hint="@string/chat_input_hint_title"
             android:textColor="#FFFFFF"
             android:textColorHint="#4A5F78"
             android:textSize="12sp"
@@ -200,7 +200,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Enter message (max 200 bytes)"
+                android:hint="@string/chat_input_hint_message"
                 android:textColor="#FFFFFF"
                 android:textColorHint="#4A5F78"
                 android:textSize="13sp"
@@ -229,7 +229,7 @@
 
 
     <!-- ─────────────────────────────────────────────── -->
-    <!-- ⭐ FAB: 대기 메시지 전송 (우측 하단 플로팅)        -->
+    <!-- FAB: Send pending messages (bottom-right floating) -->
     <!-- ─────────────────────────────────────────────── -->
     <FrameLayout
         android:id="@+id/fab_send_pending"
@@ -246,7 +246,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/chat_divider">
 
-        <!-- 전송 아이콘 -->
+        <!-- Send icon -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -256,7 +256,7 @@
             android:textSize="22sp"
             android:textStyle="bold" />
 
-        <!-- 배지 (대기 메시지 개수) -->
+        <!-- Badge (pending message count) -->
         <TextView
             android:id="@+id/text_fab_badge"
             android:layout_width="22dp"

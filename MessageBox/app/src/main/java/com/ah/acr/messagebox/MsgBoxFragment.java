@@ -64,10 +64,10 @@ public class MsgBoxFragment extends Fragment {
     private MsgBoxAdapter mAdapter;
     private ProgressDialog dialog;
 
-    // 화면 표시용 (각 연락처 최근 1개씩)
+    // For display (latest 1 per contact)
     private List<MsgWithAddress> mAllMsgs = new ArrayList<>();
 
-    // ⭐ 전송용: 모든 미전송 메시지 전체 리스트
+    // For sending: full list of unsent messages
     private List<MsgEntity> mAllUnsentMsgs = new ArrayList<>();
 
     private int mCurrentPage = 0;
@@ -123,7 +123,7 @@ public class MsgBoxFragment extends Fragment {
         recyclerView.addItemDecoration(dividerDecoration);
         recyclerView.setAdapter(mAdapter);
 
-        // ── 스와이프 삭제 ──
+        // ── Swipe to delete ──
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(
                 new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
                     @Override
@@ -139,10 +139,11 @@ public class MsgBoxFragment extends Fragment {
                         MsgWithAddress swipedItem = mAdapter.getCurrentList().get(position);
                         String codeNum = swipedItem.getMsg().getCodeNum();
 
+                        // Localized
                         new AlertDialog.Builder(getContext())
-                                .setTitle("Delete all conversations")
-                                .setMessage("Delete all conversations with this contact?")
-                                .setPositiveButton("Delete All", (dlg, which) -> {
+                                .setTitle(getString(R.string.chat_dialog_delete_all_contact_title))
+                                .setMessage(getString(R.string.chat_dialog_delete_all_contact_message))
+                                .setPositiveButton(getString(R.string.chat_btn_delete_all), (dlg, which) -> {
                                     for (MsgWithAddress item : mAllMsgs) {
                                         if (codeNum != null &&
                                                 codeNum.equals(item.getMsg().getCodeNum())) {
@@ -150,7 +151,7 @@ public class MsgBoxFragment extends Fragment {
                                         }
                                     }
                                 })
-                                .setNegativeButton("Cancel", (dlg, which) ->
+                                .setNegativeButton(getString(R.string.btn_cancel), (dlg, which) ->
                                         mAdapter.notifyItemChanged(position))
                                 .setCancelable(false)
                                 .show();
@@ -173,7 +174,8 @@ public class MsgBoxFragment extends Fragment {
                         paint.setFakeBoldText(true);
                         float textX = itemView.getRight() - 80f;
                         float textY = itemView.getTop() + (itemView.getBottom() - itemView.getTop()) / 2f + 12f;
-                        c.drawText("Delete", textX, textY, paint);
+                        // Localized swipe label
+                        c.drawText(getString(R.string.chat_swipe_delete), textX, textY, paint);
 
                         super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
                     }
@@ -209,34 +211,35 @@ public class MsgBoxFragment extends Fragment {
     }
 
     private void handleDeleteClick(MsgEntity msg) {
+        // Localized
         new AlertDialog.Builder(getContext())
-                .setTitle("Delete message")
-                .setMessage("Are you sure you want to delete this message?")
-                .setPositiveButton("Delete", (dialog, which) ->
+                .setTitle(getString(R.string.chat_dialog_delete_msg_title))
+                .setMessage(getString(R.string.chat_dialog_delete_msg_message))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) ->
                         msgViewModel.deleteById(msg.getId()))
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
     private void setupClickListeners() {
 
-        // BLE 연결 시 수신 메시지 요청
+        // Request inbox messages on BLE connection
         BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
             if (device != null) {
                 BLE.INSTANCE.getWriteQueue().offer("RECEIVED=?");
             }
         });
 
-        // 새로고침
+        // Refresh
         binding.buttonReflesh.setOnClickListener(v ->
                 BLE.INSTANCE.getWriteQueue().offer("RECEIVED=?"));
 
-        // 메시지 작성
+        // New message
         binding.buttonMsgNew.setOnClickListener(v ->
                 NavHostFragment.findNavController(MsgBoxFragment.this)
                         .navigate(R.id.main_msgbox_fragment_to_main_outbox_new_fragment));
 
-        // ── Select 버튼 (체크모드 토글) ──
+        // ── Select button (toggle check mode) ──
         binding.buttonSelectMode.setOnClickListener(v -> {
             if (mAdapter.isCheckMode()) {
                 exitCheckMode();
@@ -245,26 +248,30 @@ public class MsgBoxFragment extends Fragment {
             }
         });
 
-        // ── 전체 삭제 버튼 ──
+        // ── Delete all button ──
         binding.buttonCheckDelete.setOnClickListener(v -> {
             if (mAllMsgs.isEmpty()) {
-                Toast.makeText(getContext(), "No messages to delete.", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(),
+                        getString(R.string.chat_toast_no_msg_to_delete),
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
+            // Localized
             new AlertDialog.Builder(getContext())
-                    .setTitle("Delete All")
-                    .setMessage("Delete all conversations in the message box?")
-                    .setPositiveButton("Delete All", (dlg, which) -> {
+                    .setTitle(getString(R.string.chat_dialog_delete_all_title))
+                    .setMessage(getString(R.string.chat_dialog_delete_all_message))
+                    .setPositiveButton(getString(R.string.chat_btn_delete_all), (dlg, which) -> {
                         for (MsgWithAddress item : mAllMsgs) {
                             msgViewModel.delete(item.getMsg());
                         }
                         exitCheckMode();
                     })
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         });
 
-        // ── 페이저 버튼 ──
+        // ── Pager buttons ──
         binding.btnPageFirst.setOnClickListener(v -> { mCurrentPage = 0; updatePage(); });
         binding.btnPagePrev.setOnClickListener(v  -> { mCurrentPage--; updatePage(); });
         binding.btnPageNext.setOnClickListener(v  -> { mCurrentPage++; updatePage(); });
@@ -274,7 +281,7 @@ public class MsgBoxFragment extends Fragment {
             updatePage();
         });
 
-        // ── 롱클릭 → 체크모드 진입 ──
+        // ── Long click -> enter check mode ──
         binding.listMsgbox.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
             private final GestureDetector gestureDetector =
                     new GestureDetector(getContext(),
@@ -297,17 +304,20 @@ public class MsgBoxFragment extends Fragment {
             @Override public void onRequestDisallowInterceptTouchEvent(boolean b) {}
         });
 
-        // ⭐⭐⭐ 메시지 전송 (모든 미전송 메시지 전송) ⭐⭐⭐
+        // ⭐ Send all unsent messages
         binding.buttonMsgSend.setOnClickListener(view -> {
 
-            // ✅ mAllMsgs (각 연락처 1개씩) → mAllUnsentMsgs (모든 미전송 메시지) 사용!
+            // Use mAllUnsentMsgs (all unsent messages), not mAllMsgs (1 per contact)
             if (mAllUnsentMsgs.isEmpty()) {
                 Log.v(TAG, "No messages to send.");
-                Toast.makeText(getContext(), "No pending messages.", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(),
+                        getString(R.string.chat_toast_no_pending),
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // 오래된 순서대로 정렬 (createAt 오름차순)
+            // Sort by oldest first (createAt ascending)
             List<MsgEntity> unsentMsgsSorted = new ArrayList<>(mAllUnsentMsgs);
             unsentMsgsSorted.sort((a, b) -> {
                 if (a.getCreateAt() == null) return 1;
@@ -318,7 +328,8 @@ public class MsgBoxFragment extends Fragment {
             dialog = new ProgressDialog(MsgBoxFragment.this.getContext());
             dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
             dialog.setCancelable(false);
-            dialog.setMessage("Sending " + unsentMsgsSorted.size() + " messages...");
+            // Localized: "Sending %1$d messages..."
+            dialog.setMessage(getString(R.string.chat_sending_progress, unsentMsgsSorted.size()));
 
             List<String> msgList = new ArrayList<>();
             for (MsgEntity msg : unsentMsgsSorted) {
@@ -367,12 +378,13 @@ public class MsgBoxFragment extends Fragment {
         });
     }
 
-    // ── 체크모드 진입 ──
+    // ── Enter check mode ──
     private void enterCheckMode() {
         mAdapter.setCheckMode(true);
         binding.buttonCheckDelete.setVisibility(View.VISIBLE);
         binding.buttonMsgNew.setVisibility(View.GONE);
-        binding.buttonSelectMode.setText("Cancel");
+        // Localized
+        binding.buttonSelectMode.setText(getString(R.string.btn_cancel));
         binding.buttonSelectMode.setTextColor(0xFFFF5252);
     }
 
@@ -380,11 +392,12 @@ public class MsgBoxFragment extends Fragment {
         mAdapter.setCheckMode(false);
         binding.buttonCheckDelete.setVisibility(View.GONE);
         binding.buttonMsgNew.setVisibility(View.VISIBLE);
-        binding.buttonSelectMode.setText("Select");
+        // Localized
+        binding.buttonSelectMode.setText(getString(R.string.chat_btn_select));
         binding.buttonSelectMode.setTextColor(0xFFB8CEE8);
     }
 
-    // ── 페이지 업데이트 ──
+    // ── Update page ──
     private void updatePage() {
         int total      = mAllMsgs.size();
         int totalPages = (int) Math.ceil((double) total / PAGE_SIZE);
@@ -416,14 +429,14 @@ public class MsgBoxFragment extends Fragment {
             updatePage();
         });
 
-        // ⭐ 전체 메시지 변화 감지 → 미전송 리스트 + 카운트 업데이트
+        // Observe all messages -> update unsent list + count
         msgViewModel.getAllMsgs().observe(getViewLifecycleOwner(), allMsgs -> {
             updateUnsentList(allMsgs);
             updateUnsentCount(allMsgs);
         });
     }
 
-    /** ⭐ 미전송 메시지 전체 리스트 업데이트 */
+    /** Update the full list of unsent messages */
     private void updateUnsentList(List<MsgEntity> allMsgs) {
         mAllUnsentMsgs.clear();
         if (allMsgs != null) {

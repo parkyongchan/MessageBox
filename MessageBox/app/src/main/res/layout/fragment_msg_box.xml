@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="#0A1628">
 
-    <!-- 상단 헤더 -->
+    <!-- Top header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -22,12 +22,12 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Message Box"
+            android:text="@string/chat_title"
             android:textColor="#00E5D1"
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Select 버튼 -->
+        <!-- Select button -->
         <Button
             android:id="@+id/button_select_mode"
             style="?android:attr/borderlessButtonStyle"
@@ -36,7 +36,7 @@
             android:minWidth="72dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="Select"
+            android:text="@string/chat_btn_select"
             android:textColor="#B8CEE8"
             android:textSize="12sp"
             android:textAllCaps="false"
@@ -45,7 +45,7 @@
             android:insetBottom="0dp"
             android:layout_marginEnd="6dp" />
 
-        <!-- New 버튼 -->
+        <!-- New button -->
         <Button
             android:id="@+id/button_msg_new"
             style="?android:attr/borderlessButtonStyle"
@@ -54,7 +54,7 @@
             android:minWidth="72dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="New"
+            android:text="@string/chat_btn_new"
             android:textColor="#00E5D1"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -64,7 +64,7 @@
             android:insetBottom="0dp"
             android:layout_marginEnd="6dp" />
 
-        <!-- Delete 버튼 (체크모드일 때만 표시) -->
+        <!-- Delete button (visible in check mode only) -->
         <Button
             android:id="@+id/button_check_delete"
             style="?android:attr/borderlessButtonStyle"
@@ -73,7 +73,7 @@
             android:minWidth="72dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="Delete"
+            android:text="@string/addr_btn_delete"
             android:textColor="#FF5252"
             android:textSize="12sp"
             android:textAllCaps="false"
@@ -83,7 +83,7 @@
             android:layout_marginEnd="6dp"
             android:visibility="gone" />
 
-        <!-- 새로고침 버튼 -->
+        <!-- Refresh button -->
         <ImageButton
             android:id="@+id/button_reflesh"
             android:layout_width="36dp"
@@ -96,7 +96,7 @@
 
     </LinearLayout>
 
-    <!-- ⭐ Send pending messages 버튼 (CardView로 확실하게) -->
+    <!-- Send pending messages button -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -120,7 +120,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp">
 
-            <!-- 아이콘 (명시적으로 tint 지정) -->
+            <!-- Icon (explicit tint) -->
             <ImageView
                 android:layout_width="22dp"
                 android:layout_height="22dp"
@@ -129,11 +129,11 @@
                 android:layout_marginEnd="12dp"
                 android:contentDescription="Send" />
 
-            <!-- 텍스트 -->
+            <!-- Text -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Send pending messages"
+                android:text="@string/chat_btn_send_pending"
                 android:textColor="#0A1628"
                 android:textSize="15sp"
                 android:textStyle="bold"
@@ -144,7 +144,7 @@
 
     </androidx.cardview.widget.CardView>
 
-    <!-- 전송 진행바 -->
+    <!-- Send progress bar -->
     <ProgressBar
         android:id="@+id/progress_send_bar"
         style="?android:attr/progressBarStyleHorizontal"
@@ -153,7 +153,7 @@
         android:progressTint="#00E5D1"
         android:visibility="gone" />
 
-    <!-- 메시지 리스트 -->
+    <!-- Message list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list_msgbox"
         android:layout_width="match_parent"
@@ -165,7 +165,7 @@
         android:paddingBottom="8dp"
         android:clipToPadding="false" />
 
-    <!-- 미전송 메시지 현황 -->
+    <!-- Pending messages info -->
     <LinearLayout
         android:id="@+id/layout_unsent_info"
         android:layout_width="match_parent"
@@ -187,7 +187,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pending"
+            android:text="@string/chat_label_pending"
             android:textColor="#8899AA"
             android:textSize="12sp"
             android:layout_marginEnd="8dp" />
@@ -205,7 +205,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="items"
+            android:text="@string/chat_label_items"
             android:textColor="#8899AA"
             android:textSize="12sp" />
 
@@ -217,13 +217,13 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Auto-dismissed after sending"
+            android:text="@string/chat_label_auto_dismiss"
             android:textColor="#4A5F78"
             android:textSize="10sp" />
 
     </LinearLayout>
 
-    <!-- 하단 페이저 -->
+    <!-- Bottom pager -->
     <LinearLayout
         android:id="@+id/layout_pager"
         android:layout_width="match_parent"

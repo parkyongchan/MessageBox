@@ -66,13 +66,13 @@ public class ChatRoomFragment extends Fragment {
     // Avatar edit state
     private String mAvatarPath = null;
 
-    // ⭐ 현재 대화방의 대기 메시지 리스트 (FAB 전송용)
+    // Pending messages list for current contact (for FAB send)
     private List<MsgEntity> mContactUnsentMsgs = new ArrayList<>();
 
     // Gallery launcher
     private ActivityResultLauncher<String> pickImageLauncher;
 
-    // 전송 중 다이얼로그
+    // Sending progress dialog
     private ProgressDialog sendDialog;
 
 
@@ -112,7 +112,7 @@ public class ChatRoomFragment extends Fragment {
         setupObserver();
         setupClickListeners();
         observeAddressForAvatar();
-        observeUnsentMessages();  // ⭐ FAB 업데이트
+        observeUnsentMessages();  // FAB update
     }
 
 
@@ -173,24 +173,32 @@ public class ChatRoomFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   Avatar Edit (기존)
+    //   Avatar Edit
     // ═══════════════════════════════════════════════════════════════
 
     private void showAvatarMenu() {
         if (mCodeNum == null || mCodeNum.isEmpty()) {
-            Toast.makeText(getContext(), "IMEI not available", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.chat_avatar_no_imei),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String[] options = {"📷 Choose from Gallery", "🔤 Use Initial Avatar"};
+        // Localized options
+        String[] options = {
+                getString(R.string.chat_avatar_option_gallery),
+                getString(R.string.chat_avatar_option_initial)
+        };
 
+        // Localized
         new AlertDialog.Builder(requireContext())
-                .setTitle("Avatar")
+                .setTitle(getString(R.string.chat_avatar_dialog_title))
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) openGallery();
                     else resetAvatar();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -199,7 +207,10 @@ public class ChatRoomFragment extends Fragment {
         try {
             pickImageLauncher.launch("image/*");
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Cannot open gallery", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.chat_avatar_no_gallery),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -217,9 +228,15 @@ public class ChatRoomFragment extends Fragment {
             getActivity().runOnUiThread(() -> {
                 if (savedPath != null) {
                     ensureAddressExists(imei, savedPath);
-                    Toast.makeText(getContext(), "✅ Avatar updated", Toast.LENGTH_SHORT).show();
+                    // Localized
+                    Toast.makeText(getContext(),
+                            getString(R.string.chat_avatar_updated),
+                            Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getContext(), "❌ Failed to save avatar", Toast.LENGTH_SHORT).show();
+                    // Localized
+                    Toast.makeText(getContext(),
+                            getString(R.string.chat_avatar_save_fail),
+                            Toast.LENGTH_SHORT).show();
                 }
             });
         }).start();
@@ -252,7 +269,10 @@ public class ChatRoomFragment extends Fragment {
         if (mCodeNum == null || mCodeNum.isEmpty()) return;
         AvatarPickerHelper.deleteAvatar(getContext(), mCodeNum);
         addressViewModel.updateAvatarPath(mCodeNum, null);
-        Toast.makeText(getContext(), "✅ Avatar reset to initial", Toast.LENGTH_SHORT).show();
+        // Localized
+        Toast.makeText(getContext(),
+                getString(R.string.chat_avatar_reset),
+                Toast.LENGTH_SHORT).show();
     }
 
 
@@ -295,7 +315,7 @@ public class ChatRoomFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ 대기 메시지 관찰 → FAB 업데이트
+    //   Observe pending messages -> update FAB
     // ═══════════════════════════════════════════════════════════════
 
     private void observeUnsentMessages() {
@@ -305,7 +325,7 @@ public class ChatRoomFragment extends Fragment {
 
             if (allMsgs != null && mCodeNum != null) {
                 for (MsgEntity msg : allMsgs) {
-                    // 현재 대화방 (code_num 일치) + 송신 대기 (is_send_msg=true, is_send=false)
+                    // Current chat (matching code_num) + send pending (is_send_msg=true, is_send=false)
                     if (mCodeNum.equals(msg.getCodeNum())
                             && msg.isSendMsg()
                             && !msg.isSend()) {
@@ -320,7 +340,7 @@ public class ChatRoomFragment extends Fragment {
     }
 
 
-    /** ⭐ FAB 가시성 + 배지 업데이트 */
+    /** Update FAB visibility + badge */
     private void updateFabVisibility(int count) {
         if (binding == null) return;
 
@@ -339,7 +359,7 @@ public class ChatRoomFragment extends Fragment {
 
     private void setupClickListeners() {
 
-        // ⭐ 뒤로가기 버튼
+        // Back button
         binding.btnChatBack.setOnClickListener(v -> {
             try {
                 NavHostFragment.findNavController(ChatRoomFragment.this).popBackStack();
@@ -350,39 +370,42 @@ public class ChatRoomFragment extends Fragment {
         });
 
 
-        // ⭐ 새로고침 버튼 (Inbox 받기)
+        // Refresh button (receive Inbox)
         binding.btnChatRefresh.setOnClickListener(v -> {
             if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                // Localized
                 Toast.makeText(getContext(),
-                        "장비가 연결되어 있지 않습니다.",
+                        getString(R.string.chat_ble_not_connected),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
 
             BLE.INSTANCE.getWriteQueue().offer("RECEIVED=?");
+            // Localized
             Toast.makeText(getContext(),
-                    "📥 메시지 수신 중...",
+                    getString(R.string.chat_refreshing),
                     Toast.LENGTH_SHORT).show();
             Log.v(TAG, "Manual refresh: RECEIVED=?");
         });
 
 
-        // ⭐ FAB 클릭: 현재 대화방의 대기 메시지 전송
+        // FAB click: send pending messages for current contact
         binding.fabSendPending.setOnClickListener(v -> sendPendingMessages());
 
 
-        // 헤더 아바타 클릭 → 편집 메뉴
+        // Header avatar click -> edit menu
         binding.frameChatRoomAvatar.setOnClickListener(v -> showAvatarMenu());
 
 
-        // 전송 버튼 (기존 → 저장만)
+        // Send button (now save only)
         binding.btnChatSend.setOnClickListener(v -> {
             String title = binding.editChatTitle.getText().toString().trim();
             String msg   = binding.editChatMsg.getText().toString().trim();
 
             if (msg.isEmpty()) {
+                // Localized
                 Toast.makeText(getContext(),
-                        "Please enter a message.",
+                        getString(R.string.chat_input_empty),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -401,8 +424,9 @@ public class ChatRoomFragment extends Fragment {
                     requireActivity().runOnUiThread(() -> {
                         binding.editChatTitle.setText("");
                         binding.editChatMsg.setText("");
+                        // Localized
                         Toast.makeText(getContext(),
-                                "💾 저장됨 (▶ 버튼으로 전송하세요)",
+                                getString(R.string.chat_msg_saved),
                                 Toast.LENGTH_SHORT).show();
                     });
                 }
@@ -411,12 +435,13 @@ public class ChatRoomFragment extends Fragment {
         });
 
 
-        // 전체 삭제
+        // Delete all
         binding.btnChatDeleteAll.setOnClickListener(v -> {
+            // Localized
             new AlertDialog.Builder(requireContext())
-                    .setTitle("Delete chat")
-                    .setMessage("Delete all messages with " + mContactName + "?")
-                    .setPositiveButton("Delete", (dialog, which) -> {
+                    .setTitle(getString(R.string.chat_delete_chat_title))
+                    .setMessage(getString(R.string.chat_delete_chat_msg, mContactName))
+                    .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) -> {
                         List<com.ah.acr.messagebox.database.MsgWithAddress> msgs =
                                 adapter.getCurrentList();
                         for (com.ah.acr.messagebox.database.MsgWithAddress m : msgs) {
@@ -428,34 +453,36 @@ public class ChatRoomFragment extends Fragment {
                             requireActivity().onBackPressed();
                         }
                     })
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         });
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ FAB: 대기 메시지 전송 (MsgBoxFragment 로직 참고)
+    //   FAB: Send pending messages (refer to MsgBoxFragment logic)
     // ═══════════════════════════════════════════════════════════════
 
     private void sendPendingMessages() {
 
         if (mContactUnsentMsgs.isEmpty()) {
+            // Localized
             Toast.makeText(getContext(),
-                    "전송 대기 메시지가 없습니다.",
+                    getString(R.string.chat_send_no_pending),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
         BleDevice bleDevice = BLE.INSTANCE.getSelectedDevice().getValue();
         if (bleDevice == null || !BleManager.getInstance().isConnected(bleDevice)) {
+            // Localized
             Toast.makeText(getContext(),
-                    "장비가 연결되어 있지 않습니다.",
+                    getString(R.string.chat_ble_not_connected),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 오래된 순서대로 정렬
+        // Sort by oldest first
         List<MsgEntity> unsentSorted = new ArrayList<>(mContactUnsentMsgs);
         unsentSorted.sort((a, b) -> {
             if (a.getCreateAt() == null) return 1;
@@ -463,24 +490,25 @@ public class ChatRoomFragment extends Fragment {
             return a.getCreateAt().compareTo(b.getCreateAt());
         });
 
+        // Localized
         new AlertDialog.Builder(requireContext())
-                .setTitle("메시지 전송")
-                .setMessage(unsentSorted.size() + "개의 대기 메시지를 전송하시겠습니까?")
-                .setPositiveButton("전송", (d, w) -> doSendPending(unsentSorted))
-                .setNegativeButton("취소", null)
+                .setTitle(getString(R.string.chat_send_dialog_title))
+                .setMessage(getString(R.string.chat_send_dialog_msg, unsentSorted.size()))
+                .setPositiveButton(getString(R.string.chat_btn_send), (d, w) -> doSendPending(unsentSorted))
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     private void doSendPending(List<MsgEntity> unsentSorted) {
 
-        // 진행 다이얼로그
+        // Progress dialog - Localized
         sendDialog = new ProgressDialog(requireContext());
         sendDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         sendDialog.setCancelable(false);
-        sendDialog.setMessage("전송 중: " + unsentSorted.size() + "개 메시지");
+        sendDialog.setMessage(getString(R.string.chat_send_progress, unsentSorted.size()));
 
-        // 바이너리 패킷 빌드 (MsgBoxFragment 와 동일 포맷)
+        // Build binary packets (same format as MsgBoxFragment)
         List<String> msgList = new ArrayList<>();
         for (MsgEntity msg : unsentSorted) {
             String codeNum = msg.getCodeNum() != null ? msg.getCodeNum() : "";
@@ -512,12 +540,12 @@ public class ChatRoomFragment extends Fragment {
 
         sendDialog.show();
 
-        // 백그라운드 스레드에서 순차 전송
+        // Sequential send on background thread
         new Thread(new SendRunnable(msgList)).start();
     }
 
 
-    /** 순차 전송 Runnable (MsgBoxFragment 로직과 동일) */
+    /** Sequential send Runnable (same logic as MsgBoxFragment) */
     private class SendRunnable implements Runnable {
         private final List<String> msgList;
         private final Object lock = new Object();
@@ -539,7 +567,7 @@ public class ChatRoomFragment extends Fragment {
                 }
             }
 
-            // OutboxMsgStatus 관찰 (전송 완료 콜백)
+            // Observe OutboxMsgStatus (send-complete callback)
             BLE.INSTANCE.getOutboxMsgStatus().observe(getViewLifecycleOwner(), sReceive -> {
                 if (sReceive.startsWith("SENDING=")) {
                     String msg = sReceive.substring(8);
@@ -587,13 +615,14 @@ public class ChatRoomFragment extends Fragment {
 
                 synchronized (lock) {
                     try {
-                        lock.wait(10000);  // 타임아웃 10초
+                        lock.wait(10000);  // 10 second timeout
                         handler.post(() -> {
                             curCnt++;
                             if (curCnt == totalCnt && sendDialog != null && sendDialog.isShowing()) {
                                 sendDialog.dismiss();
+                                // Localized
                                 Toast.makeText(getContext(),
-                                        "✅ " + totalCnt + "개 메시지 전송 완료",
+                                        getString(R.string.chat_send_complete, totalCnt),
                                         Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -604,7 +633,7 @@ public class ChatRoomFragment extends Fragment {
                 }
             }
 
-            // 최종 안전처리
+            // Final safety cleanup
             handler.post(() -> {
                 if (sendDialog != null && sendDialog.isShowing()) {
                     sendDialog.dismiss();

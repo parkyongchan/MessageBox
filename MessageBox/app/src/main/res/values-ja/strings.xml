@@ -473,6 +473,84 @@
     <string name="maps_delete_fail">❌ 削除失敗</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <!-- ════════ CHAT (MsgBox) Main ════════ -->
 
+    <!-- Title -->
+    <string name="chat_title">メッセージボックス</string>
+
+    <!-- Buttons -->
+    <string name="chat_btn_select">選択</string>
+    <string name="chat_btn_new">新規</string>
+    <string name="chat_btn_send_pending">未送信メッセージを送信</string>
+    <string name="chat_btn_delete_all">すべて削除</string>
+
+    <!-- Labels -->
+    <string name="chat_label_pending">未送信</string>
+    <string name="chat_label_items">件</string>
+    <string name="chat_label_auto_dismiss">送信後自動で消えます</string>
+
+    <!-- Dialogs -->
+    <string name="chat_dialog_delete_msg_title">メッセージを削除</string>
+    <string name="chat_dialog_delete_msg_message">このメッセージを削除しますか？</string>
+    <string name="chat_dialog_delete_all_contact_title">すべての会話を削除</string>
+    <string name="chat_dialog_delete_all_contact_message">この連絡先とのすべての会話を削除しますか？</string>
+    <string name="chat_dialog_delete_all_title">すべて削除</string>
+    <string name="chat_dialog_delete_all_message">メッセージボックスのすべての会話を削除しますか？</string>
+
+    <!-- Toasts -->
+    <string name="chat_toast_no_msg_to_delete">削除するメッセージがありません。</string>
+    <string name="chat_toast_no_pending">未送信メッセージがありません。</string>
+
+    <!-- Progress (with placeholder %1$d = count) -->
+    <string name="chat_sending_progress">%1$d 件のメッセージを送信中...</string>
+
+    <!-- Swipe label -->
+    <string name="chat_swipe_delete">削除</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ CHAT ROOM (ChatRoomFragment) ════════ -->
+
+    <!-- Avatar dialog -->
+    <string name="chat_avatar_dialog_title">アバター</string>
+    <string name="chat_avatar_option_gallery">📷 ギャラリーから選択</string>
+    <string name="chat_avatar_option_initial">🔤 イニシャルアバターを使用</string>
+
+    <!-- Avatar Toasts -->
+    <string name="chat_avatar_no_imei">IMEIが利用できません</string>
+    <string name="chat_avatar_no_gallery">ギャラリーを開けません</string>
+    <string name="chat_avatar_updated">✅ アバターを更新しました</string>
+    <string name="chat_avatar_save_fail">❌ アバターの保存に失敗</string>
+    <string name="chat_avatar_reset">✅ アバターをイニシャルにリセット</string>
+
+    <!-- Input area -->
+    <string name="chat_input_hint_title">タイトル (最大20バイト)</string>
+    <string name="chat_input_hint_message">メッセージを入力 (最大200バイト)</string>
+    <string name="chat_input_empty">メッセージを入力してください。</string>
+    <string name="chat_msg_saved">💾 保存しました (▶ボタンで送信)</string>
+
+    <!-- BLE / Refresh -->
+    <string name="chat_ble_not_connected">機器が接続されていません。</string>
+    <string name="chat_refreshing">📥 メッセージ受信中...</string>
+
+    <!-- Send dialog (with placeholder %1$d = count) -->
+    <string name="chat_send_no_pending">送信待ちメッセージがありません。</string>
+    <string name="chat_send_dialog_title">メッセージ送信</string>
+    <string name="chat_send_dialog_msg">%1$d 件の送信待ちメッセージを送信しますか？</string>
+    <string name="chat_btn_send">送信</string>
+    <string name="chat_send_progress">送信中: %1$d 件のメッセージ</string>
+    <string name="chat_send_complete">✅ %1$d 件のメッセージを送信しました</string>
+
+    <!-- Delete chat (with placeholder %1$s = contact name) -->
+    <string name="chat_delete_chat_title">チャット削除</string>
+    <string name="chat_delete_chat_msg">%1$s とのすべてのメッセージを削除しますか？</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 </resources>

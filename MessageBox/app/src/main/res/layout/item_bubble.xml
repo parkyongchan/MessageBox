@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 
-  카카오톡 스타일 말풍선 레이아웃
-  - 송신: 우측 정렬, 노랑 말풍선
-  - 수신: 좌측 정렬, 흰색 말풍선 + 아바타 + 이름
+<!--
+  KakaoTalk-style chat bubble layout
+  - Sent: right-aligned, yellow bubble
+  - Received: left-aligned, white bubble + avatar + name
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/layout_bubble_root"
@@ -15,7 +15,7 @@
     android:paddingBottom="4dp"
     android:gravity="start">
 
-    <!-- ⭐ 상대방 아바타 (수신 시만 표시) -->
+    <!-- Other party avatar (only shown for received) -->
     <FrameLayout
         android:id="@+id/layout_bubble_avatar"
         android:layout_width="36dp"
@@ -43,14 +43,14 @@
 
     </FrameLayout>
 
-    <!-- 말풍선 컨테이너 (발신자 이름 + 시간+말풍선 row) -->
+    <!-- Bubble container (sender name + time + bubble row) -->
     <LinearLayout
         android:id="@+id/layout_bubble_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- 발신자 이름 (수신 시만 표시) -->
+        <!-- Sender name (only shown for received) -->
         <TextView
             android:id="@+id/text_bubble_sender"
             android:layout_width="wrap_content"
@@ -60,7 +60,7 @@
             android:layout_marginBottom="3dp"
             android:layout_marginStart="4dp" />
 
-        <!-- 시간 + 말풍선 Row -->
+        <!-- Time + bubble Row -->
         <LinearLayout
             android:id="@+id/layout_bubble_row"
             android:layout_width="wrap_content"
@@ -68,7 +68,7 @@
             android:orientation="horizontal"
             android:gravity="bottom">
 
-            <!-- 발신 시 - 좌측: 모래시계 + 시간 -->
+            <!-- Sent - left side: hourglass + time -->
             <LinearLayout
                 android:id="@+id/layout_bubble_time_left"
                 android:layout_width="wrap_content"
@@ -79,7 +79,7 @@
                 android:layout_marginBottom="2dp"
                 android:visibility="gone">
 
-                <!-- 모래시계 아이콘 (미전송 표시) -->
+                <!-- Hourglass icon (pending indicator) -->
                 <ImageView
                     android:id="@+id/img_bubble_pending_left"
                     android:layout_width="14dp"
@@ -89,7 +89,7 @@
                     android:visibility="gone"
                     android:contentDescription="Pending" />
 
-                <!-- 시간 -->
+                <!-- Time -->
                 <TextView
                     android:id="@+id/text_bubble_time_left"
                     android:layout_width="wrap_content"
@@ -99,7 +99,7 @@
 
             </LinearLayout>
 
-            <!-- 말풍선 본체 (카카오톡 스타일) -->
+            <!-- Bubble box (KakaoTalk style) -->
             <LinearLayout
                 android:id="@+id/layout_bubble_box"
                 android:layout_width="wrap_content"
@@ -108,7 +108,7 @@
                 android:maxWidth="260dp"
                 android:background="@drawable/bg_bubble_receive">
 
-                <!-- 제목 -->
+                <!-- Title -->
                 <TextView
                     android:id="@+id/text_bubble_title"
                     android:layout_width="wrap_content"
@@ -119,7 +119,7 @@
                     android:layout_marginBottom="4dp"
                     android:visibility="gone" />
 
-                <!-- 본문 -->
+                <!-- Body -->
                 <TextView
                     android:id="@+id/text_bubble_msg"
                     android:layout_width="wrap_content"
@@ -130,7 +130,7 @@
 
             </LinearLayout>
 
-            <!-- 수신 시 - 우측: 시간만 -->
+            <!-- Received - right side: time only -->
             <TextView
                 android:id="@+id/text_bubble_time_right"
                 android:layout_width="wrap_content"
