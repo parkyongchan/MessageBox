@@ -142,7 +142,10 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                 }
 
                 if (!codeNum.matches("\\d+")) {
-                    Toast.makeText(getContext(), "The recipient's number must contain only numbers.", Toast.LENGTH_LONG).show();
+                    // Localized
+                    Toast.makeText(getContext(),
+                            getString(R.string.outbox_new_toast_invalid_number),
+                            Toast.LENGTH_LONG).show();
                     return;
 //                    new AlertDialog.Builder(getContext())
 //                            .setTitle("Message Cancel")
@@ -174,7 +177,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
                 msgViewModel.insert(msg, success -> {
                     if (success) {
-                        // insert 완료 후 동작
+                        // After insert success
                         navigateBack();
                         Log.d("Caller", "Insert success");
                     } else {
@@ -188,13 +191,14 @@ public class MsgOutBoxSubNewFragment extends Fragment {
         });
 
         binding.buttonMsgCancel.setOnClickListener(v -> {
+            // Localized
             new AlertDialog.Builder(getContext())
-                    .setTitle("Discard message?")
-                    .setMessage("Your message will not be saved.")
-                    .setPositiveButton("Discard", (dialog, which) -> {
+                    .setTitle(getString(R.string.outbox_new_dialog_discard_title))
+                    .setMessage(getString(R.string.outbox_new_dialog_discard_msg))
+                    .setPositiveButton(getString(R.string.outbox_new_btn_discard), (dialog, which) -> {
                         navigateBack();
                     })
-                    .setNegativeButton("Keep editing", null)
+                    .setNegativeButton(getString(R.string.outbox_new_btn_keep), null)
                     .show();
         });
 
@@ -205,12 +209,12 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
     private void showSearchDialog() {
         SearchDialogFragment searchDialog = new SearchDialogFragment();
-        // Fragment에서는 getParentFragmentManager() 또는 getChildFragmentManager() 사용
+        // In Fragment, use getParentFragmentManager() or getChildFragmentManager()
         searchDialog.show(getParentFragmentManager(), "SearchDialog");
     }
 
     private void setupFragmentResultListener() {
-        // 검색 결과 받기 - Fragment에서는 getParentFragmentManager() 사용
+        // Receive search result - in Fragment, use getParentFragmentManager()
         getParentFragmentManager().setFragmentResultListener("search_result", this,
                 new FragmentResultListener() {
                     @Override
@@ -219,7 +223,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                         String selectedTitle = bundle.getString("selected_nic");
                         String selectedDescription = bundle.getString("selected_code");
 
-                        // 선택된 결과 처리
+                        // Handle selected result
                         handleSearchResult(selectedId, selectedTitle, selectedDescription);
                     }
                 });
@@ -227,9 +231,9 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
 
     private void handleSearchResult(int id, String title, String code) {
-        // 검색 결과 처리 로직
+        // Search result handler
         if (getContext() != null) {
-            //Toast.makeText(getContext(), "선택됨: " + title, Toast.LENGTH_SHORT).show();
+            //Toast.makeText(getContext(), "Selected: " + title, Toast.LENGTH_SHORT).show();
             binding.textReceiver.setText(title);
             mCodeNum = code;
             // save........
@@ -241,10 +245,10 @@ public class MsgOutBoxSubNewFragment extends Fragment {
         try {
             NavController navController = Navigation.findNavController(requireView());
             navController.navigateUp();
-            // 또는
+            // Or
             // navController.popBackStack();
         } catch (Exception e) {
-            // Navigation이 설정되지 않은 경우 기본 방법 사용
+            // Use default method when Navigation is not configured
             closeFragment();
         }
     }

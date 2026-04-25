@@ -553,4 +553,45 @@
     <string name="chat_delete_chat_msg">%1$s とのすべてのメッセージを削除しますか？</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ INBOX ════════ -->
+
+    <!-- Dialog -->
+    <string name="inbox_dialog_delete_title">メッセージ削除</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ OUTBOX NEW (MsgOutBoxSubNewFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="outbox_new_title">新規メッセージ</string>
+
+    <!-- Labels -->
+    <string name="outbox_new_label_receiver">受信者</string>
+    <string name="outbox_new_label_title">タイトル (任意)</string>
+    <string name="outbox_new_label_message">メッセージ</string>
+
+    <!-- Hints -->
+    <string name="outbox_new_hint_receiver">番号またはニックネームを入力</string>
+    <string name="outbox_new_hint_title">タイトルを入力 (最大20バイト)</string>
+
+    <!-- Buttons -->
+    <string name="outbox_new_btn_queue">キュー追加</string>
+    <!-- Toast -->
+    <string name="outbox_new_toast_invalid_number">受信者の番号は数字のみで入力してください。</string>
+
+    <!-- Discard dialog -->
+    <string name="outbox_new_dialog_discard_title">メッセージを破棄しますか？</string>
+    <string name="outbox_new_dialog_discard_msg">メッセージは保存されません。</string>
+    <string name="outbox_new_btn_discard">破棄</string>
+    <string name="outbox_new_btn_keep">編集を続ける</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
 </resources>

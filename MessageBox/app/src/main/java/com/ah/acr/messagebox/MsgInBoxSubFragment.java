@@ -92,15 +92,16 @@ public class MsgInBoxSubFragment extends Fragment {
 
                 msgViewModel.getMsgById(msgId).observe(getViewLifecycleOwner(), msgEntity -> {
                     if (msgEntity != null) {
+                        // Localized
                         new AlertDialog.Builder(getContext())
-                                .setTitle("Message Delete")
+                                .setTitle(getString(R.string.inbox_dialog_delete_title))
                                 .setMessage(getString(R.string.inbox_msg_del_alert))
-                                .setPositiveButton("Delete", (dialog, which) -> {
+                                .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) -> {
                                     msgViewModel.delete(msgEntity);
 
                                     navigateBack();
                                 })
-                                .setNegativeButton("cancel", null)
+                                .setNegativeButton(getString(R.string.btn_cancel), null)
                                 .show();
                     } else {
                         Log.v(TAG, "id: " + msgId               );
@@ -127,10 +128,10 @@ public class MsgInBoxSubFragment extends Fragment {
         try {
             NavController navController = Navigation.findNavController(requireView());
             navController.navigateUp();
-            // 또는
+            // Or
             // navController.popBackStack();
         } catch (Exception e) {
-            // Navigation이 설정되지 않은 경우 기본 방법 사용
+            // Use default method when Navigation is not configured
             closeFragment();
         }
     }

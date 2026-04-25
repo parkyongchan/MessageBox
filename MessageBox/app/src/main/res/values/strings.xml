@@ -558,4 +558,46 @@
     <string name="chat_delete_chat_msg">Delete all messages with %1$s?</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ INBOX ════════ -->
+
+    <!-- Dialog -->
+    <string name="inbox_dialog_delete_title">Delete Message</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ OUTBOX NEW (MsgOutBoxSubNewFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="outbox_new_title">New Message</string>
+
+    <!-- Labels -->
+    <string name="outbox_new_label_receiver">Receiver</string>
+    <string name="outbox_new_label_title">Title (optional)</string>
+    <string name="outbox_new_label_message">Message</string>
+
+    <!-- Hints -->
+    <string name="outbox_new_hint_receiver">Enter number or nickname</string>
+    <string name="outbox_new_hint_title">Enter title (max 20 bytes)</string>
+
+    <!-- Buttons -->
+    <string name="outbox_new_btn_queue">Queue</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Toast -->
+    <string name="outbox_new_toast_invalid_number">The recipient\'s number must contain only numbers.</string>
+
+    <!-- Discard dialog -->
+    <string name="outbox_new_dialog_discard_title">Discard message?</string>
+    <string name="outbox_new_dialog_discard_msg">Your message will not be saved.</string>
+    <string name="outbox_new_btn_discard">Discard</string>
+    <string name="outbox_new_btn_keep">Keep editing</string>
+
+
 </resources>
