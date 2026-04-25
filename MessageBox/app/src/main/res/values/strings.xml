@@ -598,6 +598,143 @@
     <string name="outbox_new_dialog_discard_msg">Your message will not be saved.</string>
     <string name="outbox_new_btn_discard">Discard</string>
     <string name="outbox_new_btn_keep">Keep editing</string>
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ※ btn_exit가 이미 있으면 제외하고 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MAIN (MainFragment) ════════ -->
+
+    <!-- Exit dialog -->
+    <string name="main_dialog_exit_title">Exit App</string>
+    <string name="main_dialog_exit_msg">Do you want to exit the app?</string>
+
+    <!-- ※ Reused: btn_exit ("Exit"), btn_cancel ("Cancel") -->
+    <!-- If btn_exit is missing, uncomment below: -->
+    <!-- <string name="btn_exit">Exit</string> -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ DEVICES Tab (MapTabFragment) ════════ -->
+
+    <!-- Section -->
+    <string name="devices_section_received_list">RECEIVED DATA LIST</string>
+
+    <!-- Search hint -->
+    <string name="devices_hint_search">Search IMEI or Alias...</string>
+
+    <!-- Filter chips -->
+    <string name="devices_chip_all">All</string>
+    <string name="devices_chip_track">Track</string>
+
+    <!-- Empty state -->
+    <string name="devices_empty_no_data">No location data</string>
+
+    <!-- Toasts -->
+    <string name="devices_toast_no_markers">No markers to fit</string>
+    <string name="devices_toast_refreshing">Refreshing...</string>
+    <string name="devices_toast_copied">Copied to clipboard.</string>
+    <string name="devices_toast_invalid">Invalid device</string>
+    <string name="devices_toast_fill_all">Please fill in all fields.</string>
+    <string name="devices_toast_saved">Saved.</string>
+
+    <!-- Marker -->
+    <string name="devices_marker_unknown">Unknown</string>
+
+    <!-- Delete dialog -->
+    <string name="devices_dialog_delete_title">Delete Location</string>
+    <string name="devices_dialog_delete_msg">Are you sure you want to delete this location?</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ TRACK DETAIL (DeviceTrackDetailFragment) ════════ -->
+
+    <!-- Buttons -->
+    <string name="track_detail_btn_export">Export</string>
+    <string name="track_detail_btn_apply">Apply</string>
+
+    <!-- Section -->
+    <string name="track_detail_section_track_list">TRACK LIST</string>
+
+    <!-- Unit (with leading space) -->
+    <string name="track_detail_unit_pts"> pts</string>
+
+    <!-- Empty state -->
+    <string name="track_detail_empty_no_data">No track points</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ POINT DETAIL DIALOG (DeviceTrackDetailFragment) ════════ -->
+
+    <!-- Title (with %1$d for point number) -->
+    <string name="point_detail_title">📍 Point #%1$d</string>
+
+    <!-- Labels -->
+    <string name="point_detail_label_imei">📡 IMEI: </string>
+    <string name="point_detail_label_time">🕐 Time: </string>
+    <string name="point_detail_label_coordinates">📍 Coordinates: </string>
+    <string name="point_detail_label_altitude">⬆️ Altitude: </string>
+    <string name="point_detail_label_mode">🛰 Mode: </string>
+
+    <!-- Marker hint -->
+    <string name="point_detail_marker_tap_for_details">Tap for details</string>
+
+    <!-- Toast -->
+    <string name="point_detail_toast_copied">Coordinates copied</string>
+
+    <!-- ════════ TRACK MODE TEXTS ════════ -->
+
+    <!-- Send (My Device) -->
+    <string name="point_mode_my_sos">My SOS Send (0x00)</string>
+    <string name="point_mode_my_car">My CAR TRACK (0x01)</string>
+    <string name="point_mode_my_uav">My UAV TRACK (0x02)</string>
+    <string name="point_mode_my_uat">My UAT TRACK (0x03)</string>
+    <string name="point_mode_legacy_sos">Legacy SOS (0x0%1$d)</string>
+
+    <!-- Receive (Other Devices) -->
+    <string name="point_mode_rx_sos">Other SOS Receive (0x10)</string>
+    <string name="point_mode_rx_car">Other CAR TRACK (0x11)</string>
+    <string name="point_mode_rx_uav">Other UAV TRACK (0x12)</string>
+    <string name="point_mode_rx_uat">Other UAT TRACK (0x13)</string>
+
+    <!-- Other -->
+    <string name="point_mode_other">Other (0x%1$s)</string>
+
+    <!-- ════════ EXPORT DIALOG ════════ -->
+
+    <string name="export_dialog_title">Export Device Track</string>
+    <string name="export_format_gpx">GPX (GPS Exchange Format)</string>
+    <string name="export_format_kml">KML (Google Earth)</string>
+    <string name="export_format_csv">CSV (Excel/Analysis)</string>
+
+    <string name="export_toast_no_data">No data to export</string>
+    <string name="export_success_title">✅ Exported Successfully</string>
+    <string name="export_success_msg">File saved:\n\n📁 %1$s\n\nWhat would you like to do?</string>
+    <string name="export_btn_share">Share</string>
+    <string name="export_failed">❌ Export failed: %1$s</string>
+    <string name="export_share_failed">Share failed: %1$s</string>
+
+    <!-- ════════ TRACK DETAIL Toast/Misc ════════ -->
+
+    <string name="track_detail_loading">Loading tracks...</string>
+    <string name="track_detail_no_points">No track points</string>
+    <string name="track_detail_invalid_date">Invalid date format</string>
+
+    <!-- ════════ Common buttons (재사용 - 이미 있으면 무시) ════════ -->
+
+    <!-- <string name="btn_ok">OK</string> -->
+    <!-- <string name="btn_cancel">Cancel</string> -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
 
 </resources>

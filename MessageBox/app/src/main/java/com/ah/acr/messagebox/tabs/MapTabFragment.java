@@ -61,30 +61,30 @@ import java.util.Locale;
 
 
 /**
- * 지도 탭 (Map Tab)
- * - 받은 위치 데이터 목록 + 지도 시각화
- * - 검색 포커스 시 지도 숨겨 목록 확대
- * - 지도 모드 수동 토글 (온라인/오프라인)
+ * Devices Tab (a.k.a. Map Tab)
+ * - Received location data list + map visualization
+ * - Hide map when search is focused (expand list)
+ * - Manual map mode toggle (online/offline)
  *
- * ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그 추가
- *    - 마커 클릭 시 AlertDialog 팝업
- *    - 상세 정보 (IMEI, 시간, 좌표, 모드 등)
- *    - "트랙 상세 보기" 버튼 (DeviceTrackDetail 호출)
- *    - "좌표 복사" 버튼
+ * Marker tap -> detail dialog (UI-2026-04-24)
+ *    - AlertDialog popup on marker click
+ *    - Detail info (IMEI, time, coordinates, mode etc)
+ *    - "View Track Details" button (calls DeviceTrackDetail)
+ *    - "Copy Coordinates" button
  *
- * ⭐ 마커 아이콘 구분 (프로토콜 ver 값 기준):
+ * Marker icon variants (by protocol ver):
  *
- *   수신 (다른 장비):
- *     🚨 0x10 = SOS 수신 → 빨강 (ic_marker_sos)
- *     🚗 0x11, 0x12, 0x13 = TRACK 수신 → 파랑 (ic_marker_track)
+ *   Receive (other devices):
+ *     0x10 = SOS receive -> red (ic_marker_sos)
+ *     0x11, 0x12, 0x13 = TRACK receive -> blue (ic_marker_track)
  *
- *   송신 (내 장비):
- *     🆘 0x00 = 내 SOS 송신 → 주황 (ic_marker_my_sos)
- *     🎯 0x01, 0x02, 0x03 = 내 TRACK 송신 → 초록 (ic_marker_my_track)
+ *   Send (my device):
+ *     0x00 = my SOS send -> orange (ic_marker_my_sos)
+ *     0x01, 0x02, 0x03 = my TRACK send -> green (ic_marker_my_track)
  *
- *   Legacy (테스트 데이터):
- *     4, 5 = SOS (빨강)
- *     2    = TRACK (파랑)
+ *   Legacy (test data):
+ *     4, 5 = SOS (red)
+ *     2    = TRACK (blue)
  */
 public class MapTabFragment extends Fragment {
     private static final String TAG = MapTabFragment.class.getSimpleName();
@@ -143,7 +143,7 @@ public class MapTabFragment extends Fragment {
                 binding.getRoot(),
                 requireContext(),
                 newMode -> {
-                    Log.v(TAG, "지도 모드 변경: " + newMode);
+                    Log.v(TAG, "Map mode changed: " + newMode);
                     MapModeManager.applyToMapView(requireContext(), mMapView);
                 }
         );
@@ -205,7 +205,10 @@ public class MapTabFragment extends Fragment {
 
     private void fitAllMarkers() {
         if (mMarkers.isEmpty()) {
-            Toast.makeText(getContext(), "No markers to fit", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.devices_toast_no_markers),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -266,7 +269,10 @@ public class MapTabFragment extends Fragment {
                     && item.getAddress().getNumbersNic() != null) {
                 displayName = item.getAddress().getNumbersNic();
             } else {
-                displayName = loc.getCodeNum() != null ? loc.getCodeNum() : "Unknown";
+                // Localized
+                displayName = loc.getCodeNum() != null
+                        ? loc.getCodeNum()
+                        : getString(R.string.devices_marker_unknown);
             }
             marker.setTitle(displayName);
 
@@ -276,17 +282,17 @@ public class MapTabFragment extends Fragment {
                 snippet += "\n" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
                         Locale.getDefault()).format(loc.getCreateAt());
             }
-            // ⭐ UI-2026-04-24: "탭하여 상세보기" 안내 (다국어)
+            // Localized: "Tap for details" hint
             snippet += "\n" + getString(R.string.marker_snippet_tap_for_details);
             marker.setSnippet(snippet);
 
-            // ⭐ 마커 아이콘: trackMode 와 isIncomeLoc 으로 판별
+            // Marker icon: determined by trackMode and isIncomeLoc
             Drawable icon = getMarkerIcon(loc.getTrackMode(), loc.isIncomeLoc());
             if (icon != null) marker.setIcon(icon);
 
-            // ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그
+            // Marker tap -> detail dialog
             marker.setOnMarkerClickListener((m, mv) -> {
-                Log.v(TAG, "🔵 마커 탭: " + displayName);
+                Log.v(TAG, "Marker tap: " + displayName);
                 showMarkerDetailDialog(loc, displayName);
                 return true;
             });
@@ -305,10 +311,10 @@ public class MapTabFragment extends Fragment {
 
 
     /**
-     * ⭐ UI-2026-04-24: 마커 탭 시 상세 다이얼로그
-     * - 상세 정보 표시 (IMEI, 시간, 좌표, 고도, 모드)
-     * - "트랙 상세 보기" 버튼 → DeviceTrackDetailFragment 호출
-     * - "좌표 복사" 버튼 → 클립보드 복사
+     * Marker tap -> detail dialog
+     * - Shows detail info (IMEI, time, coords, altitude, mode)
+     * - "View Track Details" button -> DeviceTrackDetailFragment
+     * - "Copy Coordinates" button -> clipboard
      */
     private void showMarkerDetailDialog(LocationEntity loc, String displayName) {
         SimpleDateFormat fmt = new SimpleDateFormat(
@@ -372,14 +378,14 @@ public class MapTabFragment extends Fragment {
 
 
     /**
-     * ⭐ UI-2026-04-24: trackMode 값을 읽기 쉬운 텍스트로 변환
+     * Convert trackMode value to readable text
      *
-     * ⚠️ 수정: isIncomeLoc = true → "수신" (Income = 들어오는)
-     *          isIncomeLoc = false → "송신"
+     * isIncomeLoc = true  -> Receive (incoming)
+     * isIncomeLoc = false -> Send
      */
     private String getTrackModeText(int trackMode, boolean isIncomeLoc) {
         if (isIncomeLoc) {
-            // 수신 (다른 장비로부터)
+            // Receive (from other devices)
             switch (trackMode) {
                 case 0x10: return getString(R.string.mode_rx_sos);
                 case 0x11: return getString(R.string.mode_rx_car_track);
@@ -391,7 +397,7 @@ public class MapTabFragment extends Fragment {
                 default: return getString(R.string.mode_rx_unknown, trackMode);
             }
         } else {
-            // 송신 (내 장비)
+            // Send (my device)
             switch (trackMode) {
                 case 0x00: return getString(R.string.mode_tx_sos);
                 case 0x01: return getString(R.string.mode_tx_car_track);
@@ -404,14 +410,15 @@ public class MapTabFragment extends Fragment {
 
 
     /**
-     * ⭐ 마커 아이콘 선택 (프로토콜 ver 기반 + 송수신 구분)
+     * Marker icon selection (by protocol ver + tx/rx)
      *
-     * ⚠️ 수정: isIncomeLoc = true → 수신 / false → 송신
+     * isIncomeLoc = true  -> Receive
+     * isIncomeLoc = false -> Send
      */
     private Drawable getMarkerIcon(int trackMode, boolean isIncomeLoc) {
         int iconRes;
 
-        // ═══ 수신 (다른 장비로부터) - isIncomeLoc = true ═══
+        // ═══ Receive (from other devices) - isIncomeLoc = true ═══
         if (isIncomeLoc) {
             if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
                 iconRes = R.drawable.ic_marker_sos;
@@ -424,7 +431,7 @@ public class MapTabFragment extends Fragment {
                 iconRes = R.drawable.ic_marker_device;
             }
         }
-        // ═══ 송신 (내 장비) - isIncomeLoc = false ═══
+        // ═══ Send (my device) - isIncomeLoc = false ═══
         else {
             if (trackMode == 0x00) {
                 iconRes = R.drawable.ic_marker_my_sos;
@@ -626,7 +633,7 @@ public class MapTabFragment extends Fragment {
             binding.mapContainer.setLayoutParams(lp);
         }
 
-        Log.v(TAG, "검색 모드 진입: 지도 숨김");
+        Log.v(TAG, "Search mode entered: map hidden");
     }
 
 
@@ -643,7 +650,7 @@ public class MapTabFragment extends Fragment {
             binding.mapContainer.setLayoutParams(lp);
         }
 
-        Log.v(TAG, "검색 모드 해제: 지도 복원");
+        Log.v(TAG, "Search mode exited: map restored");
     }
 
 
@@ -660,7 +667,10 @@ public class MapTabFragment extends Fragment {
         binding.buttonReflesh.setOnClickListener(view -> {
             BLE.INSTANCE.getWriteQueue().offer("RECEIVED=?");
             locationViewModel.refresh();
-            Toast.makeText(getContext(), "Refreshing...", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.devices_toast_refreshing),
+                    Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -689,12 +699,13 @@ public class MapTabFragment extends Fragment {
     }
 
     public void handleLocationDelClick(LocationEntity location) {
+        // Localized
         new AlertDialog.Builder(getContext())
-                .setTitle("Delete Location")
-                .setMessage("Are you sure you want to delete this location?")
-                .setPositiveButton("Delete", (dialog, which) ->
+                .setTitle(getString(R.string.devices_dialog_delete_title))
+                .setMessage(getString(R.string.devices_dialog_delete_msg))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) ->
                         locationViewModel.delete(location))
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -705,12 +716,18 @@ public class MapTabFragment extends Fragment {
                 getContext().getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("copy", loc);
         clipboard.setPrimaryClip(clip);
-        Toast.makeText(getContext(), "Copied to clipboard.", Toast.LENGTH_SHORT).show();
+        // Localized
+        Toast.makeText(getContext(),
+                getString(R.string.devices_toast_copied),
+                Toast.LENGTH_SHORT).show();
     }
 
     public void handleLocationMapClick(LocationEntity location) {
         if (location.getCodeNum() == null) {
-            Toast.makeText(getContext(), "Invalid device", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.devices_toast_invalid),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -773,7 +790,10 @@ public class MapTabFragment extends Fragment {
             String code = etCode.getText().toString().trim();
 
             if (name.isEmpty() || code.isEmpty()) {
-                Toast.makeText(getContext(), "Please fill in all fields.", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(),
+                        getString(R.string.devices_toast_fill_all),
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -784,7 +804,10 @@ public class MapTabFragment extends Fragment {
             }
 
             dialog.dismiss();
-            Toast.makeText(getContext(), "Saved.", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.devices_toast_saved),
+                    Toast.LENGTH_SHORT).show();
         });
 
         dialog.show();

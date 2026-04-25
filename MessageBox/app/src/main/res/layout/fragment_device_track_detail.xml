@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:background="#0A1628">
 
-    <!-- ═══════ 헤더 ═══════ -->
+    <!-- ═══════ Header ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
@@ -64,7 +64,7 @@
             android:singleLine="true"
             android:ellipsize="middle" />
 
-        <!-- ⭐ UI-2026-04-23: Export 버튼 추가 -->
+        <!-- Export button -->
         <LinearLayout
             android:id="@+id/btn_export"
             android:layout_width="wrap_content"
@@ -88,7 +88,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Export"
+                android:text="@string/track_detail_btn_export"
                 android:textColor="#00E5D1"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -118,7 +118,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Close"
+                android:text="@string/btn_close"
                 android:textColor="#FF5252"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -127,7 +127,7 @@
 
     </LinearLayout>
 
-    <!-- ═══════ 기간 + 재생 컨트롤 ═══════ -->
+    <!-- ═══════ Date range + playback controls ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -306,7 +306,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:gravity="center"
-                android:text="Apply"
+                android:text="@string/track_detail_btn_apply"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#00E5D1"
@@ -436,7 +436,7 @@
 
     </LinearLayout>
 
-    <!-- ═══════ 트랙 리스트 헤더 (컴팩트) ═══════ -->
+    <!-- ═══════ Track list header (compact) ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -452,7 +452,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="TRACK LIST"
+            android:text="@string/track_detail_section_track_list"
             android:textColor="#00E5D1"
             android:textSize="10sp"
             android:textStyle="bold"
@@ -470,14 +470,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=" pts"
+            android:text="@string/track_detail_unit_pts"
             android:textColor="#5A7090"
             android:textSize="10sp"
             android:textStyle="bold" />
 
     </LinearLayout>
 
-    <!-- 컬럼 헤더 -->
+    <!-- Column header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="22dp"
@@ -534,7 +534,7 @@
 
     </LinearLayout>
 
-    <!-- ═══════ 트랙 리스트 (노랑) - 축소: 27 ⭐ ═══════ -->
+    <!-- ═══════ Track list - weight 27 ═══════ -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -572,7 +572,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No track points"
+                android:text="@string/track_detail_empty_no_data"
                 android:textColor="#5A7090"
                 android:textSize="12sp"
                 android:textStyle="bold"
@@ -582,7 +582,7 @@
 
     </FrameLayout>
 
-    <!-- ═══════ 지도 (보라) - 확대: 113 ⭐ ═══════ -->
+    <!-- ═══════ Map - weight 113 ═══════ -->
     <FrameLayout
         android:id="@+id/map_container"
         android:layout_width="match_parent"
@@ -595,7 +595,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- ⭐ 지도 모드 토글 (좌측 상단) -->
+        <!-- Map mode toggle (top-left) -->
         <include
             layout="@layout/view_map_mode_toggle"
             android:layout_width="wrap_content"
@@ -603,7 +603,7 @@
             android:layout_gravity="top|start"
             android:layout_margin="8dp" />
 
-        <!-- Zoom 정보 (우측 상단) -->
+        <!-- Zoom info (top-right) -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -678,7 +678,7 @@
 
         </LinearLayout>
 
-        <!-- ═══════ ⭐ UI-2026-04-23: 정보 박스 (확장) ═══════ -->
+        <!-- ═══════ Info box (expanded) ═══════ -->
         <LinearLayout
             android:id="@+id/info_box"
             android:layout_width="wrap_content"
@@ -693,7 +693,7 @@
             android:paddingBottom="8dp"
             android:visibility="gone">
 
-            <!-- 첫 번째 줄: SPEED | HEADING | TYPE | ALT -->
+            <!-- Row 1: SPEED | HEADING | TYPE | ALT -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -845,7 +845,7 @@
                     android:background="#2A4570"
                     android:layout_marginEnd="12dp" />
 
-                <!-- ⭐ ALT 새로 추가 -->
+                <!-- ALT (newly added) -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -893,7 +893,7 @@
 
             </LinearLayout>
 
-            <!-- 구분선 -->
+            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -901,7 +901,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="6dp" />
 
-            <!-- ⭐ 두 번째 줄: SEND_TIME (기기 GPS 시간) -->
+            <!-- Row 2: SEND_TIME (device GPS time) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -930,7 +930,7 @@
 
             </LinearLayout>
 
-            <!-- ⭐ 세 번째 줄: RECV_TIME (앱 수신 시간) -->
+            <!-- Row 3: RECV_TIME (app receive time) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -958,7 +958,7 @@
 
             </LinearLayout>
 
-            <!-- 기존 tv_info_time 필드 (호환성 - 숨김) -->
+            <!-- Legacy tv_info_time (compatibility - hidden) -->
             <TextView
                 android:id="@+id/tv_info_time"
                 android:layout_width="wrap_content"

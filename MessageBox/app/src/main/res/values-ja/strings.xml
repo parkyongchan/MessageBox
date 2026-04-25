@@ -593,5 +593,135 @@
     <string name="outbox_new_btn_keep">編集を続ける</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <!-- ════════ MAIN (MainFragment) ════════ -->
+
+    <!-- Exit dialog -->
+    <string name="main_dialog_exit_title">アプリ終了</string>
+    <string name="main_dialog_exit_msg">アプリを終了しますか？</string>
+
+    <!-- ※ Reused: btn_exit (terminate), btn_cancel (cancel) -->
+    <!-- If btn_exit is missing in ja, uncomment below: -->
+    <!-- <string name="btn_exit">終了</string> -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ DEVICES Tab (MapTabFragment) ════════ -->
+
+    <!-- Section -->
+    <string name="devices_section_received_list">受信データリスト</string>
+
+    <!-- Search hint -->
+    <string name="devices_hint_search">IMEIまたはエイリアス検索...</string>
+
+    <!-- Filter chips -->
+    <string name="devices_chip_all">すべて</string>
+    <string name="devices_chip_track">軌跡</string>
+
+    <!-- Empty state -->
+    <string name="devices_empty_no_data">位置データがありません</string>
+
+    <!-- Toasts -->
+    <string name="devices_toast_no_markers">表示するマーカーがありません</string>
+    <string name="devices_toast_refreshing">更新中...</string>
+    <string name="devices_toast_copied">クリップボードにコピーしました。</string>
+    <string name="devices_toast_invalid">無効な機器</string>
+    <string name="devices_toast_fill_all">すべてのフィールドを入力してください。</string>
+    <string name="devices_toast_saved">保存しました。</string>
+
+    <!-- Marker -->
+    <string name="devices_marker_unknown">不明</string>
+
+    <!-- Delete dialog -->
+    <string name="devices_dialog_delete_title">位置を削除</string>
+    <string name="devices_dialog_delete_msg">この位置を削除しますか？</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ TRACK DETAIL (DeviceTrackDetailFragment) ════════ -->
+
+    <!-- Buttons -->
+    <string name="track_detail_btn_export">エクスポート</string>
+    <string name="track_detail_btn_apply">適用</string>
+
+    <!-- Section -->
+    <string name="track_detail_section_track_list">軌跡リスト</string>
+
+    <!-- Unit (with leading space) -->
+    <string name="track_detail_unit_pts"> 件</string>
+
+    <!-- Empty state -->
+    <string name="track_detail_empty_no_data">軌跡ポイントがありません</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ POINT DETAIL DIALOG (DeviceTrackDetailFragment) ════════ -->
+
+    <!-- Title (with %1$d for point number) -->
+    <string name="point_detail_title">📍 ポイント #%1$d</string>
+
+    <!-- Labels -->
+    <string name="point_detail_label_imei">📡 IMEI: </string>
+    <string name="point_detail_label_time">🕐 時刻: </string>
+    <string name="point_detail_label_coordinates">📍 座標: </string>
+    <string name="point_detail_label_altitude">⬆️ 高度: </string>
+    <string name="point_detail_label_mode">🛰 モード: </string>
+
+    <!-- Marker hint -->
+    <string name="point_detail_marker_tap_for_details">タップで詳細表示</string>
+
+    <!-- Toast -->
+    <string name="point_detail_toast_copied">座標をコピーしました</string>
+
+    <!-- ════════ TRACK MODE TEXTS ════════ -->
+
+    <!-- Send (自機) -->
+    <string name="point_mode_my_sos">自機SOS送信 (0x00)</string>
+    <string name="point_mode_my_car">自機CAR追跡 (0x01)</string>
+    <string name="point_mode_my_uav">自機UAV追跡 (0x02)</string>
+    <string name="point_mode_my_uat">自機UAT追跡 (0x03)</string>
+    <string name="point_mode_legacy_sos">レガシー SOS (0x0%1$d)</string>
+
+    <!-- Receive (他機) -->
+    <string name="point_mode_rx_sos">他機SOS受信 (0x10)</string>
+    <string name="point_mode_rx_car">他機CAR追跡 (0x11)</string>
+    <string name="point_mode_rx_uav">他機UAV追跡 (0x12)</string>
+    <string name="point_mode_rx_uat">他機UAT追跡 (0x13)</string>
+
+    <!-- Other -->
+    <string name="point_mode_other">その他 (0x%1$s)</string>
+
+    <!-- ════════ EXPORT DIALOG ════════ -->
+
+    <string name="export_dialog_title">機器軌跡をエクスポート</string>
+    <string name="export_format_gpx">GPX (GPS Exchange Format)</string>
+    <string name="export_format_kml">KML (Google Earth)</string>
+    <string name="export_format_csv">CSV (Excel/分析)</string>
+
+    <string name="export_toast_no_data">エクスポートするデータがありません</string>
+    <string name="export_success_title">✅ エクスポート完了</string>
+    <string name="export_success_msg">ファイルを保存しました:\n\n📁 %1$s\n\n次に何をしますか？</string>
+    <string name="export_btn_share">共有</string>
+    <string name="export_failed">❌ エクスポート失敗: %1$s</string>
+    <string name="export_share_failed">共有失敗: %1$s</string>
+
+    <!-- ════════ TRACK DETAIL Toast/Misc ════════ -->
+
+    <string name="track_detail_loading">軌跡を読み込み中...</string>
+    <string name="track_detail_no_points">軌跡ポイントがありません</string>
+    <string name="track_detail_invalid_date">無効な日付形式</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 </resources>

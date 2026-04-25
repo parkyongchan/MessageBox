@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="#0A1628">
 
-    <!-- 임시 안내 문구 - Step 2에서 하단 탭 + Map 화면으로 교체 예정 -->
+    <!-- Temporary placeholder - will be replaced with bottom tabs + Map screen in Step 2 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="탭 컨텐츠 영역"
+            android:text="Tab content area"
             android:textColor="#4A5F78"
             android:textSize="13sp"
             android:layout_marginTop="12dp" />
@@ -30,14 +30,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Step 2에서 하단 탭이 추가됩니다"
+            android:text="Bottom tabs will be added in Step 2"
             android:textColor="#2E4560"
             android:textSize="11sp"
             android:layout_marginTop="4dp" />
 
     </LinearLayout>
 
-    <!-- 숨김 처리된 기존 ID들 (MainFragment.java 참조 유지용) -->
+    <!-- Hidden existing IDs (kept for MainFragment.java reference) -->
     <TextView
         android:id="@+id/badge_inbox"
         android:layout_width="1dp"

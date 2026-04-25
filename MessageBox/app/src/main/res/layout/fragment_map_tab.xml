@@ -8,7 +8,7 @@
     android:background="#0A1628"
     tools:context=".tabs.MapTabFragment">
 
-    <!-- ═══════ HEADER (컴팩트) ═══════ -->
+    <!-- ═══════ HEADER (compact) ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -32,7 +32,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="RECEIVED DATA LIST"
+            android:text="@string/devices_section_received_list"
             android:textColor="#00E5D1"
             android:textSize="10sp"
             android:textStyle="bold"
@@ -62,7 +62,7 @@
 
     </LinearLayout>
 
-    <!-- ═══════ 필터 영역 (보라) - 비율 축소: 20 ═══════ -->
+    <!-- ═══════ Filter area - weight 20 ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -74,7 +74,7 @@
         android:paddingTop="2dp"
         android:paddingBottom="2dp">
 
-        <!-- 날짜 범위 -->
+        <!-- Date range -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -158,7 +158,7 @@
 
         </LinearLayout>
 
-        <!-- Quick 칩 -->
+        <!-- Quick chips (1h, 24h, 3d, 7d, 30d - kept as-is, unit abbreviations) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -242,7 +242,7 @@
 
         </LinearLayout>
 
-        <!-- 검색 -->
+        <!-- Search -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -267,7 +267,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:hint="Search IMEI or Alias..."
+                android:hint="@string/devices_hint_search"
                 android:textColor="#FFFFFF"
                 android:textColorHint="#5A7090"
                 android:textSize="10sp"
@@ -280,7 +280,7 @@
 
         </LinearLayout>
 
-        <!-- 타입 필터 -->
+        <!-- Type filter -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -294,7 +294,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="All"
+                android:text="@string/devices_chip_all"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:background="@drawable/bg_filter_chip"
@@ -309,7 +309,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="Track"
+                android:text="@string/devices_chip_track"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:background="@drawable/bg_filter_chip"
@@ -336,7 +336,7 @@
 
     </LinearLayout>
 
-    <!-- ═══════ 장비 목록 (회색) - 비율 확대: 40 ⭐ ═══════ -->
+    <!-- ═══════ Device list - weight 40 ═══════ -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -378,7 +378,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No location data"
+                android:text="@string/devices_empty_no_data"
                 android:textColor="#5A7090"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -387,7 +387,7 @@
 
     </FrameLayout>
 
-    <!-- ═══════ 지도 (보라) - 100 ⭐ ═══════ -->
+    <!-- ═══════ Map - weight 100 ═══════ -->
     <FrameLayout
         android:id="@+id/map_container"
         android:layout_width="match_parent"
@@ -400,7 +400,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- ⭐ 지도 모드 토글 (좌측 상단) -->
+        <!-- Map mode toggle (top-left) -->
         <include
             layout="@layout/view_map_mode_toggle"
             android:layout_width="wrap_content"
@@ -408,7 +408,7 @@
             android:layout_gravity="top|start"
             android:layout_margin="8dp" />
 
-        <!-- Zoom 정보 (우측 상단) -->
+        <!-- Zoom info (top-right) -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -421,7 +421,7 @@
             android:layout_margin="8dp"
             android:layout_gravity="top|end">
 
-            <!-- tv_map_mode 는 기존 Java 코드와 호환을 위해 유지 (visibility=gone) -->
+            <!-- tv_map_mode kept for Java code compatibility (visibility=gone) -->
             <TextView
                 android:id="@+id/tv_map_mode"
                 android:layout_width="wrap_content"
@@ -441,7 +441,7 @@
 
         </LinearLayout>
 
-        <!-- 지도 컨트롤 -->
+        <!-- Map controls -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -488,7 +488,7 @@
 
     </FrameLayout>
 
-    <!-- ═══════ 상태 바 ═══════ -->
+    <!-- ═══════ Status bar ═══════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

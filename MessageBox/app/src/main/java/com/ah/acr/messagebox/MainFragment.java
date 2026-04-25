@@ -22,7 +22,7 @@ public class MainFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle b) {
         binding = FragmentMainBinding.inflate(inflater, container, false);
 
-        // 수신함 배지 (메시지함 카드가 삭제되었지만, Step 2에서 하단 탭 배지로 재사용 예정)
+        // Inbox badge (msgbox card was removed, but reused as bottom tab badge in Step 2)
         new ViewModelProvider(requireActivity())
                 .get(BleViewModel.class)
                 .getDeviceStatus()
@@ -44,15 +44,15 @@ public class MainFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle b) {
         super.onViewCreated(view, b);
 
-        // 뒤로가기 처리
+        // Back press handler - Localized
         OnBackPressedCallback cb = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 new AlertDialog.Builder(requireContext())
-                        .setTitle("앱 종료")
-                        .setMessage("앱을 종료하시겠습니까?")
-                        .setPositiveButton("종료", (d, w) -> requireActivity().finishAffinity())
-                        .setNegativeButton("취소", null)
+                        .setTitle(getString(R.string.main_dialog_exit_title))
+                        .setMessage(getString(R.string.main_dialog_exit_msg))
+                        .setPositiveButton(getString(R.string.btn_exit), (d, w) -> requireActivity().finishAffinity())
+                        .setNegativeButton(getString(R.string.btn_cancel), null)
                         .show();
             }
         };

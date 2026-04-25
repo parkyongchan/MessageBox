@@ -54,13 +54,14 @@ import java.util.Locale;
 
 
 /**
- * 장비별 전체 트랙 상세 팝업 (전체화면 DialogFragment)
+ * Device-specific full track detail popup (full-screen DialogFragment)
  *
- * UI-2026-04-23 업데이트:
- * - ⭐ 숫자 마커 적용 (NumberedMarkerUtil)
- * - ⭐ SOS/TRACK 색상 구분
- * - ⭐ 정보박스 확장 (ALT, SEND_TIME, RECV_TIME)
- * - ⭐ Export 기능 (GPX/KML/CSV)
+ * UI-2026-04-23 update:
+ * - Numbered markers (NumberedMarkerUtil)
+ * - SOS/TRACK color distinction
+ * - Expanded info box (ALT, SEND_TIME, RECV_TIME)
+ * - Export feature (GPX/KML/CSV)
+ * - Localized for ko/en/ja
  */
 public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String TAG = DeviceTrackDetailFragment.class.getSimpleName();
@@ -111,9 +112,9 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     private final SimpleDateFormat datetimeFmt =
             new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
-    // ⭐ UI-2026-04-23: 풍부한 시간 포맷 "26년 04월 23일 20시 20분 30초"
+    // Locale-neutral ISO format
     private final SimpleDateFormat richTimeFmt =
-            new SimpleDateFormat("yy년 MM월 dd일 HH시 mm분 ss초", Locale.getDefault());
+            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
 
     public static DeviceTrackDetailFragment newInstance(String codeNum, String name) {
@@ -181,7 +182,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 binding.getRoot(),
                 requireContext(),
                 newMode -> {
-                    Log.v(TAG, "지도 모드 변경: " + newMode);
+                    Log.v(TAG, "Map mode changed: " + newMode);
                     MapModeManager.applyToMapView(requireContext(), mMapView);
                 }
         );
@@ -201,9 +202,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    /**
-     * ⭐ UI-2026-04-23: Export 버튼 (헤더의 btn_export)
-     */
     private void setupExportButton() {
         if (binding.btnExport != null) {
             binding.btnExport.setOnClickListener(v -> showExportDialog());
@@ -305,7 +303,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 : null;
 
         if (mCurrentTrackLive == null) {
-            Toast.makeText(getContext(), "Loading tracks...", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.track_detail_loading),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -339,13 +340,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    /**
-     * ⭐ UI-2026-04-23: 숫자 마커로 변경
-     * - 최신=1, 오래됨=N
-     * - alpha 페이딩 (최신 뚜렷, 오래됨 희미)
-     * - SOS=빨강, TRACK=청록, 기타=주황
-     * - 최신 마커는 크고 흰 테두리
-     */
     private void drawTrackOnMap() {
         if (mMapView == null) return;
 
@@ -359,7 +353,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         int total = mTrackPoints.size();
         List<GeoPoint> polylinePoints = new ArrayList<>();
 
-        // 1단계: 유효한 포인트와 좌표 수집
+        // Step 1: collect valid points
         List<LocationEntity> validLocations = new ArrayList<>();
         for (LocationWithAddress item : mTrackPoints) {
             LocationEntity loc = item.getLocation();
@@ -374,35 +368,24 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             return;
         }
 
-        // 2단계: Polyline (색상은 전반적인 세션 성격으로 - 첫 포인트 기준)
-        // 또는 mixed면 그라데이션... 일단 기본 청록으로 유지
+        // Step 2: Polyline
         if (polylinePoints.size() > 1) {
             mPolyline = new Polyline();
             mPolyline.setPoints(polylinePoints);
-            // 기본 청록 (TRACK이 대부분)
             mPolyline.getOutlinePaint().setColor(Color.parseColor("#378ADD"));
             mPolyline.getOutlinePaint().setStrokeWidth(6f);
             mPolyline.getOutlinePaint().setAlpha(180);
             mMapView.getOverlays().add(0, mPolyline);
         }
 
-        // 3단계: 숫자 마커 생성
-        // 리스트 순서: mTrackPoints 는 시간순 오래된 것 → 최신
-        // 번호: 최신=1, 오래됨=N
+        // Step 3: numbered markers
         for (int i = 0; i < validTotal; i++) {
             final LocationEntity loc = validLocations.get(i);
             GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
 
-            // 번호: 최신=1, 오래됨=N
             final int number = validTotal - i;
-
-            // 알파: 인덱스가 높을수록(최신) 뚜렷
             float alpha = NumberedMarkerUtil.calculateAlpha(i, validTotal);
-
-            // 최신 포인트 여부
             boolean isLatest = (i == validTotal - 1);
-
-            // 색상: trackMode에 따라
             int color = getColorForTrackMode(loc.getTrackMode());
 
             Marker marker = new Marker(mMapView);
@@ -410,20 +393,20 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             NumberedMarkerUtil.applyToMarker(
                     marker, requireContext(), number, color, alpha, isLatest);
 
-            // ⭐ UI-2026-04-24: 말풍선에 시간 + 좌표 표시
+            // Title + snippet (localized)
             SimpleDateFormat fullFmt = new SimpleDateFormat(
                     "yyyy-MM-dd HH:mm:ss", Locale.US);
             String title = "#" + number + "  " + fullFmt.format(
                     loc.getCreateAt() != null ? loc.getCreateAt() : new Date());
             String snippet = String.format(Locale.US,
-                    "%.6f, %.6f  (탭하여 상세보기)",
-                    loc.getLatitude(), loc.getLongitude());
+                    "%.6f, %.6f  (%s)",
+                    loc.getLatitude(), loc.getLongitude(),
+                    getString(R.string.point_detail_marker_tap_for_details));
             marker.setTitle(title);
             marker.setSnippet(snippet);
 
-            // ⭐ UI-2026-04-24: 마커 탭 → 상세 다이얼로그
+            // Marker tap -> detail dialog
             marker.setOnMarkerClickListener((m, mv) -> {
-                // 기본 말풍선 표시 + 상세 다이얼로그 팝업
                 showPointDetailDialog(loc, number);
                 return true;
             });
@@ -438,8 +421,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
 
     /**
-     * ⭐ UI-2026-04-24: 포인트 상세 다이얼로그
-     * 마커 탭하면 나타나는 상세 정보창
+     * Point detail dialog (localized for ko/en/ja)
      */
     private void showPointDetailDialog(LocationEntity loc, int number) {
         SimpleDateFormat fullFmt = new SimpleDateFormat(
@@ -449,72 +431,65 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 : "-";
 
         StringBuilder sb = new StringBuilder();
-        sb.append("📡 IMEI: ").append(
+        sb.append(getString(R.string.point_detail_label_imei)).append(
                 loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
-        sb.append("🕐 시간: ").append(time).append("\n\n");
-        sb.append("📍 좌표: ").append(String.format(Locale.US,
+        sb.append(getString(R.string.point_detail_label_time)).append(time).append("\n\n");
+        sb.append(getString(R.string.point_detail_label_coordinates)).append(String.format(Locale.US,
                 "%.6f, %.6f", loc.getLatitude(), loc.getLongitude())).append("\n\n");
 
         if (loc.getAltitude() != 0.0) {
-            sb.append("⬆️ 고도: ").append(String.format(Locale.US,
+            sb.append(getString(R.string.point_detail_label_altitude)).append(String.format(Locale.US,
                     "%.1f m", loc.getAltitude())).append("\n\n");
         }
 
         String modeText = getTrackModeText(loc.getTrackMode());
-        sb.append("🛰 모드: ").append(modeText);
+        sb.append(getString(R.string.point_detail_label_mode)).append(modeText);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("📍 포인트 #" + number)
+                .setTitle(getString(R.string.point_detail_title, number))
                 .setMessage(sb.toString())
-                .setPositiveButton("좌표 복사", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_copy_coordinates), (d, w) -> {
                     android.content.ClipboardManager clipboard =
                             (android.content.ClipboardManager) requireContext()
                                     .getSystemService(android.content.Context.CLIPBOARD_SERVICE);
                     String coords = String.format(Locale.US, "%f,%f",
                             loc.getLatitude(), loc.getLongitude());
                     android.content.ClipData clip =
-                            android.content.ClipData.newPlainText("좌표", coords);
+                            android.content.ClipData.newPlainText(
+                                    getString(R.string.clipboard_label_coordinates), coords);
                     clipboard.setPrimaryClip(clip);
                     Toast.makeText(requireContext(),
-                            "좌표가 복사되었습니다",
+                            getString(R.string.point_detail_toast_copied),
                             Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("닫기", null)
+                .setNegativeButton(getString(R.string.btn_close), null)
                 .show();
     }
 
 
     /**
-     * ⭐ UI-2026-04-24: trackMode 값을 읽기 쉬운 텍스트로 변환
+     * Convert trackMode to readable text (localized)
      */
     private String getTrackModeText(int trackMode) {
         switch (trackMode) {
-            case 0: return "내 SOS 송신 (0x00)";
-            case 1: return "내 CAR TRACK (0x01)";
-            case 2: return "내 UAV TRACK (0x02)";
-            case 3: return "내 UAT TRACK (0x03)";
+            case 0: return getString(R.string.point_mode_my_sos);
+            case 1: return getString(R.string.point_mode_my_car);
+            case 2: return getString(R.string.point_mode_my_uav);
+            case 3: return getString(R.string.point_mode_my_uat);
             case 4:
-            case 5: return "레거시 SOS (0x0" + trackMode + ")";
-            case 16: return "상대방 SOS 수신 (0x10)";
-            case 17: return "상대방 CAR TRACK (0x11)";
-            case 18: return "상대방 UAV TRACK (0x12)";
-            case 19: return "상대방 UAT TRACK (0x13)";
-            default: return "기타 (0x" + String.format("%02X", trackMode) + ")";
+            case 5: return getString(R.string.point_mode_legacy_sos, trackMode);
+            case 16: return getString(R.string.point_mode_rx_sos);
+            case 17: return getString(R.string.point_mode_rx_car);
+            case 18: return getString(R.string.point_mode_rx_uav);
+            case 19: return getString(R.string.point_mode_rx_uat);
+            default: return getString(R.string.point_mode_other,
+                    String.format("%02X", trackMode));
         }
     }
 
 
     /**
-     * ⭐ UI-2026-04-23: trackMode 에 따른 숫자 마커 색상
-     *
-     * TYTO 프로토콜 ver 코드:
-     * - 0x10 : SOS (긴급)    → 빨강
-     * - 0x11 : CAR (Tracking)→ 청록
-     * - 0x12 : UAV (드론)    → 청록
-     * - 0x13 : UAT (차량확장)→ 청록
-     * - 4, 5 : Legacy SOS   → 빨강
-     * - 2    : Legacy Track → 청록
-     * - 기타                  → 주황
+     * Numbered marker color by trackMode
      */
     private int getColorForTrackMode(int trackMode) {
         if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
@@ -590,27 +565,17 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    /**
-     * ⭐ UI-2026-04-23: 정보 박스 확장
-     * - 기존: SPEED | HEADING | TYPE | TIME
-     * - 신규: SPEED | HEADING | TYPE | ALT  (1줄)
-     *        + 📤 SEND: 26년 04월 23일 20시 20분 30초
-     *        + 📥 RECV: 26년 04월 23일 20시 20분 45초  (2줄)
-     */
     private void updateInfoBox(LocationEntity loc) {
         binding.infoBox.setVisibility(View.VISIBLE);
 
-        // SPEED
         binding.tvInfoSpeed.setText(
                 loc.getSpeed() != null ? String.valueOf(loc.getSpeed()) : "-"
         );
 
-        // HEADING
         binding.tvInfoHeading.setText(
                 loc.getDirection() != null ? String.valueOf(loc.getDirection()) : "-"
         );
 
-        // TYPE (아이콘 색상까지)
         int trackMode = loc.getTrackMode();
         if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
             binding.tvInfoType.setText("SOS");
@@ -624,7 +589,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             binding.tvInfoType.setTextColor(0xFF95B0D4);
         }
 
-        // ⭐ UI-2026-04-23: ALT (고도)
         if (binding.tvInfoAlt != null) {
             if (loc.getAltitude() != null) {
                 binding.tvInfoAlt.setText(String.valueOf(loc.getAltitude()));
@@ -633,7 +597,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             }
         }
 
-        // ⭐ UI-2026-04-23: SEND_TIME (기기 GPS 시간)
         if (binding.tvInfoSendTime != null) {
             if (loc.getGpsDate() != null) {
                 binding.tvInfoSendTime.setText(richTimeFmt.format(loc.getGpsDate()));
@@ -642,7 +605,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             }
         }
 
-        // ⭐ UI-2026-04-23: RECV_TIME (앱 수신 시간)
         if (binding.tvInfoRecvTime != null) {
             if (loc.getCreateAt() != null) {
                 binding.tvInfoRecvTime.setText(richTimeFmt.format(loc.getCreateAt()));
@@ -651,7 +613,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             }
         }
 
-        // (기존 TIME 필드는 호환성 유지)
         if (loc.getCreateAt() != null) {
             binding.tvInfoTime.setText(datetimeFmt.format(loc.getCreateAt()));
         } else {
@@ -661,25 +622,26 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ UI-2026-04-23: Export 기능 (GPX/KML/CSV)
+    //   Export feature - localized
     // ═══════════════════════════════════════════════════════════════
 
     private void showExportDialog() {
         if (mTrackPoints.isEmpty()) {
+            // Localized
             Toast.makeText(getContext(),
-                    "내보낼 데이터가 없습니다",
+                    getString(R.string.export_toast_no_data),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
         String[] formats = {
-                "GPX (GPS Exchange Format)",
-                "KML (Google Earth)",
-                "CSV (Excel/Analysis)"
+                getString(R.string.export_format_gpx),
+                getString(R.string.export_format_kml),
+                getString(R.string.export_format_csv)
         };
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Export Device Track")
+                .setTitle(getString(R.string.export_dialog_title))
                 .setItems(formats, (dialog, which) -> {
                     TrackExporter.Format format;
                     switch (which) {
@@ -690,57 +652,46 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                     }
                     performExport(format);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     private void performExport(TrackExporter.Format format) {
-        // LocationWithAddress 리스트를 TrackExporter가 요구하는
-        // MyTrackEntity + MyTrackPointEntity 형식으로 변환
-
         Date start = mTrackPoints.get(0).getLocation().getCreateAt();
         Date end = mTrackPoints.get(mTrackPoints.size() - 1).getLocation().getCreateAt();
         if (start == null) start = new Date();
         if (end == null) end = new Date();
 
-        // 장비명으로 트랙 이름 생성
         String trackName = (deviceName != null && !deviceName.isEmpty())
                 ? deviceName : (codeNum != null ? codeNum : "Device");
         trackName += " Track " + dateFmt.format(start);
 
-        // 가상 MyTrackEntity 생성 (export용 어댑터)
-        // 시그니처: id, name, startTime, endTime,
-        //          totalDistance, pointCount,
-        //          avgSpeed, maxSpeed, minAltitude, maxAltitude,
-        //          status(String), int, int,
-        //          createdAt
         com.ah.acr.messagebox.database.MyTrackEntity adapter =
                 new com.ah.acr.messagebox.database.MyTrackEntity(
                         0, trackName, start, end,
-                        0.0,                    // totalDistance (export가 계산)
-                        mTrackPoints.size(),    // pointCount
-                        0.0, 0.0, 0.0, 0.0,     // avgSpeed, maxSpeed, minAlt, maxAlt
-                        "COMPLETED",            // status (String!)
-                        0, 0,                   // 추가 int 2개
-                        new Date()              // createdAt
+                        0.0,
+                        mTrackPoints.size(),
+                        0.0, 0.0, 0.0, 0.0,
+                        "COMPLETED",
+                        0, 0,
+                        new Date()
                 );
 
-        // LocationWithAddress → MyTrackPointEntity 변환
         List<com.ah.acr.messagebox.database.MyTrackPointEntity> pts = new ArrayList<>();
         for (LocationWithAddress item : mTrackPoints) {
             LocationEntity loc = item.getLocation();
             if (loc.getLatitude() == null || loc.getLongitude() == null) continue;
 
             pts.add(new com.ah.acr.messagebox.database.MyTrackPointEntity(
-                    0,                          // id
-                    0,                          // trackId
+                    0,
+                    0,
                     loc.getLatitude(),
                     loc.getLongitude(),
                     loc.getAltitude() != null ? loc.getAltitude().doubleValue() : 0.0,
                     loc.getSpeed() != null ? loc.getSpeed().doubleValue() : 0.0,
                     loc.getDirection() != null ? loc.getDirection().floatValue() : 0f,
-                    0,                          // accuracy
+                    0,
                     loc.getCreateAt() != null ? loc.getCreateAt() : new Date()
             ));
         }
@@ -755,8 +706,9 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         if (result.success) {
             showExportSuccessDialog(result.file, format);
         } else {
+            // Localized
             Toast.makeText(getContext(),
-                    "❌ Export failed: " + result.errorMessage,
+                    getString(R.string.export_failed, result.errorMessage),
                     Toast.LENGTH_LONG).show();
         }
     }
@@ -766,10 +718,9 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         String displayPath = TrackExporter.getDisplayPath(file);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("✅ Exported Successfully")
-                .setMessage("File saved:\n\n📁 " + displayPath
-                        + "\n\nWhat would you like to do?")
-                .setPositiveButton("Share", (d, w) -> {
+                .setTitle(getString(R.string.export_success_title))
+                .setMessage(getString(R.string.export_success_msg, displayPath))
+                .setPositiveButton(getString(R.string.export_btn_share), (d, w) -> {
                     try {
                         Intent intent = TrackExporter.buildShareIntent(
                                 requireContext(), file, format);
@@ -777,11 +728,11 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                     } catch (Exception e) {
                         Log.e(TAG, "Share failed: " + e.getMessage());
                         Toast.makeText(getContext(),
-                                "Share failed: " + e.getMessage(),
+                                getString(R.string.export_share_failed, e.getMessage()),
                                 Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNeutralButton("OK", null)
+                .setNeutralButton(getString(R.string.btn_ok), null)
                 .show();
     }
 
@@ -828,7 +779,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                     loadTrackRange(start, c.getTime());
                 }
             } catch (Exception e) {
-                Toast.makeText(getContext(), "Invalid date format", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(),
+                        getString(R.string.track_detail_invalid_date),
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -879,7 +833,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
     private void togglePlay() {
         if (mTrackPoints.isEmpty()) {
-            Toast.makeText(getContext(), "No track points", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.track_detail_no_points),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
