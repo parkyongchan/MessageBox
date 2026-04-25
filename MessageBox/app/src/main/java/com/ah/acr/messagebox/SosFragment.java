@@ -38,11 +38,11 @@ public class SosFragment extends Fragment {
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
-    // 다크 테마 SOS 색상
-    private static final int COLOR_SOS_ACTIVE    = 0xFFFF5252;  // 빨강 (긴급)
-    private static final int COLOR_SOS_INACTIVE  = 0xFF3A1A1A;  // 진한 빨강 (비활성)
-    private static final int COLOR_STOP_ACTIVE   = 0xFF00E5D1;  // 청록 (정지 활성)
-    private static final int COLOR_STOP_INACTIVE = 0xFF152A4A;  // 진한 카드 배경
+    // Dark theme SOS colors
+    private static final int COLOR_SOS_ACTIVE    = 0xFFFF5252;  // Red (emergency)
+    private static final int COLOR_SOS_INACTIVE  = 0xFF3A1A1A;  // Dark red (inactive)
+    private static final int COLOR_STOP_ACTIVE   = 0xFF00E5D1;  // Cyan (stop active)
+    private static final int COLOR_STOP_INACTIVE = 0xFF152A4A;  // Dark card background
 
 
     @Override
@@ -64,10 +64,10 @@ public class SosFragment extends Fragment {
 
         binding.getRoot().setOnClickListener(v -> hideKeyboard());
 
-        // ⭐ Receiver 카드 클릭 → 다이얼로그
+        // Receiver card click -> dialog
         binding.layoutReceiverDisplay.setOnClickListener(v -> showReceiverMenu());
 
-        // 장비 설정 수신 (기존 로직)
+        // Device setting receive (existing logic)
         BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
@@ -77,14 +77,17 @@ public class SosFragment extends Fragment {
                 String[] vals = msg.split(",");
 
                 if (vals[0].equals("OK") || vals[0].equals("FAIL")) {
-                    Toast.makeText(getContext(), "SOS Setting: " + vals[0], Toast.LENGTH_LONG).show();
+                    // Localized
+                    Toast.makeText(getContext(),
+                            getString(R.string.sos_setting_result) + vals[0],
+                            Toast.LENGTH_LONG).show();
                     return;
                 }
 
-                // SOS 프로토콜: SET=SOS,T0000,D0000,receiver
+                // SOS protocol: SET=SOS,T0000,D0000,receiver
                 // vals[0]=SOS, vals[1]=T, vals[2]=D, vals[3]=receiver
-                // ⚠️ 기존 코드는 vals[4]였으나, 실제 receiver는 vals[3]으로 보임
-                //    기존 유지하되 길이 체크
+                // Note: existing code used vals[4] but actual receiver seems to be vals[3]
+                //       kept for backward compatibility with length check
                 String receiver = null;
                 if (vals.length > 4) {
                     receiver = vals[4];
@@ -109,7 +112,7 @@ public class SosFragment extends Fragment {
             }
         });
 
-        // 장비 상태 관찰 (SOS 모드 표시)
+        // Observe device status (show SOS mode)
         mBleViewModel.getDeviceStatus().observe(getViewLifecycleOwner(), new Observer<DeviceStatus>() {
             @Override
             public void onChanged(@Nullable final DeviceStatus status) {
@@ -123,7 +126,7 @@ public class SosFragment extends Fragment {
     }
 
 
-    /** Start/Stop 버튼 시각 상태 업데이트 */
+    /** Update Start/Stop button visual state */
     private void updateStartStopButtonState(boolean isSosMode) {
         if (binding == null) return;
 
@@ -141,14 +144,14 @@ public class SosFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // SOS Start (LOCATION=4)
+        // SOS Start (LOCATION=4) - Localized
         binding.buttonSetStart.setOnClickListener(v -> {
             new AlertDialog.Builder(getContext())
-                    .setTitle("Start SOS")
-                    .setMessage("SOS signal will be sent every 3 minutes.\nAre you sure?")
-                    .setPositiveButton("Start SOS", (d, w) ->
+                    .setTitle(getString(R.string.sos_dialog_start_title))
+                    .setMessage(getString(R.string.sos_dialog_start_message))
+                    .setPositiveButton(getString(R.string.sos_btn_start), (d, w) ->
                             BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"))
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         });
 
@@ -156,25 +159,25 @@ public class SosFragment extends Fragment {
         binding.buttonSetStop.setOnClickListener(v ->
                 BLE.INSTANCE.getWriteQueue().offer("LOCATION=5"));
 
-        // Save 버튼
+        // Save button
         binding.buttonSetSave.setOnClickListener(v -> handleSave());
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ RECEIVER MENU (NEW)
+    //   RECEIVER MENU
     // ═══════════════════════════════════════════════════════════════
 
-    /** Receiver 선택 다이얼로그 */
+    /** Receiver selection dialog - Localized */
     private void showReceiverMenu() {
         String[] options = {
-                "📧 Web Server (default)",
-                "📇 From Address Book",
-                "⌨ Type Number Manually"
+                getString(R.string.sos_receiver_option_web),
+                getString(R.string.sos_receiver_option_contact),
+                getString(R.string.sos_receiver_option_manual)
         };
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Select Receiver")
+                .setTitle(getString(R.string.sos_receiver_menu_title))
                 .setItems(options, (dialog, which) -> {
                     switch (which) {
                         case 0: setReceiverWeb(); break;
@@ -182,21 +185,21 @@ public class SosFragment extends Fragment {
                         case 2: showManualInputDialog(); break;
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
-    /** Web Server로 설정 (빈 값) */
+    /** Set to Web Server (empty value) - Localized */
     private void setReceiverWeb() {
         binding.textReceiver.setText("");
         binding.textReceiverIcon.setText("📧");
-        binding.textReceiverLabel.setText("Web Server");
-        binding.textReceiverSub.setText("Default (no specific receiver)");
+        binding.textReceiverLabel.setText(getString(R.string.sos_receiver_web));
+        binding.textReceiverSub.setText(getString(R.string.sos_receiver_web_sub));
     }
 
 
-    /** 주소록에서 선택한 연락처로 설정 */
+    /** Set to contact from Address Book */
     private void setReceiverFromContact(String number, String nickname) {
         binding.textReceiver.setText(nickname != null ? nickname : number);
         binding.textReceiverIcon.setText("📇");
@@ -205,16 +208,16 @@ public class SosFragment extends Fragment {
     }
 
 
-    /** 수동 입력한 번호로 설정 */
+    /** Set to manually entered number - Localized */
     private void setReceiverManual(String number) {
         binding.textReceiver.setText(number);
         binding.textReceiverIcon.setText("⌨");
         binding.textReceiverLabel.setText(number);
-        binding.textReceiverSub.setText("Manual entry");
+        binding.textReceiverSub.setText(getString(R.string.sos_receiver_manual_sub));
     }
 
 
-    /** 주소록 선택 다이얼로그 */
+    /** Address Book picker dialog */
     private void showAddressBookPicker() {
         setupFragmentResultListener();
         SearchDialogFragment searchDialog = new SearchDialogFragment();
@@ -222,27 +225,28 @@ public class SosFragment extends Fragment {
     }
 
 
-    /** 수동 입력 다이얼로그 */
+    /** Manual input dialog - Localized */
     private void showManualInputDialog() {
         EditText input = new EditText(requireContext());
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setHint("Enter IMEI number");
+        input.setHint(getString(R.string.sos_manual_hint));
         input.setPadding(40, 30, 40, 30);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Enter Receiver IMEI")
+                .setTitle(getString(R.string.sos_manual_dialog_title))
                 .setView(input)
-                .setPositiveButton("OK", (dialog, which) -> {
+                .setPositiveButton(getString(R.string.btn_ok), (dialog, which) -> {
                     String number = input.getText().toString().trim();
                     if (!number.isEmpty() && number.matches("\\d+")) {
                         setReceiverManual(number);
                     } else if (!number.isEmpty()) {
+                        // Localized
                         Toast.makeText(getContext(),
-                                "IMEI must be digits only",
+                                getString(R.string.sos_imei_digits_only),
                                 Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -255,10 +259,10 @@ public class SosFragment extends Fragment {
         String nicName = binding.textReceiver.getText().toString().trim();
 
         if (nicName.isEmpty()) {
-            // Web Server 전송
+            // Send to Web Server
             buildAndSendSetting("0");
         } else {
-            // 주소록 조회
+            // Lookup in Address Book
             addressViewModel.getAddressByNicName(nicName).observe(getViewLifecycleOwner(), addressEntity -> {
                 String codeNum = nicName;
                 if (addressEntity != null) {
@@ -266,8 +270,9 @@ public class SosFragment extends Fragment {
                 }
 
                 if (!codeNum.matches("\\d+")) {
+                    // Localized
                     Toast.makeText(getContext(),
-                            "The recipient's number must contain only numbers.",
+                            getString(R.string.sos_invalid_receiver),
                             Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -286,12 +291,15 @@ public class SosFragment extends Fragment {
         Log.v(TAG, setting.toString());
         BLE.INSTANCE.getWriteQueue().offer(setting.toString());
 
-        Toast.makeText(getContext(), "SOS settings sent to device", Toast.LENGTH_SHORT).show();
+        // Localized
+        Toast.makeText(getContext(),
+                getString(R.string.sos_settings_sent),
+                Toast.LENGTH_SHORT).show();
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   SEARCH DIALOG (기존)
+    //   SEARCH DIALOG (existing)
     // ═══════════════════════════════════════════════════════════════
 
     private void setupFragmentResultListener() {

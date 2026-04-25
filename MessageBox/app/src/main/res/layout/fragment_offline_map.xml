@@ -8,7 +8,7 @@
     android:background="#0A1628"
     tools:context=".OfflineMapFragment">
 
-    <!-- 타이틀 -->
+    <!-- Title -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -32,12 +32,12 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Offline Map Manager"
+            android:text="@string/maps_title"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
             android:textStyle="bold" />
 
-        <!-- 새로고침 버튼 -->
+        <!-- Refresh button -->
         <ImageButton
             android:id="@+id/btn_refresh"
             android:layout_width="32dp"
@@ -52,7 +52,7 @@
     </LinearLayout>
 
 
-    <!-- 통계 카드 -->
+    <!-- Stats Card -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -68,7 +68,7 @@
             android:padding="14dp"
             android:gravity="center_vertical">
 
-            <!-- 파일 수 -->
+            <!-- File count -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -88,7 +88,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Files"
+                    android:text="@string/maps_label_files"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -96,13 +96,13 @@
 
             </LinearLayout>
 
-            <!-- 구분선 -->
+            <!-- Divider -->
             <View
                 android:layout_width="1dp"
                 android:layout_height="32dp"
                 android:background="#2A4570" />
 
-            <!-- 총 크기 -->
+            <!-- Total size -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -122,7 +122,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Total Size"
+                    android:text="@string/maps_label_total_size"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -135,7 +135,7 @@
     </androidx.cardview.widget.CardView>
 
 
-    <!-- 목록 헤더 -->
+    <!-- List header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -156,7 +156,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="INSTALLED MAPS"
+            android:text="@string/maps_section_installed"
             android:textColor="#95B0D4"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -165,7 +165,7 @@
     </LinearLayout>
 
 
-    <!-- 파일 목록 -->
+    <!-- File list -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -179,7 +179,7 @@
             android:layout_height="match_parent"
             android:clipToPadding="false" />
 
-        <!-- 빈 상태 -->
+        <!-- Empty state -->
         <LinearLayout
             android:id="@+id/empty_state"
             android:layout_width="match_parent"
@@ -198,7 +198,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No offline maps"
+                android:text="@string/maps_empty_title"
                 android:textColor="#5A7090"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -207,7 +207,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tap below to add .mbtiles files"
+                android:text="@string/maps_empty_subtitle"
                 android:textColor="#5A7090"
                 android:textSize="11sp"
                 android:layout_marginTop="4dp" />
@@ -217,7 +217,7 @@
     </FrameLayout>
 
 
-    <!-- 하단 버튼 영역 -->
+    <!-- Bottom button area -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -227,7 +227,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="12dp">
 
-        <!-- 파일 추가 버튼 -->
+        <!-- Add file button -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -255,7 +255,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Add Map File"
+                    android:text="@string/maps_btn_add"
                     android:textColor="#0A1628"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -265,7 +265,7 @@
         </androidx.cardview.widget.CardView>
 
 
-        <!-- 도움말 카드 -->
+        <!-- Help card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -297,7 +297,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="How to use"
+                        android:text="@string/maps_help_title"
                         android:textColor="#00E5D1"
                         android:textSize="11sp"
                         android:textStyle="bold"
@@ -308,7 +308,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. Download .mbtiles file from OpenMapTiles or create one with Mobile Atlas Creator\n2. Tap 'Add Map File' and select the file\n3. App will copy it to internal storage\n4. Switch to OFFLINE mode on map toggle to use"
+                    android:text="@string/maps_help_content"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:lineSpacingExtra="2dp" />

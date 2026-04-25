@@ -8,7 +8,7 @@
     android:background="#0A1628"
     tools:context=".FirmwareFragment">
 
-    <!-- 타이틀 -->
+    <!-- Title -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,14 +31,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Firmware Update"
+            android:text="@string/fw_title"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold" />
 
     </LinearLayout>
 
-    <!-- 스크롤 가능한 본문 -->
+    <!-- Scrollable body -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -74,7 +74,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FIRMWARE FILE"
+                    android:text="@string/fw_section_file"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -83,7 +83,7 @@
 
             </LinearLayout>
 
-            <!-- 파일 선택 (이름 + 선택 버튼) -->
+            <!-- File select (name + browse button) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -101,14 +101,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Select a firmware file..."
+                    android:text="@string/fw_default_filename"
                     android:textColor="#FFFFFF"
                     android:textSize="13sp"
                     android:singleLine="true"
                     android:ellipsize="middle"
                     android:paddingEnd="8dp" />
 
-                <!-- Select 버튼 -->
+                <!-- Browse button -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
@@ -139,7 +139,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Browse"
+                            android:text="@string/fw_btn_browse"
                             android:textColor="#00E5D1"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -170,7 +170,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="CHUNK SIZE"
+                    android:text="@string/fw_section_chunk_size"
                     android:textColor="#95B0D4"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -210,14 +210,14 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="bytes"
+                    android:text="@string/fw_unit_bytes"
                     android:textColor="#8899AA"
                     android:textSize="13sp"
                     android:layout_marginStart="8dp" />
 
             </LinearLayout>
 
-            <!-- ═══════ PROGRESS (전송 중에만 표시) ═══════ -->
+            <!-- ═══════ PROGRESS (only shown during transfer) ═══════ -->
             <LinearLayout
                 android:id="@+id/progress_container"
                 android:layout_width="match_parent"
@@ -240,7 +240,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Uploading firmware..."
+                        android:text="@string/fw_status_uploading"
                         android:textColor="#00E5D1"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -287,7 +287,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="UPDATE GUIDE"
+                    android:text="@string/fw_section_update_guide"
                     android:textColor="#00E5D1"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -296,7 +296,7 @@
 
             </LinearLayout>
 
-            <!-- 안내문 박스 (청록 테두리) -->
+            <!-- Guide info box (cyan border) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -305,7 +305,7 @@
                 android:padding="16dp"
                 android:layout_marginBottom="24dp">
 
-                <!-- 항목 1 -->
+                <!-- Item 1 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -326,14 +326,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Select the firmware file to upload."
+                        android:text="@string/fw_guide_item1"
                         android:textColor="#E8F1FB"
                         android:textSize="13sp"
                         android:lineSpacingExtra="3dp" />
 
                 </LinearLayout>
 
-                <!-- 항목 2 -->
+                <!-- Item 2 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -354,14 +354,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Make sure the device is connected via BLE before sending."
+                        android:text="@string/fw_guide_item2"
                         android:textColor="#E8F1FB"
                         android:textSize="13sp"
                         android:lineSpacingExtra="3dp" />
 
                 </LinearLayout>
 
-                <!-- 항목 3 -->
+                <!-- Item 3 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -382,14 +382,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Do not disconnect during the update process."
+                        android:text="@string/fw_guide_item3"
                         android:textColor="#E8F1FB"
                         android:textSize="13sp"
                         android:lineSpacingExtra="3dp" />
 
                 </LinearLayout>
 
-                <!-- 항목 4 -->
+                <!-- Item 4 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -409,7 +409,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="The update may take several minutes to complete."
+                        android:text="@string/fw_guide_item4"
                         android:textColor="#E8F1FB"
                         android:textSize="13sp"
                         android:lineSpacingExtra="3dp" />
@@ -424,7 +424,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <!-- SEND 버튼 (청록) -->
+                <!-- SEND button (cyan) -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
                     android:layout_height="56dp"
@@ -455,7 +455,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Send"
+                            android:text="@string/fw_btn_send"
                             android:textColor="#0A1628"
                             android:textSize="15sp"
                             android:textStyle="bold"
@@ -465,7 +465,7 @@
 
                 </androidx.cardview.widget.CardView>
 
-                <!-- CANCEL 버튼 (회색) -->
+                <!-- CANCEL button (gray) - reuses btn_cancel -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
                     android:layout_height="56dp"
@@ -496,7 +496,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Cancel"
+                            android:text="@string/btn_cancel"
                             android:textColor="#95B0D4"
                             android:textSize="15sp"
                             android:textStyle="bold"
@@ -508,11 +508,11 @@
 
             </LinearLayout>
 
-            <!-- 
-                ⚠️ TYTO2 Password Change 섹션은 제거함
-                별도 위치로 이동 예정 (주소록 My Profile 카드 내 추천)
+            <!--
+                Note: TYTO2 Password Change section was removed
+                Moved to Address Book My Profile card
             -->
-            <!-- password change 용 빈 뷰 (Java 호환용, 숨김) -->
+            <!-- Empty views for Java compatibility (hidden) -->
             <View
                 android:id="@+id/text_pw"
                 android:layout_width="0dp"

@@ -301,6 +301,177 @@
     <string name="toast_sos_stopped">SOSモードを停止しました。</string>
     <string name="toast_all_messages_deleted">すべてのメッセージを削除しました。</string>
 
+    <!-- ════════ ADDRESS Tab (AddrssBookFragment) ════════ -->
+
+    <!-- Sections -->
+    <string name="addr_section_my_profile">マイプロフィール</string>
+    <string name="addr_section_contacts">連絡先</string>
+
+    <!-- Buttons -->
+    <string name="addr_btn_edit">編集</string>
+    <string name="addr_btn_new">+  新規</string>
+    <string name="addr_btn_delete">削除</string>
+
+    <!-- Default -->
+    <string name="addr_my_default_name">マイネーム</string>
+
+    <!-- Avatar menu -->
+    <string name="addr_avatar_title">アバター</string>
+    <string name="addr_avatar_gallery">📷 ギャラリーから選択</string>
+    <string name="addr_avatar_initial">🔤 イニシャルを使用</string>
+
+    <!-- Delete confirmation -->
+    <string name="addr_delete_title">連絡先を削除</string>
+    <string name="addr_delete_message">この連絡先を削除してもよろしいですか？</string>
+
+    <!-- Toasts -->
+    <string name="addr_connect_first">最初に機器を接続してください。</string>
+    <string name="addr_password_open_fail">パスワード変更画面を開けません。</string>
+    <string name="addr_imei_not_available">IMEIが利用できません</string>
+    <string name="addr_avatar_gallery_fail">ギャラリーを開けません</string>
+    <string name="addr_avatar_updated">✅ アバターを更新しました</string>
+    <string name="addr_avatar_save_fail">❌ アバターの保存に失敗しました</string>
+    <string name="addr_avatar_reset_ok">✅ アバターをイニシャルにリセットしました</string>
+    <string name="addr_fill_all_fields">すべての項目を入力してください。</string>
+    <string name="addr_saved">保存しました。</string>
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ SOS Tab (SosFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="sos_title">SOS報告設定</string>
+
+    <!-- Sections -->
+    <string name="sos_section_send_to">送信先</string>
+    <string name="sos_section_function_guide">SOS機能ガイド</string>
+
+    <!-- Guide items -->
+    <string name="sos_guide_item1">SOSボタンが起動されると、バッテリーが切れるまで指定された受信者に3分ごとにメッセージが送信されます。</string>
+    <string name="sos_guide_item2">SOSをキャンセルするには、SOSボタンを5秒間長押ししてください。キャンセルメッセージが送信され、SOS送信が停止します。</string>
+
+    <!-- Buttons -->
+    <string name="sos_btn_save">設定を保存</string>
+    <string name="sos_btn_start">SOS開始</string>
+    <string name="sos_btn_stop">停止</string>
+
+    <!-- Receiver display -->
+    <string name="sos_receiver_web">ウェブサーバー</string>
+    <string name="sos_receiver_web_sub">デフォルト (特定の受信者なし)</string>
+    <string name="sos_receiver_manual_sub">手動入力</string>
+
+    <!-- Start dialog -->
+    <string name="sos_dialog_start_title">SOS開始</string>
+    <string name="sos_dialog_start_message">SOS信号が3分ごとに送信されます。\nよろしいですか？</string>
+
+    <!-- Receiver menu -->
+    <string name="sos_receiver_menu_title">受信者を選択</string>
+    <string name="sos_receiver_option_web">📧 ウェブサーバー (デフォルト)</string>
+    <string name="sos_receiver_option_contact">📇 連絡先から</string>
+    <string name="sos_receiver_option_manual">⌨ 番号を手動入力</string>
+
+    <!-- Manual input dialog -->
+    <string name="sos_manual_dialog_title">受信者IMEIを入力</string>
+    <string name="sos_manual_hint">IMEI番号を入力</string>
+
+    <!-- Toasts -->
+    <string name="sos_imei_digits_only">IMEIは数字のみで入力してください</string>
+    <string name="sos_invalid_receiver">受信者の番号は数字のみで入力してください。</string>
+    <string name="sos_settings_sent">SOS設定が機器に送信されました</string>
+    <string name="sos_setting_result">SOS設定: </string>
+
+    <!-- Generic OK button (new) -->
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ FIRMWARE Tab (FirmwareFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="fw_title">ファームウェア更新</string>
+
+    <!-- Sections -->
+    <string name="fw_section_file">ファームウェアファイル</string>
+    <string name="fw_section_chunk_size">チャンクサイズ</string>
+    <string name="fw_section_update_guide">更新ガイド</string>
+
+    <!-- Buttons & labels -->
+    <string name="fw_btn_browse">参照</string>
+    <string name="fw_btn_send">送信</string>
+    <string name="fw_unit_bytes">バイト</string>
+    <string name="fw_default_filename">ファームウェアファイルを選択...</string>
+    <string name="fw_chooser_title">ファームウェアファイルを選択</string>
+
+    <!-- Status -->
+    <string name="fw_status_uploading">ファームウェアをアップロード中...</string>
+    <string name="fw_status_complete">アップロード完了！</string>
+    <string name="fw_status_failed">アップロード失敗！</string>
+
+    <!-- Guide -->
+    <string name="fw_guide_item1">アップロードするファームウェアファイルを選択してください。</string>
+    <string name="fw_guide_item2">送信前に機器がBLEで接続されていることを確認してください。</string>
+    <string name="fw_guide_item3">更新中は接続を切断しないでください。</string>
+    <string name="fw_guide_item4">更新には数分かかる場合があります。</string>
+
+    <!-- Toasts -->
+    <string name="fw_toast_no_file">ファームウェアファイルが選択されていません</string>
+    <string name="fw_toast_not_connected">機器が接続されていません。先にBLEで接続してください。</string>
+    <string name="fw_toast_picker_error">ファイル選択を開けません</string>
+    <string name="fw_toast_file_loaded">ファイル読み込み完了: </string>
+    <string name="fw_toast_file_error">ファイル読み込みエラー: </string>
+    <string name="fw_toast_uploaded_ok">ファームウェアのアップロードに成功しました</string>
+    <string name="fw_toast_cancelled">転送がキャンセルされました</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MAPS Tab (OfflineMapFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="maps_title">オフラインマップ管理</string>
+
+    <!-- Stats -->
+    <string name="maps_label_files">ファイル</string>
+    <string name="maps_label_total_size">合計サイズ</string>
+
+    <!-- Section -->
+    <string name="maps_section_installed">インストール済みマップ</string>
+
+    <!-- Empty state -->
+    <string name="maps_empty_title">オフラインマップがありません</string>
+    <string name="maps_empty_subtitle">下をタップして .mbtiles ファイルを追加</string>
+
+    <!-- Buttons -->
+    <string name="maps_btn_add">マップファイル追加</string>
+    <string name="maps_btn_overwrite">上書き</string>
+
+    <!-- Help -->
+    <string name="maps_help_title">使い方</string>
+    <string name="maps_help_content">1. OpenMapTilesから .mbtiles ファイルをダウンロード、またはMobile Atlas Creatorで作成\n2. \'マップファイル追加\' をタップしてファイルを選択\n3. アプリが内部ストレージにコピーします\n4. マップ切替で OFFLINE モードに切替えて使用</string>
+
+    <!-- Dialogs (with placeholder %1$s = file name, %2$s = size) -->
+    <string name="maps_invalid_file_title">無効なファイル形式</string>
+    <string name="maps_invalid_file_msg">選択したファイル: %1$s\n\nMBTiles (.mbtiles) ファイルのみ追加できます。</string>
+    <string name="maps_overwrite_title">ファイルが既に存在</string>
+    <string name="maps_overwrite_msg">%1$s は既に存在します。\n\n上書きしますか？</string>
+    <string name="maps_delete_title">ファイル削除</string>
+    <string name="maps_delete_msg">%1$s\n(%2$s)\n\nこのオフラインマップファイルを削除しますか？</string>
+
+    <!-- Toasts -->
+    <string name="maps_picker_open_fail">❌ ファイル選択を開けません</string>
+    <string name="maps_filename_fail">❌ ファイル名を取得できません</string>
+    <string name="maps_copying">📥 %1$s をコピー中...</string>
+    <string name="maps_copy_success">✅ %1$s を追加しました\n(%2$s)</string>
+    <string name="maps_copy_fail">❌ コピー失敗: %1$s</string>
+    <string name="maps_delete_success">✅ %1$s を削除しました</string>
+    <string name="maps_delete_fail">❌ 削除失敗</string>
+
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
 

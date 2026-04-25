@@ -35,10 +35,10 @@ import java.util.List;
 
 
 /**
- * 오프라인 지도 관리 Fragment
- * - MBTiles 파일 목록 표시
- * - SAF 로 파일 추가
- * - 파일 삭제
+ * Offline Map Manager Fragment
+ * - Show MBTiles file list
+ * - Add files via SAF
+ * - Delete files
  */
 public class OfflineMapFragment extends Fragment {
 
@@ -56,7 +56,7 @@ public class OfflineMapFragment extends Fragment {
     // Adapter
     private MBTilesAdapter adapter;
 
-    // 파일 선택기
+    // File picker
     private ActivityResultLauncher<String[]> filePickerLauncher;
 
 
@@ -73,15 +73,15 @@ public class OfflineMapFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // 파일 선택기 초기화
+        // Initialize file picker
         setupFilePickerLauncher();
 
-        // UI 초기화
+        // Initialize UI
         bindViews(view);
         setupRecyclerView();
         setupButtons();
 
-        // 목록 로드
+        // Load list
         loadMBTilesList();
     }
 
@@ -89,7 +89,7 @@ public class OfflineMapFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 탭 돌아올 때마다 새로고침
+        // Refresh when returning to this tab
         loadMBTilesList();
     }
 
@@ -122,7 +122,7 @@ public class OfflineMapFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════
-    //   파일 목록 로드
+    //   Load file list
     // ═══════════════════════════════════════════════════════
 
     private void loadMBTilesList() {
@@ -136,14 +136,14 @@ public class OfflineMapFragment extends Fragment {
         List<File> fileList = new ArrayList<>();
         if (files != null && files.length > 0) {
             fileList.addAll(Arrays.asList(files));
-            // 최신순 정렬
+            // Sort by latest modified
             Collections.sort(fileList, (f1, f2) ->
                     Long.compare(f2.lastModified(), f1.lastModified()));
         }
 
         adapter.setItems(fileList);
 
-        // UI 업데이트
+        // Update UI
         updateStats();
         updateEmptyState();
     }
@@ -167,7 +167,7 @@ public class OfflineMapFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════
-    //   파일 선택기 (SAF)
+    //   File picker (SAF)
     // ═══════════════════════════════════════════════════════
 
     private void setupFilePickerLauncher() {
@@ -183,79 +183,81 @@ public class OfflineMapFragment extends Fragment {
 
 
     private void openFilePicker() {
-        // .mbtiles 파일은 MIME 타입이 표준이 아님 → "*/*" 로 전체 허용
+        // .mbtiles file MIME type is non-standard -> use "*/*" to allow all
         String[] mimeTypes = {"*/*"};
         try {
             filePickerLauncher.launch(mimeTypes);
         } catch (Exception e) {
-            Log.e(TAG, "파일 선택기 열기 실패: " + e.getMessage(), e);
+            Log.e(TAG, "Failed to open file picker: " + e.getMessage(), e);
+            // Localized
             Toast.makeText(requireContext(),
-                    "❌ 파일 선택기 열 수 없음",
+                    getString(R.string.maps_picker_open_fail),
                     Toast.LENGTH_SHORT).show();
         }
     }
 
 
     // ═══════════════════════════════════════════════════════
-    //   파일 복사
+    //   File copy
     // ═══════════════════════════════════════════════════════
 
     private void copyFileToMBTilesDir(Uri sourceUri) {
-        // 파일명 가져오기
+        // Get file name
         String fileName = getFileNameFromUri(sourceUri);
         if (fileName == null) {
+            // Localized
             Toast.makeText(requireContext(),
-                    "❌ 파일명을 가져올 수 없습니다",
+                    getString(R.string.maps_filename_fail),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 확장자 검증
+        // Validate extension - Localized
         if (!fileName.toLowerCase().endsWith(".mbtiles")) {
             new AlertDialog.Builder(requireContext())
-                    .setTitle("잘못된 파일 형식")
-                    .setMessage("선택한 파일: " + fileName + "\n\n" +
-                            "MBTiles (.mbtiles) 파일만 추가할 수 있습니다.")
-                    .setPositiveButton("확인", null)
+                    .setTitle(getString(R.string.maps_invalid_file_title))
+                    .setMessage(getString(R.string.maps_invalid_file_msg, fileName))
+                    .setPositiveButton(getString(R.string.btn_ok), null)
                     .show();
             return;
         }
 
-        // 대상 폴더 확인
+        // Check target directory
         File targetDir = getMBTilesDir();
         if (!targetDir.exists()) targetDir.mkdirs();
 
-        // 중복 확인
+        // Check duplicate
         File targetFile = new File(targetDir, fileName);
         if (targetFile.exists()) {
             confirmOverwrite(sourceUri, targetFile, fileName);
             return;
         }
 
-        // 복사 실행
+        // Execute copy
         performCopy(sourceUri, targetFile, fileName);
     }
 
 
     private void confirmOverwrite(Uri sourceUri, File targetFile, String fileName) {
+        // Localized
         new AlertDialog.Builder(requireContext())
-                .setTitle("파일 이미 존재")
-                .setMessage(fileName + " 이(가) 이미 있습니다.\n\n덮어쓰시겠습니까?")
-                .setPositiveButton("덮어쓰기", (d, w) -> {
+                .setTitle(getString(R.string.maps_overwrite_title))
+                .setMessage(getString(R.string.maps_overwrite_msg, fileName))
+                .setPositiveButton(getString(R.string.maps_btn_overwrite), (d, w) -> {
                     performCopy(sourceUri, targetFile, fileName);
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     private void performCopy(Uri sourceUri, File targetFile, String fileName) {
-        // 진행 중 Toast
+        // In-progress Toast - Localized
         Toast.makeText(requireContext(),
-                "📥 " + fileName + " 복사 중...",
+                getString(R.string.maps_copying, fileName),
                 Toast.LENGTH_SHORT).show();
 
-        // 백그라운드 스레드에서 복사
+        // Copy on background thread
         new Thread(() -> {
             boolean success = false;
             String errorMsg = null;
@@ -263,7 +265,7 @@ public class OfflineMapFragment extends Fragment {
             try (InputStream in = requireContext().getContentResolver().openInputStream(sourceUri);
                  FileOutputStream out = new FileOutputStream(targetFile)) {
 
-                if (in == null) throw new IOException("InputStream 을 열 수 없음");
+                if (in == null) throw new IOException("Cannot open InputStream");
 
                 byte[] buffer = new byte[8192];
                 int read;
@@ -274,31 +276,34 @@ public class OfflineMapFragment extends Fragment {
                 }
                 out.flush();
 
-                Log.v(TAG, String.format("복사 완료: %s (%s)",
+                Log.v(TAG, String.format("Copy completed: %s (%s)",
                         fileName, MBTilesAdapter.formatFileSize(totalBytes)));
                 success = true;
             } catch (Exception e) {
                 errorMsg = e.getMessage();
-                Log.e(TAG, "파일 복사 실패: " + errorMsg, e);
-                // 실패 시 불완전한 파일 삭제
+                Log.e(TAG, "File copy failed: " + errorMsg, e);
+                // Delete incomplete file on failure
                 if (targetFile.exists()) targetFile.delete();
             }
 
-            // UI 스레드에서 결과 표시
+            // Show result on UI thread
             boolean finalSuccess = success;
             String finalErrorMsg = errorMsg;
 
             if (getActivity() != null) {
                 requireActivity().runOnUiThread(() -> {
                     if (finalSuccess) {
+                        // Localized
                         Toast.makeText(requireContext(),
-                                "✅ " + fileName + " 추가됨\n(" +
-                                        MBTilesAdapter.formatFileSize(targetFile.length()) + ")",
+                                getString(R.string.maps_copy_success,
+                                        fileName,
+                                        MBTilesAdapter.formatFileSize(targetFile.length())),
                                 Toast.LENGTH_LONG).show();
-                        loadMBTilesList();  // 목록 새로고침
+                        loadMBTilesList();  // Refresh list
                     } else {
+                        // Localized
                         Toast.makeText(requireContext(),
-                                "❌ 복사 실패: " + finalErrorMsg,
+                                getString(R.string.maps_copy_fail, finalErrorMsg),
                                 Toast.LENGTH_LONG).show();
                     }
                 });
@@ -308,33 +313,35 @@ public class OfflineMapFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════
-    //   파일 삭제
+    //   File delete
     // ═══════════════════════════════════════════════════════
 
     private void confirmDelete(File file) {
+        // Localized
         new AlertDialog.Builder(requireContext())
-                .setTitle("파일 삭제")
-                .setMessage(file.getName() + "\n(" + MBTilesAdapter.formatFileSize(file.length()) + ")\n\n" +
-                        "이 오프라인 지도 파일을 삭제하시겠습니까?")
-                .setPositiveButton("삭제", (d, w) -> {
+                .setTitle(getString(R.string.maps_delete_title))
+                .setMessage(getString(R.string.maps_delete_msg,
+                        file.getName(),
+                        MBTilesAdapter.formatFileSize(file.length())))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (d, w) -> {
                     if (file.delete()) {
                         Toast.makeText(requireContext(),
-                                "✅ " + file.getName() + " 삭제됨",
+                                getString(R.string.maps_delete_success, file.getName()),
                                 Toast.LENGTH_SHORT).show();
                         loadMBTilesList();
                     } else {
                         Toast.makeText(requireContext(),
-                                "❌ 삭제 실패",
+                                getString(R.string.maps_delete_fail),
                                 Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     // ═══════════════════════════════════════════════════════
-    //   유틸리티
+    //   Utility
     // ═══════════════════════════════════════════════════════
 
     private File getMBTilesDir() {
@@ -345,12 +352,12 @@ public class OfflineMapFragment extends Fragment {
     }
 
 
-    /** Uri 에서 실제 파일명 가져오기 */
+    /** Get actual file name from Uri */
     @Nullable
     private String getFileNameFromUri(Uri uri) {
         String fileName = null;
 
-        // ContentResolver 로 시도
+        // Try ContentResolver
         if (uri.getScheme() != null && uri.getScheme().equals("content")) {
             try (Cursor cursor = requireContext().getContentResolver()
                     .query(uri, null, null, null, null)) {
@@ -361,11 +368,11 @@ public class OfflineMapFragment extends Fragment {
                     }
                 }
             } catch (Exception e) {
-                Log.w(TAG, "ContentResolver query 실패: " + e.getMessage());
+                Log.w(TAG, "ContentResolver query failed: " + e.getMessage());
             }
         }
 
-        // 실패 시 path 에서 파일명 추출
+        // Fallback: extract from path
         if (fileName == null && uri.getPath() != null) {
             String path = uri.getPath();
             int slashIdx = path.lastIndexOf('/');

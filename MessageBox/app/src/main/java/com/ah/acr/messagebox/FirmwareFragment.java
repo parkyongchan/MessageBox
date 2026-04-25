@@ -84,16 +84,16 @@ public class FirmwareFragment extends Fragment {
 
 
     private void setupViews() {
-        // 파일 선택 버튼
+        // File select button
         binding.buttonSelectFile.setOnClickListener(v -> openFilePicker());
 
-        // 전송 버튼
+        // Send button
         binding.buttonSend.setOnClickListener(v -> sendFirmware());
 
-        // 취소 버튼
+        // Cancel button
         binding.buttonCancel.setOnClickListener(v -> cancelTransfer());
 
-        // 초기 상태
+        // Initial state
         binding.progressContainer.setVisibility(View.GONE);
         binding.buttonSend.setEnabled(false);
         binding.buttonCancel.setEnabled(false);
@@ -112,15 +112,19 @@ public class FirmwareFragment extends Fragment {
                     updateFirmwareDataSender(firmUpdate.getIdx() + 1);
 
                 } else if (firmUpdate.getState().equals("FAILEND")) {
-                    binding.textProgressStatus.setText("Upload failed!");
+                    // Localized
+                    binding.textProgressStatus.setText(getString(R.string.fw_status_failed));
                     resetUI();
 
                 } else if (firmUpdate.getState().equals("RESEND")) {
                     updateFirmwareDataSender(firmUpdate.getIdx());
 
                 } else if (firmUpdate.getState().equals("END")) {
-                    binding.textProgressStatus.setText("Upload complete!");
-                    Toast.makeText(getContext(), "Firmware uploaded successfully", Toast.LENGTH_SHORT).show();
+                    // Localized
+                    binding.textProgressStatus.setText(getString(R.string.fw_status_complete));
+                    Toast.makeText(getContext(),
+                            getString(R.string.fw_toast_uploaded_ok),
+                            Toast.LENGTH_SHORT).show();
                     resetUI();
                 }
             }
@@ -134,9 +138,13 @@ public class FirmwareFragment extends Fragment {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
 
         try {
-            filePickerLauncher.launch(Intent.createChooser(intent, "Select Firmware File"));
+            // Localized chooser title
+            filePickerLauncher.launch(Intent.createChooser(intent, getString(R.string.fw_chooser_title)));
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Error opening file picker", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.fw_toast_picker_error),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -152,13 +160,18 @@ public class FirmwareFragment extends Fragment {
 
                 binding.buttonSend.setEnabled(true);
 
-                Toast.makeText(getContext(),
-                        "File loaded: " + fileName + " (" + firmwareData.length + " bytes)",
-                        Toast.LENGTH_SHORT).show();
+                // Localized: "File loaded: {name} ({size} bytes)"
+                String msg = getString(R.string.fw_toast_file_loaded)
+                        + fileName + " (" + firmwareData.length + " "
+                        + getString(R.string.fw_unit_bytes) + ")";
+                Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Error reading file: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            binding.textFileName.setText("Select a firmware file...");
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.fw_toast_file_error) + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+            binding.textFileName.setText(getString(R.string.fw_default_filename));
             binding.buttonSend.setEnabled(false);
         }
     }
@@ -197,23 +210,28 @@ public class FirmwareFragment extends Fragment {
 
     private void sendFirmware() {
         if (firmwareData == null || firmwareData.length == 0) {
-            Toast.makeText(getContext(), "No firmware file selected", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(),
+                    getString(R.string.fw_toast_no_file),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            // Localized
             Toast.makeText(getContext(),
-                    "Device is not connected. Please connect via BLE first.",
+                    getString(R.string.fw_toast_not_connected),
                     Toast.LENGTH_LONG).show();
             return;
         }
 
-        // UI 업데이트
+        // UI update
         binding.buttonSelectFile.setEnabled(false);
         binding.buttonSend.setEnabled(false);
         binding.buttonCancel.setEnabled(true);
         binding.progressContainer.setVisibility(View.VISIBLE);
-        binding.textProgressStatus.setText("Uploading firmware...");
+        // Localized
+        binding.textProgressStatus.setText(getString(R.string.fw_status_uploading));
         binding.progressBar.setProgress(0);
         binding.textProgressPercentage.setText("0%");
 
@@ -230,7 +248,10 @@ public class FirmwareFragment extends Fragment {
 
     private void cancelTransfer() {
         isTransferCancelled = true;
-        Toast.makeText(getContext(), "Transfer cancelled", Toast.LENGTH_SHORT).show();
+        // Localized
+        Toast.makeText(getContext(),
+                getString(R.string.fw_toast_cancelled),
+                Toast.LENGTH_SHORT).show();
         resetToInitialState();
     }
 
@@ -255,7 +276,7 @@ public class FirmwareFragment extends Fragment {
             bleSendMessage(sendMsg);
         }
 
-        // 진행률 업데이트
+        // Progress update
         final int progress = (int) (((idx) * 100.0) / totalChunks);
         binding.progressBar.setProgress(progress);
         binding.textProgressPercentage.setText(progress + "%");
@@ -277,7 +298,8 @@ public class FirmwareFragment extends Fragment {
         selectedFileUri = null;
         firmwareData = null;
 
-        binding.textFileName.setText("Select a firmware file...");
+        // Localized
+        binding.textFileName.setText(getString(R.string.fw_default_filename));
         binding.buttonSelectFile.setEnabled(true);
         binding.buttonSend.setEnabled(false);
         binding.buttonCancel.setEnabled(false);

@@ -55,10 +55,10 @@ public class AddrssBookFragment extends Fragment {
     private String myNickname = null;
     private String myAvatarPath = null;
 
-    // ⭐ Avatar edit state: which IMEI is currently being edited
+    // Avatar edit state: which IMEI is currently being edited
     private String targetAvatarImei = null;
 
-    // ⭐ Gallery launcher
+    // Gallery launcher
     private ActivityResultLauncher<String> pickImageLauncher;
 
 
@@ -66,7 +66,7 @@ public class AddrssBookFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ⭐ Register gallery launcher (must be in onCreate, not onCreateView)
+        // Register gallery launcher (must be in onCreate, not onCreateView)
         pickImageLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> handleImagePicked(uri)
@@ -84,30 +84,32 @@ public class AddrssBookFragment extends Fragment {
         setupRecyclerView();
         setupViewModel();
 
-        // New 버튼
+        // New button
         binding.buttonAddrNew.setOnClickListener(view -> {
             showAddressDialog(null);
         });
 
-        // Edit 버튼 (My Profile 편집)
+        // Edit button (My Profile)
         binding.buttonEdit.setOnClickListener(view -> showMeAddressDialog());
 
-        // ⭐ My Profile 아바타 박스 클릭 → 아바타 편집 메뉴
+        // My Profile avatar box click -> avatar edit menu
         binding.frameMyAvatar.setOnClickListener(view -> {
             if (myImei == null || myImei.isEmpty()) {
+                // Localized
                 Toast.makeText(getContext(),
-                        "Please connect to a device first",
+                        getString(R.string.addr_connect_first),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
             showAvatarMenu(myImei);
         });
 
-        // 🔑 Password 변경 버튼
+        // Password change button
         binding.buttonPassword.setOnClickListener(view -> {
             if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                // Localized
                 Toast.makeText(getContext(),
-                        "Please connect to a device first.",
+                        getString(R.string.addr_connect_first),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -116,8 +118,9 @@ public class AddrssBookFragment extends Fragment {
                         .navigate(R.id.action_main_setting_fragment_to_main_ble_login_change_fragment);
             } catch (Exception e) {
                 Log.e(TAG, "Navigation error: " + e);
+                // Localized
                 Toast.makeText(getContext(),
-                        "Unable to open password change screen.",
+                        getString(R.string.addr_password_open_fail),
                         Toast.LENGTH_SHORT).show();
             }
         });
@@ -138,8 +141,10 @@ public class AddrssBookFragment extends Fragment {
                         if (addressEntity == null) {
                             SharedUtil shared = mKeyViewModel.getSharedUtil().getValue();
                             String nicName = shared.getString("nicName");
-                            if (nicName.isEmpty()) shared.putAny("nicName", "My Name");
-                            String displayName = nicName.isEmpty() ? "My Name" : nicName;
+                            // Localized default name
+                            String defaultName = getString(R.string.addr_my_default_name);
+                            if (nicName.isEmpty()) shared.putAny("nicName", defaultName);
+                            String displayName = nicName.isEmpty() ? defaultName : nicName;
                             binding.textName.setText(displayName);
                             myNickname = displayName;
                             myAvatarPath = null;
@@ -158,7 +163,7 @@ public class AddrssBookFragment extends Fragment {
             }
         });
 
-        // BLE 연결 상태에 따라 자물쇠 버튼 시각 효과
+        // Visual feedback on lock button based on BLE connection state
         BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
             if (device != null) {
                 binding.buttonPassword.setAlpha(1.0f);
@@ -174,29 +179,31 @@ public class AddrssBookFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ AVATAR EDIT (NEW)
+    //   AVATAR EDIT
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * ⭐ Show avatar edit menu (gallery / reset / cancel)
+     * Show avatar edit menu (gallery / reset / cancel)
      */
     private void showAvatarMenu(String imei) {
         if (imei == null || imei.isEmpty()) {
+            // Localized
             Toast.makeText(getContext(),
-                    "IMEI not available",
+                    getString(R.string.addr_imei_not_available),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
         targetAvatarImei = imei;
 
+        // Localized menu options
         String[] options = {
-                "📷 Choose from Gallery",
-                "🔤 Use Initial Avatar"
+                getString(R.string.addr_avatar_gallery),
+                getString(R.string.addr_avatar_initial)
         };
 
         new AlertDialog.Builder(getContext())
-                .setTitle("Avatar")
+                .setTitle(getString(R.string.addr_avatar_title))
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         // Gallery
@@ -206,28 +213,29 @@ public class AddrssBookFragment extends Fragment {
                         resetAvatar(imei);
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     /**
-     * ⭐ Open gallery to pick image
+     * Open gallery to pick image
      */
     private void openGallery() {
         try {
             pickImageLauncher.launch("image/*");
         } catch (Exception e) {
             Log.e(TAG, "Gallery launch failed: " + e.getMessage());
+            // Localized
             Toast.makeText(getContext(),
-                    "Cannot open gallery",
+                    getString(R.string.addr_avatar_gallery_fail),
                     Toast.LENGTH_SHORT).show();
         }
     }
 
 
     /**
-     * ⭐ Handle image picked from gallery
+     * Handle image picked from gallery
      */
     private void handleImagePicked(Uri uri) {
         if (uri == null) {
@@ -261,12 +269,14 @@ public class AddrssBookFragment extends Fragment {
                         updateMyAvatar();
                     }
 
+                    // Localized
                     Toast.makeText(getContext(),
-                            "✅ Avatar updated",
+                            getString(R.string.addr_avatar_updated),
                             Toast.LENGTH_SHORT).show();
                 } else {
+                    // Localized
                     Toast.makeText(getContext(),
-                            "❌ Failed to save avatar",
+                            getString(R.string.addr_avatar_save_fail),
                             Toast.LENGTH_SHORT).show();
                 }
             });
@@ -275,7 +285,7 @@ public class AddrssBookFragment extends Fragment {
 
 
     /**
-     * ⭐ Reset avatar to initial (delete custom image)
+     * Reset avatar to initial (delete custom image)
      */
     private void resetAvatar(String imei) {
         if (imei == null || imei.isEmpty()) return;
@@ -292,14 +302,15 @@ public class AddrssBookFragment extends Fragment {
             updateMyAvatar();
         }
 
+        // Localized
         Toast.makeText(getContext(),
-                "✅ Avatar reset to initial",
+                getString(R.string.addr_avatar_reset_ok),
                 Toast.LENGTH_SHORT).show();
     }
 
 
     /**
-     * My Profile 아바타 업데이트 (AvatarHelper 사용)
+     * My Profile avatar update (using AvatarHelper)
      */
     private void updateMyAvatar() {
         if (binding == null) return;
@@ -362,7 +373,7 @@ public class AddrssBookFragment extends Fragment {
 
             @Override
             public void onAvatarEditClick(AddressEntity addr) {
-                // ⭐ 주소록 아이템 아바타 편집
+                // Address item avatar edit
                 showAvatarMenu(addr.getNumbers());
             }
         });
@@ -381,17 +392,18 @@ public class AddrssBookFragment extends Fragment {
     public void handleAddressDelClick(AddressEntity addr) {
         Log.v(TAG, "handleAddressDelClick...");
 
+        // Localized delete confirmation dialog
         new AlertDialog.Builder(getContext())
-                .setTitle("Delete contact")
-                .setMessage("Are you sure you want to delete this contact?")
-                .setPositiveButton("Delete", (dialog, which) -> {
+                .setTitle(getString(R.string.addr_delete_title))
+                .setMessage(getString(R.string.addr_delete_message))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) -> {
                     // Also delete avatar file if exists
                     if (addr.getNumbers() != null) {
                         AvatarPickerHelper.deleteAvatar(getContext(), addr.getNumbers());
                     }
                     addressViewModel.delete(addr);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -428,7 +440,8 @@ public class AddrssBookFragment extends Fragment {
             String code = etCode.getText().toString().trim();
 
             if (name.isEmpty() || code.isEmpty()) {
-                Toast.makeText(getContext(), "Please fill in all fields.", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(), getString(R.string.addr_fill_all_fields), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (addr == null) {
@@ -438,7 +451,8 @@ public class AddrssBookFragment extends Fragment {
             }
 
             dialog.dismiss();
-            Toast.makeText(getContext(), "Saved.", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(), getString(R.string.addr_saved), Toast.LENGTH_SHORT).show();
         });
 
         dialog.show();
@@ -462,8 +476,10 @@ public class AddrssBookFragment extends Fragment {
         SharedUtil shared = mKeyViewModel.getSharedUtil().getValue();
         String unitNum = shared.getString("unitCode");
         String nicName = shared.getString("nicName");
+        // Localized default name
+        String defaultName = getString(R.string.addr_my_default_name);
         if (unitNum.isEmpty()) unitNum = "";
-        if (nicName.isEmpty()) nicName = "My Name";
+        if (nicName.isEmpty()) nicName = defaultName;
 
         etName.setText(nicName);
         etCode.setText(unitNum);
@@ -477,7 +493,8 @@ public class AddrssBookFragment extends Fragment {
             String code = etCode.getText().toString().trim();
 
             if (name.isEmpty() || code.isEmpty()) {
-                Toast.makeText(getContext(), "Please fill in all fields.", Toast.LENGTH_SHORT).show();
+                // Localized
+                Toast.makeText(getContext(), getString(R.string.addr_fill_all_fields), Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -488,7 +505,8 @@ public class AddrssBookFragment extends Fragment {
             updateMyAvatar();
 
             dialog.dismiss();
-            Toast.makeText(getContext(), "Saved.", Toast.LENGTH_SHORT).show();
+            // Localized
+            Toast.makeText(getContext(), getString(R.string.addr_saved), Toast.LENGTH_SHORT).show();
         });
 
         dialog.show();

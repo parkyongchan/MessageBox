@@ -9,7 +9,7 @@
     tools:context=".AddrssBookFragment">
 
     <!-- ═══════════════════════════════════════════ -->
-    <!--   MY PROFILE 섹션                           -->
+    <!--   MY PROFILE Section                        -->
     <!-- ═══════════════════════════════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -20,7 +20,7 @@
         android:paddingTop="16dp"
         android:paddingBottom="8dp">
 
-        <!-- 섹션 헤더 -->
+        <!-- Section Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -39,7 +39,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="MY PROFILE"
+                android:text="@string/addr_section_my_profile"
                 android:textColor="#95B0D4"
                 android:textSize="11sp"
                 android:textStyle="bold"
@@ -48,7 +48,7 @@
 
         </LinearLayout>
 
-        <!-- My Profile 카드 -->
+        <!-- My Profile Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -63,7 +63,7 @@
                 android:gravity="center_vertical"
                 android:padding="14dp">
 
-                <!-- ⭐ 내 아바타 박스 (이미지 편집) -->
+                <!-- My Avatar Box (image edit) -->
                 <FrameLayout
                     android:id="@+id/frame_my_avatar"
                     android:layout_width="60dp"
@@ -72,7 +72,7 @@
                     android:focusable="true"
                     android:layout_marginEnd="14dp">
 
-                    <!-- ⭐ 아바타 이미지 (AvatarHelper Bitmap - 60dp 전체 채움) -->
+                    <!-- Avatar image (AvatarHelper Bitmap - 60dp full) -->
                     <ImageView
                         android:id="@+id/img_my_avatar"
                         android:layout_width="match_parent"
@@ -80,7 +80,7 @@
                         android:scaleType="centerCrop"
                         android:contentDescription="My avatar" />
 
-                    <!-- Fallback TextView (AvatarHelper 실패 시만 표시) -->
+                    <!-- Fallback TextView (only shown when AvatarHelper fails) -->
                     <TextView
                         android:id="@+id/text_my_avatar_initial"
                         android:layout_width="match_parent"
@@ -93,14 +93,14 @@
                         android:textStyle="bold"
                         android:visibility="gone" />
 
-                    <!-- 카메라 아이콘 배경 (우측 하단) -->
+                    <!-- Camera icon background (bottom-right) -->
                     <View
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:layout_gravity="bottom|end"
                         android:background="#0A1628" />
 
-                    <!-- 카메라 아이콘 (편집 힌트) -->
+                    <!-- Camera icon (edit hint) -->
                     <ImageView
                         android:layout_width="18dp"
                         android:layout_height="18dp"
@@ -113,7 +113,7 @@
 
                 </FrameLayout>
 
-                <!-- 이름 + IMEI -->
+                <!-- Name + IMEI -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -125,7 +125,7 @@
                         android:id="@+id/text_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="My Name"
+                        android:text="@string/addr_my_default_name"
                         android:textColor="#FFFFFF"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -142,7 +142,7 @@
 
                 </LinearLayout>
 
-                <!-- Edit 버튼 -->
+                <!-- Edit button -->
                 <Button
                     android:id="@+id/button_edit"
                     style="?android:attr/borderlessButtonStyle"
@@ -151,7 +151,7 @@
                     android:minWidth="60dp"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
-                    android:text="Edit"
+                    android:text="@string/addr_btn_edit"
                     android:textColor="#00E5D1"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -161,7 +161,7 @@
                     android:insetBottom="0dp"
                     android:layout_marginEnd="6dp" />
 
-                <!-- 🔑 Password 변경 버튼 -->
+                <!-- Password change button -->
                 <ImageButton
                     android:id="@+id/button_password"
                     android:layout_width="40dp"
@@ -180,7 +180,7 @@
     </LinearLayout>
 
     <!-- ═══════════════════════════════════════════ -->
-    <!--   CONTACTS 섹션                             -->
+    <!--   CONTACTS Section                          -->
     <!-- ═══════════════════════════════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -204,14 +204,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="CONTACTS"
+            android:text="@string/addr_section_contacts"
             android:textColor="#95B0D4"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textAllCaps="true"
             android:letterSpacing="0.08" />
 
-        <!-- New 버튼 -->
+        <!-- New button -->
         <Button
             android:id="@+id/button_addr_new"
             style="?android:attr/borderlessButtonStyle"
@@ -220,7 +220,7 @@
             android:minWidth="64dp"
             android:paddingStart="10dp"
             android:paddingEnd="14dp"
-            android:text="+  New"
+            android:text="@string/addr_btn_new"
             android:textColor="#00E5D1"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -231,7 +231,7 @@
 
     </LinearLayout>
 
-    <!-- 연락처 리스트 -->
+    <!-- Contact List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list_address"
         android:layout_width="match_parent"

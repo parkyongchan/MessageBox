@@ -307,9 +307,177 @@
     <string name="toast_all_messages_deleted">All messages deleted.</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <!-- ════════ ADDRESS Tab (AddrssBookFragment) ════════ -->
 
+    <!-- Sections -->
+    <string name="addr_section_my_profile">MY PROFILE</string>
+    <string name="addr_section_contacts">CONTACTS</string>
 
+    <!-- Buttons -->
+    <string name="addr_btn_edit">Edit</string>
+    <string name="addr_btn_new">+  New</string>
+    <string name="addr_btn_delete">Delete</string>
+
+    <!-- Default -->
+    <string name="addr_my_default_name">My Name</string>
+
+    <!-- Avatar menu -->
+    <string name="addr_avatar_title">Avatar</string>
+    <string name="addr_avatar_gallery">📷 Choose from Gallery</string>
+    <string name="addr_avatar_initial">🔤 Use Initial Avatar</string>
+
+    <!-- Delete confirmation -->
+    <string name="addr_delete_title">Delete contact</string>
+    <string name="addr_delete_message">Are you sure you want to delete this contact?</string>
+
+    <!-- Toasts -->
+    <string name="addr_connect_first">Please connect to a device first.</string>
+    <string name="addr_password_open_fail">Unable to open password change screen.</string>
+    <string name="addr_imei_not_available">IMEI not available</string>
+    <string name="addr_avatar_gallery_fail">Cannot open gallery</string>
+    <string name="addr_avatar_updated">✅ Avatar updated</string>
+    <string name="addr_avatar_save_fail">❌ Failed to save avatar</string>
+    <string name="addr_avatar_reset_ok">✅ Avatar reset to initial</string>
+    <string name="addr_fill_all_fields">Please fill in all fields.</string>
+    <string name="addr_saved">Saved.</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ════════ SOS Tab (SosFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="sos_title">SOS Report Setting</string>
+
+    <!-- Sections -->
+    <string name="sos_section_send_to">SEND TO</string>
+    <string name="sos_section_function_guide">SOS FUNCTION GUIDE</string>
+
+    <!-- Guide items -->
+    <string name="sos_guide_item1">When the SOS button is activated, a message will be sent every 3 minutes to the designated recipient until the battery is depleted.</string>
+    <string name="sos_guide_item2">To cancel SOS, press and hold the SOS button for 5 seconds. A cancellation message will be sent, and SOS transmissions will stop.</string>
+
+    <!-- Buttons -->
+    <string name="sos_btn_save">Save Settings</string>
+    <string name="sos_btn_start">Start SOS</string>
+    <string name="sos_btn_stop">Stop</string>
+
+    <!-- Receiver display -->
+    <string name="sos_receiver_web">Web Server</string>
+    <string name="sos_receiver_web_sub">Default (no specific receiver)</string>
+    <string name="sos_receiver_manual_sub">Manual entry</string>
+
+    <!-- Start dialog -->
+    <string name="sos_dialog_start_title">Start SOS</string>
+    <string name="sos_dialog_start_message">SOS signal will be sent every 3 minutes.\nAre you sure?</string>
+
+    <!-- Receiver menu -->
+    <string name="sos_receiver_menu_title">Select Receiver</string>
+    <string name="sos_receiver_option_web">📧 Web Server (default)</string>
+    <string name="sos_receiver_option_contact">📇 From Address Book</string>
+    <string name="sos_receiver_option_manual">⌨ Type Number Manually</string>
+
+    <!-- Manual input dialog -->
+    <string name="sos_manual_dialog_title">Enter Receiver IMEI</string>
+    <string name="sos_manual_hint">Enter IMEI number</string>
+
+    <!-- Toasts -->
+    <string name="sos_imei_digits_only">IMEI must be digits only</string>
+    <string name="sos_invalid_receiver">The recipient\'s number must contain only numbers.</string>
+    <string name="sos_settings_sent">SOS settings sent to device</string>
+    <string name="sos_setting_result">SOS Setting: </string>
+
+    <!-- Generic OK button (new) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ FIRMWARE Tab (FirmwareFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="fw_title">Firmware Update</string>
+
+    <!-- Sections -->
+    <string name="fw_section_file">FIRMWARE FILE</string>
+    <string name="fw_section_chunk_size">CHUNK SIZE</string>
+    <string name="fw_section_update_guide">UPDATE GUIDE</string>
+
+    <!-- Buttons & labels -->
+    <string name="fw_btn_browse">Browse</string>
+    <string name="fw_btn_send">Send</string>
+    <string name="fw_unit_bytes">bytes</string>
+    <string name="fw_default_filename">Select a firmware file...</string>
+    <string name="fw_chooser_title">Select Firmware File</string>
+
+    <!-- Status -->
+    <string name="fw_status_uploading">Uploading firmware...</string>
+    <string name="fw_status_complete">Upload complete!</string>
+    <string name="fw_status_failed">Upload failed!</string>
+
+    <!-- Guide -->
+    <string name="fw_guide_item1">Select the firmware file to upload.</string>
+    <string name="fw_guide_item2">Make sure the device is connected via BLE before sending.</string>
+    <string name="fw_guide_item3">Do not disconnect during the update process.</string>
+    <string name="fw_guide_item4">The update may take several minutes to complete.</string>
+
+    <!-- Toasts -->
+    <string name="fw_toast_no_file">No firmware file selected</string>
+    <string name="fw_toast_not_connected">Device is not connected. Please connect via BLE first.</string>
+    <string name="fw_toast_picker_error">Error opening file picker</string>
+    <string name="fw_toast_file_loaded">File loaded: </string>
+    <string name="fw_toast_file_error">Error reading file: </string>
+    <string name="fw_toast_uploaded_ok">Firmware uploaded successfully</string>
+    <string name="fw_toast_cancelled">Transfer cancelled</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MAPS Tab (OfflineMapFragment) ════════ -->
+
+    <!-- Title -->
+    <string name="maps_title">Offline Map Manager</string>
+
+    <!-- Stats -->
+    <string name="maps_label_files">Files</string>
+    <string name="maps_label_total_size">Total Size</string>
+
+    <!-- Section -->
+    <string name="maps_section_installed">INSTALLED MAPS</string>
+
+    <!-- Empty state -->
+    <string name="maps_empty_title">No offline maps</string>
+    <string name="maps_empty_subtitle">Tap below to add .mbtiles files</string>
+
+    <!-- Buttons -->
+    <string name="maps_btn_add">Add Map File</string>
+    <string name="maps_btn_overwrite">Overwrite</string>
+
+    <!-- Help -->
+    <string name="maps_help_title">How to use</string>
+    <string name="maps_help_content">1. Download .mbtiles file from OpenMapTiles or create one with Mobile Atlas Creator\n2. Tap \'Add Map File\' and select the file\n3. App will copy it to internal storage\n4. Switch to OFFLINE mode on map toggle to use</string>
+
+    <!-- Dialogs (with placeholder %1$s = file name, %2$s = size) -->
+    <string name="maps_invalid_file_title">Invalid File Format</string>
+    <string name="maps_invalid_file_msg">Selected file: %1$s\n\nOnly MBTiles (.mbtiles) files can be added.</string>
+    <string name="maps_overwrite_title">File Already Exists</string>
+    <string name="maps_overwrite_msg">%1$s already exists.\n\nDo you want to overwrite?</string>
+    <string name="maps_delete_title">Delete File</string>
+    <string name="maps_delete_msg">%1$s\n(%2$s)\n\nDelete this offline map file?</string>
+
+    <!-- Toasts -->
+    <string name="maps_picker_open_fail">❌ Cannot open file picker</string>
+    <string name="maps_filename_fail">❌ Cannot get file name</string>
+    <string name="maps_copying">📥 Copying %1$s...</string>
+    <string name="maps_copy_success">✅ %1$s added\n(%2$s)</string>
+    <string name="maps_copy_fail">❌ Copy failed: %1$s</string>
+    <string name="maps_delete_success">✅ %1$s deleted</string>
+    <string name="maps_delete_fail">❌ Delete failed</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
 
 </resources>
