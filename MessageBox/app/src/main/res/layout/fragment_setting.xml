@@ -8,7 +8,7 @@
     android:background="#0A1628"
     tools:context=".SettingFragment">
 
-    <!-- 타이틀 -->
+    <!-- Title -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -140,7 +140,7 @@
 
             </LinearLayout>
 
-            <!-- 숨겨진 기존 필드 (기존 로직 호환) -->
+            <!-- 호환 -->
             <EditText
                 android:id="@+id/text_receiver"
                 android:layout_width="0dp"
@@ -205,7 +205,7 @@
 
             </LinearLayout>
 
-            <!-- ⭐ OR 안내 박스 (컴팩트) -->
+            <!-- OR 안내 박스 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -281,7 +281,6 @@
                 android:padding="10dp"
                 android:layout_marginBottom="12dp">
 
-                <!-- 프리셋 Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -384,7 +383,6 @@
 
                 </LinearLayout>
 
-                <!-- ⭐ EditText 수동 입력 (SeekBar 대신) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -418,7 +416,6 @@
 
                 </LinearLayout>
 
-                <!-- 숨겨진 SeekBar (호환성) -->
                 <SeekBar
                     android:id="@+id/seek_time"
                     android:layout_width="0dp"
@@ -478,7 +475,6 @@
                 android:padding="10dp"
                 android:layout_marginBottom="16dp">
 
-                <!-- 프리셋 Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -581,7 +577,6 @@
 
                 </LinearLayout>
 
-                <!-- ⭐ EditText 수동 입력 (SeekBar 대신) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -625,7 +620,6 @@
 
                 </LinearLayout>
 
-                <!-- 숨겨진 SeekBar (호환성) -->
                 <SeekBar
                     android:id="@+id/seek_dist"
                     android:layout_width="0dp"
@@ -644,7 +638,7 @@
                 app:cardBackgroundColor="#00E5D1"
                 app:cardCornerRadius="10dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="16dp">
 
                 <LinearLayout
                     android:id="@+id/button_set_save"
@@ -677,7 +671,70 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- ═══════ START / STOP ═══════ -->
+            <!-- ⭐ NEW: START/STOP 사용 안내 박스 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_or_info"
+                android:padding="12dp"
+                android:layout_marginBottom="10dp">
+
+                <!-- 1줄: Settings의 의미 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ℹ️"
+                        android:textSize="14sp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/setting_track_buttons_info"
+                        android:textColor="#B3F0EA"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+                <!-- 2줄: 헤더 안내 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↑"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#00E5D1"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/setting_track_header_hint"
+                        android:textColor="#00E5D1"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ═══════ START / STOP (유지) ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

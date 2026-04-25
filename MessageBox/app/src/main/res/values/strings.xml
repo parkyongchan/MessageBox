@@ -790,5 +790,108 @@
     <string name="mygps_label_points">📍 POINTS</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MY GPS Tab - Toast/Dialog (DevicesTabFragment) ════════ -->
+
+    <!-- Hint -->
+    <string name="mygps_export_hint">Tap 📤 in the header to export</string>
+    <string name="mygps_settings_manual_open">Please open Settings tab manually</string>
+    <string name="mygps_imei_not_connected">Not connected</string>
+
+    <!-- Map markers -->
+    <string name="mygps_marker_current_pos">Current Position</string>
+    <string name="mygps_marker_last_pos">Last Position</string>
+
+    <!-- Marker dialog (Sat) -->
+    <string name="mygps_marker_title">📍 %1$s Point #%2$d</string>
+    <string name="mygps_marker_label_view_time">🕐 Viewed at: </string>
+
+    <!-- Delete dialog -->
+    <string name="mygps_dialog_delete_track_title">Delete Track</string>
+    <string name="mygps_dialog_delete_sat_title">Delete Satellite Track</string>
+    <string name="mygps_dialog_delete_msg">Delete \"%1$s\"?\nThis cannot be undone.</string>
+    <string name="mygps_toast_track_deleted">✅ Track deleted</string>
+
+    <!-- My Tracking -->
+    <string name="mygps_toast_tracking_started">🔴 Tracking started</string>
+    <string name="mygps_dialog_stop_tracking_title">Stop Tracking</string>
+    <string name="mygps_dialog_stop_tracking_msg">Stop and save this track?</string>
+    <string name="mygps_btn_stop_save_text">Stop &amp; Save</string>
+    <string name="mygps_toast_track_saved">✅ Track saved</string>
+
+    <!-- Sat Tracking -->
+    <string name="mygps_toast_ble_required">❌ Please connect BLE device first</string>
+    <string name="mygps_toast_waiting_device_info">⚠️ Waiting for device info...</string>
+    <string name="mygps_dialog_sat_start_title">Start Satellite TRACK</string>
+    <string name="mygps_dialog_sat_start_msg">Send TRACK START command to device?\n\nIMEI: %1$s</string>
+    <string name="mygps_btn_start">Start</string>
+    <string name="mygps_toast_sat_track_started">🛰 Satellite TRACK started</string>
+    <string name="mygps_dialog_sat_stop_title">Stop Satellite %1$s</string>
+    <string name="mygps_dialog_sat_stop_msg">Stop %1$s mode and save this session?</string>
+    <string name="mygps_toast_sat_saved">✅ %1$s saved</string>
+    <string name="mygps_toast_session_started">🛰 %1$s session started</string>
+
+    <!-- Save & Share -->
+    <string name="mygps_dialog_session_ended_title">✅ Satellite %1$s Ended</string>
+    <string name="mygps_dialog_session_ended_msg">Session ended:\n\nMode: %1$s\nPoints: %2$d\nDuration: %3$s</string>
+    <string name="mygps_btn_save">💾 Save</string>
+    <string name="mygps_btn_save_share">📤 Save &amp; Share</string>
+    <string name="mygps_btn_discard">🗑 Discard</string>
+    <string name="mygps_toast_session_saved">✅ Session saved</string>
+    <string name="mygps_share_text">Satellite TRACK Session\nPoints: %1$d\nDuration: %2$s</string>
+    <string name="mygps_share_chooser">Share Track</string>
+    <string name="mygps_toast_session_saved_shared">✅ Session saved &amp; shared</string>
+    <string name="mygps_toast_session_ended">⏹ Session ended (kept in list)</string>
+
+    <!-- Permissions -->
+    <string name="mygps_dialog_loc_perm_title">Location Permission Required</string>
+    <string name="mygps_dialog_loc_perm_msg">GPS tracking requires location permission.</string>
+    <string name="mygps_btn_grant">Grant</string>
+    <string name="mygps_dialog_bg_loc_title">Background Location</string>
+    <string name="mygps_dialog_bg_loc_msg">For reliable tracking when the screen is off, please allow location access \"All the time\".</string>
+    <string name="mygps_btn_skip">Skip</string>
+    <string name="mygps_dialog_notif_perm_title">Notification Permission</string>
+    <string name="mygps_dialog_notif_perm_msg">A notification will keep tracking alive in the background.</string>
+    <string name="mygps_toast_loc_perm_denied">Location permission denied</string>
+    <string name="mygps_dialog_gps_disabled_title">GPS is disabled</string>
+    <string name="mygps_dialog_gps_disabled_msg">Please enable GPS/Location in your device settings.</string>
+    <string name="mygps_btn_settings">Settings</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ ADAPTER (MyTrackAdapter / SatTrackAdapter) ════════ -->
+
+    <!-- MyTrackAdapter: "Started: %s" -->
+    <string name="adapter_track_started_label">Started: %1$s</string>
+
+    <!-- SatTrackAdapter: status badges -->
+    <string name="adapter_status_active">ACTIVE</string>
+    <string name="adapter_status_completed">COMPLETED</string>
+
+    <!-- SatTrackAdapter: time range "in progress" (when session is still active) -->
+    <string name="adapter_time_in_progress">In Progress</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ Settings/SOS 안내 박스 (START/STOP 의미 안내) ════════ -->
+
+    <!-- TRACK (Settings - Location tab) -->
+    <string name="setting_track_buttons_info">Buttons below send commands only — no map drawing or history saving.</string>
+    <string name="setting_track_header_hint">For full tracking with map and saved history, use the TRACK button at the top.</string>
+
+    <!-- SOS (Settings - SOS tab) -->
+    <string name="sos_buttons_info">Buttons below send commands only — no map drawing or history saving.</string>
+    <string name="sos_header_hint">For SOS with map and saved history, use the SOS button at the top.</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
 </resources>

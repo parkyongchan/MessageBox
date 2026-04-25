@@ -156,20 +156,12 @@ public class DevicesTabFragment extends Fragment {
     };
 
 
-    // ⭐ v4 Phase B-3-fix (2026-04-24): Satellite 탭 자동 새로고침용 Broadcast 수신기
-    // 장비에서 SOS/TRACK 포인트 수신 시 Service가 BROADCAST_ECHO_RECEIVED 발송
-    // → Satellite 지도 자동 갱신
     private BroadcastReceiver satEchoReceiver;
 
 
-    // ═══════════════════════════════════════════════════════════════
-    //   ⭐ v4 Phase B-3-fix (2026-04-24): 현재 세션이 SOS 인지 판별
-    //
-    //   버그: stopSatTracking 에서 LOCATION=3 (TRACK 종료)만 전송
-    //        → SOS 세션인 경우 종료 안 됨, LED도 안 꺼짐
-    //   해결: tvSatSessionTitle 체크해서 SOS 세션 여부 판별
-    //         → SOS면 LOCATION=5, TRACK이면 LOCATION=3 전송
-    // ═══════════════════════════════════════════════════════════════
+    /**
+     * Check if current Sat session is SOS mode
+     */
     private boolean isCurrentSessionSos() {
         if (tvSatSessionTitle == null) return false;
         CharSequence title = tvSatSessionTitle.getText();
@@ -237,7 +229,6 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .registerReceiver(locationReceiver, filter);
 
-        // ⭐ v4 Phase B-3-fix: Satellite 탭 자동 새로고침용 Broadcast 등록
         registerSatEchoReceiver();
 
         if (mapViewTracking != null) mapViewTracking.onResume();
@@ -264,7 +255,6 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .unregisterReceiver(locationReceiver);
 
-        // ⭐ v4 Phase B-3-fix: Satellite 탭 Broadcast 해제
         unregisterSatEchoReceiver();
 
         if (mapViewTracking != null) mapViewTracking.onPause();
@@ -274,19 +264,6 @@ public class DevicesTabFragment extends Fragment {
         stopSatElapsedTimer();
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    //   ⭐ v4 Phase B-3-fix (2026-04-24): Satellite 탭 자동 새로고침
-    //
-    //   기존 문제:
-    //   - Satellite 탭 지도가 장비 수신 데이터를 자동 반영 안 함
-    //   - 수동으로 탭/클릭해야 지도에 마커 추가됨
-    //
-    //   해결:
-    //   - Service가 새 포인트 저장 시 BROADCAST_ECHO_RECEIVED 발송
-    //   - 이 수신기가 받으면 reloadSatPathFromDb() 호출
-    //   - 지도 자동 갱신됨
-    // ═══════════════════════════════════════════════════════════════
 
     private void registerSatEchoReceiver() {
         if (satEchoReceiver != null) return;
@@ -298,8 +275,7 @@ public class DevicesTabFragment extends Fragment {
                 String action = intent.getAction();
                 if (com.ah.acr.messagebox.service.TytoConnectService
                         .BROADCAST_ECHO_RECEIVED.equals(action)) {
-                    Log.v(TAG, "📨 ECHO 수신 → Satellite 지도 자동 새로고침");
-                    // 현재 활성 세션이 있으면 DB에서 다시 로드
+                    Log.v(TAG, "ECHO received -> Satellite map auto refresh");
                     if (currentSatTrackId > 0) {
                         reloadSatPathFromDb();
                     }
@@ -318,9 +294,8 @@ public class DevicesTabFragment extends Fragment {
             } else {
                 requireContext().registerReceiver(satEchoReceiver, filter);
             }
-            Log.v(TAG, "📡 Sat ECHO 수신기 등록");
         } catch (Exception e) {
-            Log.e(TAG, "Sat ECHO 수신기 등록 실패: " + e.getMessage());
+            Log.e(TAG, "Sat ECHO receiver register failed: " + e.getMessage());
         }
     }
 
@@ -329,9 +304,8 @@ public class DevicesTabFragment extends Fragment {
         if (satEchoReceiver != null) {
             try {
                 requireContext().unregisterReceiver(satEchoReceiver);
-                Log.v(TAG, "📡 Sat ECHO 수신기 해제");
             } catch (Exception e) {
-                // 이미 해제 or 등록 안 됨
+                // ignore
             }
             satEchoReceiver = null;
         }
@@ -360,7 +334,6 @@ public class DevicesTabFragment extends Fragment {
                     mapModeToggleMyLoc,
                     requireContext(),
                     newMode -> {
-                        Log.v(TAG, "My Location 지도 모드 변경: " + newMode);
                         applyMapSourceToAllMaps();
                         syncOtherToggleUI(mapModeToggleSat);
                     }
@@ -372,7 +345,6 @@ public class DevicesTabFragment extends Fragment {
                     mapModeToggleSat,
                     requireContext(),
                     newMode -> {
-                        Log.v(TAG, "Satellite 지도 모드 변경: " + newMode);
                         applyMapSourceToAllMaps();
                         syncOtherToggleUI(mapModeToggleMyLoc);
                     }
@@ -505,7 +477,8 @@ public class DevicesTabFragment extends Fragment {
             @Override public void onTrackClick(MyTrackEntity track) { openTrackDetail(track); }
             @Override public void onTrackDelete(MyTrackEntity track) { confirmDeleteTrack(track); }
             @Override public void onTrackExport(MyTrackEntity track) {
-                Toast.makeText(requireContext(), "Tap 📤 in the header to export",
+                Toast.makeText(requireContext(),
+                        getString(R.string.mygps_export_hint),
                         Toast.LENGTH_SHORT).show();
                 openTrackDetail(track);
             }
@@ -518,7 +491,8 @@ public class DevicesTabFragment extends Fragment {
             @Override public void onTrackClick(SatTrackEntity track) { openSatTrackDetail(track); }
             @Override public void onTrackDelete(SatTrackEntity track) { confirmDeleteSatTrack(track); }
             @Override public void onTrackExport(SatTrackEntity track) {
-                Toast.makeText(requireContext(), "Tap 📤 in the header to export",
+                Toast.makeText(requireContext(),
+                        getString(R.string.mygps_export_hint),
                         Toast.LENGTH_SHORT).show();
                 openSatTrackDetail(track);
             }
@@ -549,13 +523,13 @@ public class DevicesTabFragment extends Fragment {
                         .setSelectedItemId(R.id.tab_settings);
             } else {
                 Toast.makeText(requireContext(),
-                        "Please open Settings tab manually",
+                        getString(R.string.mygps_settings_manual_open),
                         Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
             Log.e(TAG, "Navigate to settings failed: " + e.getMessage());
             Toast.makeText(requireContext(),
-                    "Please open Settings tab manually",
+                    getString(R.string.mygps_settings_manual_open),
                     Toast.LENGTH_SHORT).show();
         }
     }
@@ -604,7 +578,7 @@ public class DevicesTabFragment extends Fragment {
                 tvSatConnectedImei.setTextColor(0xFF00E5D1);
             } else {
                 connectedImei = null;
-                tvSatConnectedImei.setText("Not connected");
+                tvSatConnectedImei.setText(getString(R.string.mygps_imei_not_connected));
                 tvSatConnectedImei.setTextColor(0xFFFF5252);
             }
         });
@@ -612,7 +586,7 @@ public class DevicesTabFragment extends Fragment {
         BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
             if (device == null) {
                 connectedImei = null;
-                tvSatConnectedImei.setText("Not connected");
+                tvSatConnectedImei.setText(getString(R.string.mygps_imei_not_connected));
                 tvSatConnectedImei.setTextColor(0xFFFF5252);
             }
         });
@@ -627,13 +601,15 @@ public class DevicesTabFragment extends Fragment {
 
     private void confirmDeleteTrack(MyTrackEntity track) {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Delete Track")
-                .setMessage("Delete \"" + track.getName() + "\"?\nThis cannot be undone.")
-                .setPositiveButton("Delete", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_delete_track_title))
+                .setMessage(getString(R.string.mygps_dialog_delete_msg, track.getName()))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (d, w) -> {
                     myTrackViewModel.deleteTrack(track);
-                    Toast.makeText(requireContext(), "✅ Track deleted", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(),
+                            getString(R.string.mygps_toast_track_deleted),
+                            Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -646,13 +622,15 @@ public class DevicesTabFragment extends Fragment {
 
     private void confirmDeleteSatTrack(SatTrackEntity track) {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Delete Satellite Track")
-                .setMessage("Delete \"" + track.getName() + "\"?\nThis cannot be undone.")
-                .setPositiveButton("Delete", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_delete_sat_title))
+                .setMessage(getString(R.string.mygps_dialog_delete_msg, track.getName()))
+                .setPositiveButton(getString(R.string.addr_btn_delete), (d, w) -> {
                     satTrackViewModel.deleteTrack(track);
-                    Toast.makeText(requireContext(), "✅ Track deleted", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(),
+                            getString(R.string.mygps_toast_track_deleted),
+                            Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -674,7 +652,7 @@ public class DevicesTabFragment extends Fragment {
 
         currentLocationMarker = new Marker(mapViewTracking);
         currentLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        currentLocationMarker.setTitle("Current Position");
+        currentLocationMarker.setTitle(getString(R.string.mygps_marker_current_pos));
         mapViewTracking.getOverlays().add(currentLocationMarker);
     }
 
@@ -696,7 +674,7 @@ public class DevicesTabFragment extends Fragment {
 
         satCurrentMarker = new Marker(mapViewSatTracking);
         satCurrentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        satCurrentMarker.setTitle("Last Position");
+        satCurrentMarker.setTitle(getString(R.string.mygps_marker_last_pos));
         mapViewSatTracking.getOverlays().add(satCurrentMarker);
     }
 
@@ -739,7 +717,8 @@ public class DevicesTabFragment extends Fragment {
 
             requireActivity().runOnUiThread(() -> {
                 switchToTrackingState();
-                Toast.makeText(requireContext(), "🔴 Tracking started",
+                Toast.makeText(requireContext(),
+                        getString(R.string.mygps_toast_tracking_started),
                         Toast.LENGTH_SHORT).show();
             });
             return null;
@@ -749,10 +728,11 @@ public class DevicesTabFragment extends Fragment {
 
     private void onStopClicked() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Stop Tracking")
-                .setMessage("Stop and save this track?")
-                .setPositiveButton("Stop & Save", (d, w) -> stopTracking())
-                .setNegativeButton("Cancel", null)
+                .setTitle(getString(R.string.mygps_dialog_stop_tracking_title))
+                .setMessage(getString(R.string.mygps_dialog_stop_tracking_msg))
+                .setPositiveButton(getString(R.string.mygps_btn_stop_save_text),
+                        (d, w) -> stopTracking())
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -762,7 +742,9 @@ public class DevicesTabFragment extends Fragment {
         if (currentTrackId > 0) {
             myTrackViewModel.stopTrack(currentTrackId);
         }
-        Toast.makeText(requireContext(), "✅ Track saved", Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(),
+                getString(R.string.mygps_toast_track_saved),
+                Toast.LENGTH_SHORT).show();
         currentTrackId = -1;
         trackingStartTime = 0;
         switchToNotTrackingState();
@@ -772,23 +754,24 @@ public class DevicesTabFragment extends Fragment {
     private void onSatStartClicked() {
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
             Toast.makeText(requireContext(),
-                    "❌ Please connect BLE device first",
+                    getString(R.string.mygps_toast_ble_required),
                     Toast.LENGTH_LONG).show();
             return;
         }
 
         if (connectedImei == null || connectedImei.isEmpty()) {
             Toast.makeText(requireContext(),
-                    "⚠️ Waiting for device info...",
+                    getString(R.string.mygps_toast_waiting_device_info),
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Start Satellite TRACK")
-                .setMessage("Send TRACK START command to device?\n\nIMEI: " + connectedImei)
-                .setPositiveButton("Start", (d, w) -> startSatTracking())
-                .setNegativeButton("Cancel", null)
+                .setTitle(getString(R.string.mygps_dialog_sat_start_title))
+                .setMessage(getString(R.string.mygps_dialog_sat_start_msg, connectedImei))
+                .setPositiveButton(getString(R.string.mygps_btn_start),
+                        (d, w) -> startSatTracking())
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -808,7 +791,7 @@ public class DevicesTabFragment extends Fragment {
             requireActivity().runOnUiThread(() -> {
                 switchToSatTrackingState();
                 Toast.makeText(requireContext(),
-                        "🛰 Satellite TRACK started",
+                        getString(R.string.mygps_toast_sat_track_started),
                         Toast.LENGTH_SHORT).show();
             });
             return null;
@@ -816,53 +799,30 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    /**
-     * ⭐ v4 Phase B-3-fix (2026-04-24): Stop & Save 다이얼로그 메시지 개선
-     * 세션 모드(TRACK/SOS)에 따라 다이얼로그 텍스트 변경
-     */
     private void onSatStopClicked() {
         boolean isSos = isCurrentSessionSos();
         String modeLabel = isSos ? "SOS" : "TRACK";
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Stop Satellite " + modeLabel)
-                .setMessage("Stop " + modeLabel + " mode and save this session?")
-                .setPositiveButton("Stop & Save", (d, w) -> stopSatTracking())
-                .setNegativeButton("Cancel", null)
+                .setTitle(getString(R.string.mygps_dialog_sat_stop_title, modeLabel))
+                .setMessage(getString(R.string.mygps_dialog_sat_stop_msg, modeLabel))
+                .setPositiveButton(getString(R.string.mygps_btn_stop_save_text),
+                        (d, w) -> stopSatTracking())
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
 
     /**
-     * ⭐ v4 Phase B-3-fix (2026-04-24): SOS 세션 종료 버그 수정
-     *
-     * 기존 문제:
-     * - LOCATION=3 (TRACK 종료) 만 전송
-     * - SOS 세션인 경우:
-     *   · save 는 되지만
-     *   · SOS 종료 명령 안 보냄
-     *   · SOS LED 안 꺼짐
-     *
-     * 수정:
-     * - SOS 세션: LOCATION=5 (SOS 종료)
-     * - TRACK 세션: LOCATION=3 (TRACK 종료)
-     *
-     * BLE 프로토콜 참고 (MainActivity 에서 확인):
-     *   LOCATION=2: TRACK 시작
-     *   LOCATION=3: TRACK 종료
-     *   LOCATION=4: SOS 시작
-     *   LOCATION=5: SOS 종료
+     * Stop SOS/TRACK session
      */
     private void stopSatTracking() {
         boolean isSos = isCurrentSessionSos();
 
-        // ⭐ 모드에 맞는 BLE 종료 명령 전송
         if (isSos) {
             BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
-            Log.v("SAT-SESSION", "⏹ SOS 종료 명령 전송: LOCATION=5");
         } else {
             BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
-            Log.v("SAT-SESSION", "⏹ TRACK 종료 명령 전송: LOCATION=3");
         }
 
         if (currentSatTrackId > 0) {
@@ -873,7 +833,7 @@ public class DevicesTabFragment extends Fragment {
 
         String modeLabel = isSos ? "SOS" : "Satellite TRACK";
         Toast.makeText(requireContext(),
-                "✅ " + modeLabel + " saved",
+                getString(R.string.mygps_toast_sat_saved, modeLabel),
                 Toast.LENGTH_SHORT).show();
 
         currentSatTrackId = -1;
@@ -884,25 +844,20 @@ public class DevicesTabFragment extends Fragment {
 
     public void startSatSessionFromHeader(int mode) {
         if (currentSatTrackId > 0) {
-            Log.v("SAT-SESSION", "이미 활성 세션 있음, skip");
             return;
         }
 
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-            Log.v("SAT-SESSION", "⚠ BLE 미연결, 세션 시작 skip");
             return;
         }
 
         if (connectedImei == null || connectedImei.isEmpty()) {
-            Log.v("SAT-SESSION", "⚠ IMEI 없음, 세션 시작 skip");
             return;
         }
 
         String modeLabel = (mode == 2) ? "SOS" : "TRACK";
         String trackName = modeLabel + " " + android.text.format.DateFormat.format(
                 "MM/dd HH:mm", new Date()).toString();
-
-        Log.v("SAT-SESSION", "⭐ 헤더 " + modeLabel + "으로 세션 시작: " + trackName);
 
         satTrackViewModel.startNewTrack(trackName, connectedImei, trackId -> {
             currentSatTrackId = trackId.intValue();
@@ -928,7 +883,7 @@ public class DevicesTabFragment extends Fragment {
                     }
 
                     Toast.makeText(requireContext(),
-                            "🛰 " + modeLabel + " session started",
+                            getString(R.string.mygps_toast_session_started, modeLabel),
                             Toast.LENGTH_SHORT).show();
                 });
             }
@@ -938,12 +893,8 @@ public class DevicesTabFragment extends Fragment {
 
     public void stopSatSessionFromHeader(int prevMode) {
         if (currentSatTrackId <= 0) {
-            Log.v("SAT-SESSION", "활성 세션 없음, skip");
             return;
         }
-
-        String modeLabel = (prevMode == 2) ? "SOS" : "TRACK";
-        Log.v("SAT-SESSION", "⏹ 헤더 " + modeLabel + " 종료, 저장 다이얼로그 표시");
 
         if (isAdded() && getActivity() != null) {
             requireActivity().runOnUiThread(() -> {
@@ -957,18 +908,15 @@ public class DevicesTabFragment extends Fragment {
 
         String modeLabel = (mode == 2) ? "SOS" : "TRACK";
         int pointCount = satPathPoints.size();
-
-        String message = "Session ended:\n\n" +
-                "Mode: " + modeLabel + "\n" +
-                "Points: " + pointCount + "\n" +
-                "Duration: " + formatElapsed(System.currentTimeMillis() - satTrackingStartTime);
+        String duration = formatElapsed(System.currentTimeMillis() - satTrackingStartTime);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("✅ Satellite " + modeLabel + " Ended")
-                .setMessage(message)
-                .setPositiveButton("💾 Save", (d, w) -> saveSatSession())
-                .setNeutralButton("📤 Save & Share", (d, w) -> saveAndShareSatSession())
-                .setNegativeButton("🗑 Discard", (d, w) -> discardSatSession())
+                .setTitle(getString(R.string.mygps_dialog_session_ended_title, modeLabel))
+                .setMessage(getString(R.string.mygps_dialog_session_ended_msg,
+                        modeLabel, pointCount, duration))
+                .setPositiveButton(getString(R.string.mygps_btn_save), (d, w) -> saveSatSession())
+                .setNeutralButton(getString(R.string.mygps_btn_save_share), (d, w) -> saveAndShareSatSession())
+                .setNegativeButton(getString(R.string.mygps_btn_discard), (d, w) -> discardSatSession())
                 .setCancelable(false)
                 .show();
     }
@@ -980,7 +928,7 @@ public class DevicesTabFragment extends Fragment {
         SatTrackStateHolder.stopSession();
 
         Toast.makeText(requireContext(),
-                "✅ Session saved",
+                getString(R.string.mygps_toast_session_saved),
                 Toast.LENGTH_SHORT).show();
 
         resetSatSession();
@@ -997,20 +945,19 @@ public class DevicesTabFragment extends Fragment {
                     android.content.Intent.ACTION_SEND);
             shareIntent.setType("text/plain");
 
-            String text = "Satellite TRACK Session\n" +
-                    "Points: " + satPathPoints.size() + "\n" +
-                    "Duration: " + formatElapsed(
-                            System.currentTimeMillis() - satTrackingStartTime);
+            String text = getString(R.string.mygps_share_text,
+                    satPathPoints.size(),
+                    formatElapsed(System.currentTimeMillis() - satTrackingStartTime));
             shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
 
             startActivity(android.content.Intent.createChooser(
-                    shareIntent, "Share Track"));
+                    shareIntent, getString(R.string.mygps_share_chooser)));
         } catch (Exception e) {
-            Log.v("SAT-SESSION", "공유 실패: " + e.getMessage());
+            // ignore
         }
 
         Toast.makeText(requireContext(),
-                "✅ Session saved & shared",
+                getString(R.string.mygps_toast_session_saved_shared),
                 Toast.LENGTH_SHORT).show();
 
         resetSatSession();
@@ -1023,7 +970,7 @@ public class DevicesTabFragment extends Fragment {
         SatTrackStateHolder.stopSession();
 
         Toast.makeText(requireContext(),
-                "⏹ Session ended (kept in list)",
+                getString(R.string.mygps_toast_session_ended),
                 Toast.LENGTH_SHORT).show();
 
         resetSatSession();
@@ -1349,8 +1296,6 @@ public class DevicesTabFragment extends Fragment {
         }
 
         final boolean isSosFinal = isSos;
-        java.text.SimpleDateFormat timeFmt = new java.text.SimpleDateFormat(
-                "HH:mm:ss", Locale.US);
 
         for (int i = 0; i < total; i++) {
             final GeoPoint pt = satPathPoints.get(i);
@@ -1365,16 +1310,16 @@ public class DevicesTabFragment extends Fragment {
             com.ah.acr.messagebox.util.NumberedMarkerUtil.applyToMarker(
                     marker, ctx, number, color, alpha, isLatest);
 
-            // ⭐ UI-2026-04-24: 말풍선 + 클릭 리스너
+            // Localized snippet
             String title = "📍 #" + number;
             String snippet = String.format(Locale.US,
-                    "%.6f, %.6f\n(탭하여 상세보기)",
-                    pt.getLatitude(), pt.getLongitude());
+                    "%.6f, %.6f\n(%s)",
+                    pt.getLatitude(), pt.getLongitude(),
+                    getString(R.string.point_detail_marker_tap_for_details));
             marker.setTitle(title);
             marker.setSnippet(snippet);
 
             marker.setOnMarkerClickListener((m, mv) -> {
-                Log.v(TAG, "🔵 Sat 마커 탭: #" + number);
                 showSatMarkerDialog(number, pt, isSosFinal);
                 return true;
             });
@@ -1388,7 +1333,7 @@ public class DevicesTabFragment extends Fragment {
 
 
     /**
-     * ⭐ UI-2026-04-24: Satellite 마커 탭 → 상세 다이얼로그
+     * Sat marker tap -> detail dialog (localized)
      */
     private void showSatMarkerDialog(int number, GeoPoint point, boolean isSos) {
         String modeLabel = isSos ? "SOS" : "TRACK";
@@ -1396,49 +1341,51 @@ public class DevicesTabFragment extends Fragment {
                 "yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date());
 
         StringBuilder sb = new StringBuilder();
-        sb.append("🛰 모드: ").append(modeLabel).append("\n\n");
-        sb.append("📍 좌표: ").append(String.format(Locale.US,
+        sb.append(getString(R.string.point_detail_label_mode)).append(modeLabel).append("\n\n");
+        sb.append(getString(R.string.point_detail_label_coordinates)).append(String.format(Locale.US,
                 "%.6f, %.6f",
                 point.getLatitude(), point.getLongitude())).append("\n\n");
-        sb.append("🕐 조회 시각: ").append(currentTime);
+        sb.append(getString(R.string.mygps_marker_label_view_time)).append(currentTime);
 
         if (connectedImei != null && !connectedImei.isEmpty()) {
-            sb.append("\n\n📡 IMEI: ").append(connectedImei);
+            sb.append("\n\n").append(getString(R.string.point_detail_label_imei))
+                    .append(connectedImei);
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("📍 " + modeLabel + " 포인트 #" + number)
+                .setTitle(getString(R.string.mygps_marker_title, modeLabel, number))
                 .setMessage(sb.toString())
-                .setPositiveButton("좌표 복사", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_copy_coordinates), (d, w) -> {
                     android.content.ClipboardManager clipboard =
                             (android.content.ClipboardManager) requireContext()
                                     .getSystemService(Context.CLIPBOARD_SERVICE);
                     String coords = String.format(Locale.US, "%f,%f",
                             point.getLatitude(), point.getLongitude());
                     android.content.ClipData clip =
-                            android.content.ClipData.newPlainText("좌표", coords);
+                            android.content.ClipData.newPlainText(
+                                    getString(R.string.clipboard_label_coordinates), coords);
                     clipboard.setPrimaryClip(clip);
                     Toast.makeText(requireContext(),
-                            "좌표가 복사되었습니다",
+                            getString(R.string.point_detail_toast_copied),
                             Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("닫기", null)
+                .setNegativeButton(getString(R.string.btn_close), null)
                 .show();
     }
 
 
     private void requestLocationPermission() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Location Permission Required")
-                .setMessage("GPS tracking requires location permission.")
-                .setPositiveButton("Grant", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_loc_perm_title))
+                .setMessage(getString(R.string.mygps_dialog_loc_perm_msg))
+                .setPositiveButton(getString(R.string.mygps_btn_grant), (d, w) -> {
                     String[] perms = {
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.ACCESS_COARSE_LOCATION
                     };
                     requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_LOCATION);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -1446,13 +1393,13 @@ public class DevicesTabFragment extends Fragment {
     private void requestBackgroundPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
         new AlertDialog.Builder(requireContext())
-                .setTitle("Background Location")
-                .setMessage("For reliable tracking when the screen is off, please allow location access \"All the time\".")
-                .setPositiveButton("Grant", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_bg_loc_title))
+                .setMessage(getString(R.string.mygps_dialog_bg_loc_msg))
+                .setPositiveButton(getString(R.string.mygps_btn_grant), (d, w) -> {
                     String[] perms = {Manifest.permission.ACCESS_BACKGROUND_LOCATION};
                     requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_BACKGROUND_LOCATION);
                 })
-                .setNegativeButton("Skip", null)
+                .setNegativeButton(getString(R.string.mygps_btn_skip), null)
                 .show();
     }
 
@@ -1460,13 +1407,13 @@ public class DevicesTabFragment extends Fragment {
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
         new AlertDialog.Builder(requireContext())
-                .setTitle("Notification Permission")
-                .setMessage("A notification will keep tracking alive in the background.")
-                .setPositiveButton("Grant", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_notif_perm_title))
+                .setMessage(getString(R.string.mygps_dialog_notif_perm_msg))
+                .setPositiveButton(getString(R.string.mygps_btn_grant), (d, w) -> {
                     String[] perms = {Manifest.permission.POST_NOTIFICATIONS};
                     requestPermissions(perms, LocationPermissionHelper.REQUEST_CODE_NOTIFICATIONS);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -1484,7 +1431,8 @@ public class DevicesTabFragment extends Fragment {
             case LocationPermissionHelper.REQUEST_CODE_LOCATION:
                 if (granted) onStartClicked();
                 else Toast.makeText(requireContext(),
-                        "Location permission denied", Toast.LENGTH_SHORT).show();
+                        getString(R.string.mygps_toast_loc_perm_denied),
+                        Toast.LENGTH_SHORT).show();
                 break;
             case LocationPermissionHelper.REQUEST_CODE_NOTIFICATIONS:
                 onStartClicked();
@@ -1498,13 +1446,13 @@ public class DevicesTabFragment extends Fragment {
 
     private void showGpsDisabledDialog() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("GPS is disabled")
-                .setMessage("Please enable GPS/Location in your device settings.")
-                .setPositiveButton("Settings", (d, w) -> {
+                .setTitle(getString(R.string.mygps_dialog_gps_disabled_title))
+                .setMessage(getString(R.string.mygps_dialog_gps_disabled_msg))
+                .setPositiveButton(getString(R.string.mygps_btn_settings), (d, w) -> {
                     Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                     startActivity(intent);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 }

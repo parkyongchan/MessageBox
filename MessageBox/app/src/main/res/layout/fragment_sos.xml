@@ -82,7 +82,6 @@
 
             </LinearLayout>
 
-            <!-- Receiver clickable card -->
             <LinearLayout
                 android:id="@+id/layout_receiver_display"
                 android:layout_width="match_parent"
@@ -142,7 +141,7 @@
 
             </LinearLayout>
 
-            <!-- Hidden legacy fields (backward compatibility) -->
+            <!-- 호환 -->
             <EditText
                 android:id="@+id/text_receiver"
                 android:layout_width="0dp"
@@ -291,13 +290,75 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- ═══════ START / STOP ═══════ -->
+            <!-- ⭐ NEW: START/STOP 사용 안내 박스 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_sos_info"
+                android:padding="12dp"
+                android:layout_marginBottom="10dp">
+
+                <!-- 1줄: Settings의 의미 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ℹ️"
+                        android:textSize="14sp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/sos_buttons_info"
+                        android:textColor="#E8F1FB"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+                <!-- 2줄: 헤더 안내 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↑"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#FF5252"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/sos_header_hint"
+                        android:textColor="#FF5252"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ═══════ START / STOP (유지) ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <!-- START SOS button (red) -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
                     android:layout_height="56dp"
@@ -339,7 +400,6 @@
 
                 </androidx.cardview.widget.CardView>
 
-                <!-- STOP button (gray) -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
                     android:layout_height="56dp"

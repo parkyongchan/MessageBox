@@ -1,5 +1,6 @@
 package com.ah.acr.messagebox.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -96,6 +97,8 @@ public class MyTrackAdapter extends RecyclerView.Adapter<MyTrackAdapter.TrackVie
         }
 
         void bind(MyTrackEntity track, OnTrackActionListener listener) {
+            Context ctx = itemView.getContext();
+
             tvTrackName.setText(track.getName());
 
             double km = track.getTotalDistance() / 1000.0;
@@ -106,8 +109,11 @@ public class MyTrackAdapter extends RecyclerView.Adapter<MyTrackAdapter.TrackVie
 
             tvTrackPoints.setText(String.format(Locale.US, "%d pts", track.getPointCount()));
 
+            // Localized "Started: ..."
             if (track.getStartTime() != null) {
-                tvTrackStart.setText("Started: " + START_FMT.format(track.getStartTime()));
+                tvTrackStart.setText(ctx.getString(
+                        R.string.adapter_track_started_label,
+                        START_FMT.format(track.getStartTime())));
             } else {
                 tvTrackStart.setText("");
             }

@@ -780,8 +780,108 @@
     <string name="mygps_label_points">📍 ポイント</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <!-- ════════ MY GPS Tab - Toast/Dialog (DevicesTabFragment) ════════ -->
 
+    <!-- Hint -->
+    <string name="mygps_export_hint">ヘッダーの📤をタップしてエクスポート</string>
+    <string name="mygps_settings_manual_open">設定タブを手動で開いてください</string>
+    <string name="mygps_imei_not_connected">未接続</string>
 
+    <!-- Map markers -->
+    <string name="mygps_marker_current_pos">現在位置</string>
+    <string name="mygps_marker_last_pos">最終位置</string>
+
+    <!-- Marker dialog (Sat) -->
+    <string name="mygps_marker_title">📍 %1$s ポイント #%2$d</string>
+    <string name="mygps_marker_label_view_time">🕐 表示時刻: </string>
+
+    <!-- Delete dialog -->
+    <string name="mygps_dialog_delete_track_title">軌跡を削除</string>
+    <string name="mygps_dialog_delete_sat_title">衛星軌跡を削除</string>
+    <string name="mygps_dialog_delete_msg">「%1$s」を削除しますか？\nこの操作は取り消せません。</string>
+    <string name="mygps_toast_track_deleted">✅ 軌跡を削除しました</string>
+
+    <!-- My Tracking -->
+    <string name="mygps_toast_tracking_started">🔴 追跡開始</string>
+    <string name="mygps_dialog_stop_tracking_title">追跡停止</string>
+    <string name="mygps_dialog_stop_tracking_msg">この軌跡を停止して保存しますか？</string>
+    <string name="mygps_btn_stop_save_text">停止して保存</string>
+    <string name="mygps_toast_track_saved">✅ 軌跡を保存しました</string>
+
+    <!-- Sat Tracking -->
+    <string name="mygps_toast_ble_required">❌ BLE機器を先に接続してください</string>
+    <string name="mygps_toast_waiting_device_info">⚠️ 機器情報を待機中...</string>
+    <string name="mygps_dialog_sat_start_title">衛星TRACK開始</string>
+    <string name="mygps_dialog_sat_start_msg">機器にTRACK開始コマンドを送信しますか？\n\nIMEI: %1$s</string>
+    <string name="mygps_btn_start">開始</string>
+    <string name="mygps_toast_sat_track_started">🛰 衛星TRACK開始</string>
+    <string name="mygps_dialog_sat_stop_title">衛星%1$s停止</string>
+    <string name="mygps_dialog_sat_stop_msg">%1$sモードを停止してこのセッションを保存しますか？</string>
+    <string name="mygps_toast_sat_saved">✅ %1$sを保存しました</string>
+    <string name="mygps_toast_session_started">🛰 %1$sセッション開始</string>
+
+    <!-- Save & Share -->
+    <string name="mygps_dialog_session_ended_title">✅ 衛星%1$s終了</string>
+    <string name="mygps_dialog_session_ended_msg">セッション終了:\n\nモード: %1$s\nポイント: %2$d\n継続時間: %3$s</string>
+    <string name="mygps_btn_save">💾 保存</string>
+    <string name="mygps_btn_save_share">📤 保存して共有</string>
+    <string name="mygps_btn_discard">🗑 破棄</string>
+    <string name="mygps_toast_session_saved">✅ セッションを保存しました</string>
+    <string name="mygps_share_text">衛星TRACKセッション\nポイント: %1$d\n継続時間: %2$s</string>
+    <string name="mygps_share_chooser">軌跡を共有</string>
+    <string name="mygps_toast_session_saved_shared">✅ セッションを保存して共有しました</string>
+    <string name="mygps_toast_session_ended">⏹ セッション終了 (リストに保持)</string>
+
+    <!-- Permissions -->
+    <string name="mygps_dialog_loc_perm_title">位置情報の権限が必要</string>
+    <string name="mygps_dialog_loc_perm_msg">GPS追跡には位置情報の権限が必要です。</string>
+    <string name="mygps_btn_grant">許可</string>
+    <string name="mygps_dialog_bg_loc_title">バックグラウンド位置情報</string>
+    <string name="mygps_dialog_bg_loc_msg">画面オフ時の安定した追跡のため、位置情報へのアクセスを「常に許可」してください。</string>
+    <string name="mygps_btn_skip">スキップ</string>
+    <string name="mygps_dialog_notif_perm_title">通知の権限</string>
+    <string name="mygps_dialog_notif_perm_msg">通知でバックグラウンド追跡を維持します。</string>
+    <string name="mygps_toast_loc_perm_denied">位置情報の権限が拒否されました</string>
+    <string name="mygps_dialog_gps_disabled_title">GPSが無効です</string>
+    <string name="mygps_dialog_gps_disabled_msg">機器の設定からGPS/位置情報を有効にしてください。</string>
+    <string name="mygps_btn_settings">設定</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ ADAPTER (MyTrackAdapter / SatTrackAdapter) ════════ -->
+
+    <!-- MyTrackAdapter: "開始: %s" -->
+    <string name="adapter_track_started_label">開始: %1$s</string>
+
+    <!-- SatTrackAdapter: status badges -->
+    <string name="adapter_status_active">進行中</string>
+    <string name="adapter_status_completed">完了</string>
+
+    <!-- SatTrackAdapter: time range "in progress" -->
+    <string name="adapter_time_in_progress">進行中</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ Settings/SOS 안내 박스 (START/STOP 의미 안내) ════════ -->
+
+    <!-- TRACK (Settings - Location tab) -->
+    <string name="setting_track_buttons_info">下のボタンはコマンド送信のみ — 地図表示や履歴の保存は行いません。</string>
+    <string name="setting_track_header_hint">地図表示と履歴保存付きで追跡するには、画面上部の追跡ボタンを使用してください。</string>
+
+    <!-- SOS (Settings - SOS tab) -->
+    <string name="sos_buttons_info">下のボタンはコマンド送信のみ — 地図表示や履歴の保存は行いません。</string>
+    <string name="sos_header_hint">地図表示と履歴保存付きでSOSを開始するには、画面上部のSOSボタンを使用してください。</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
 </resources>
