@@ -883,5 +883,25 @@
     <string name="sos_header_hint">地図表示と履歴保存付きでSOSを開始するには、画面上部のSOSボタンを使用してください。</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MBTiles "追加: ..." label ════════ -->
+    <string name="maps_added_label">追加: %1$s</string>
+
+    <!-- ════════ Copy progress dialog ════════ -->
+    <string name="maps_progress_title">ファイルをコピー中...</string>
+    <string name="maps_progress_starting">開始中...</string>
+    <string name="maps_progress_note">コピーが完了するまでアプリを閉じないでください</string>
+
+    <!-- ════════ Copy result messages ════════ -->
+    <string name="maps_copy_cancelled">コピーをキャンセルしました</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+
+
+
 
 </resources>

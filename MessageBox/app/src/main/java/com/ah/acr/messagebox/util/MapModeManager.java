@@ -16,8 +16,16 @@ import org.osmdroid.views.MapView;
 import java.io.File;
 
 /**
- * 지도 모드(온라인/오프라인) 관리 유틸리티
- * SharedPreferences 에 사용자 선택을 저장하여 앱 재실행 후에도 유지
+ * Map Mode (Online/Offline) Manager
+ *
+ * BUGFIX (2026-04-25):
+ *   - Offline -> Online not switching back
+ *   - Cause: Old TileProvider not properly detached
+ *   - Solution: Explicit detach() before setting new provider
+ *
+ *   - When MBTiles missing, auto-falls back to ONLINE but UI stays out of sync
+ *   - Solution: applyToMapView() returns the actual applied mode
+ *               (so caller can sync UI)
  */
 public class MapModeManager {
 
@@ -27,11 +35,11 @@ public class MapModeManager {
     private static final String MBTILES_SUBDIR = "mbtiles";
 
     public enum Mode {
-        ONLINE,   // 🌐 온라인 지도 (Mapnik)
-        OFFLINE   // 📁 오프라인 지도 (MBTiles)
+        ONLINE,   // 🌐 Online (Mapnik)
+        OFFLINE   // 📁 Offline (MBTiles)
     }
 
-    /** 현재 저장된 지도 모드 가져오기 (기본: ONLINE) */
+
     public static Mode getMode(Context ctx) {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String saved = prefs.getString(KEY_MODE, Mode.ONLINE.name());
@@ -43,7 +51,6 @@ public class MapModeManager {
         }
     }
 
-    /** 지도 모드 저장 */
     public static void setMode(Context ctx, Mode mode) {
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
@@ -60,54 +67,110 @@ public class MapModeManager {
         return getMode(ctx) == Mode.OFFLINE;
     }
 
+
     /**
-     * ⭐ 현재 모드에 맞는 지도 소스를 MapView 에 적용
-     * 
-     * 중요: 오프라인 → 온라인 전환 시 TileProvider 자체를 교체해야 함
-     * (setTileSource 만으로는 OfflineTileProvider 가 유지되어 타일이 안 보임)
-     * 
-     * @param ctx Context
-     * @param mapView 대상 MapView
+     * Check if MBTiles files are available.
      */
-    public static void applyToMapView(Context ctx, MapView mapView) {
-        if (mapView == null) return;
+    public static boolean hasMbtiles(Context ctx) {
+        File mbtilesDir = new File(
+                ctx.getExternalFilesDir(null),
+                MBTILES_SUBDIR
+        );
+        if (!mbtilesDir.exists()) return false;
+
+        File[] files = mbtilesDir.listFiles(
+                (dir, name) -> name.toLowerCase().endsWith(".mbtiles")
+        );
+        return files != null && files.length > 0;
+    }
+
+
+    /**
+     * Apply current mode to MapView.
+     *
+     * @return The mode actually applied. May differ from getMode() if fallback happened.
+     */
+    public static Mode applyToMapView(Context ctx, MapView mapView) {
+        if (mapView == null) return getMode(ctx);
+
+        Mode appliedMode = getMode(ctx);
 
         try {
-            Mode mode = getMode(ctx);
+            // Detach old provider FIRST
+            detachOldProvider(mapView);
 
-            if (mode == Mode.ONLINE) {
-                // 🌐 온라인 모드 - 기본 TileProvider 로 리셋
+            if (appliedMode == Mode.ONLINE) {
                 applyOnlineMode(ctx, mapView);
             } else {
-                // 📁 오프라인 모드 - MBTiles 로드 시도
-                applyOfflineMode(ctx, mapView);
+                // applyOfflineMode may fallback to ONLINE
+                appliedMode = applyOfflineMode(ctx, mapView);
             }
+
+            // Clear stale tile cache
+            clearTileCache(mapView);
 
             mapView.invalidate();
         } catch (Exception e) {
-            Log.e(TAG, "지도 소스 적용 실패: " + e.getMessage(), e);
+            Log.e(TAG, "Map source apply failed: " + e.getMessage(), e);
             mapView.setTileSource(TileSourceFactory.MAPNIK);
             mapView.invalidate();
+            appliedMode = Mode.ONLINE;
+        }
+
+        return appliedMode;
+    }
+
+
+    /**
+     * Detach the current TileProvider properly.
+     * Releases MBTiles file handles and network connections.
+     */
+    private static void detachOldProvider(MapView mapView) {
+        try {
+            MapTileProviderBase oldProvider = mapView.getTileProvider();
+            if (oldProvider != null) {
+                Log.v(TAG, "Detaching old provider: " + oldProvider.getClass().getSimpleName());
+                oldProvider.detach();
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Old provider detach failed (continuing): " + t.getMessage());
         }
     }
 
 
-    /** 🌐 온라인 모드 적용 */
+    /**
+     * Clear MapView's tile cache.
+     */
+    private static void clearTileCache(MapView mapView) {
+        try {
+            MapTileProviderBase provider = mapView.getTileProvider();
+            if (provider != null) {
+                provider.clearTileCache();
+            }
+        } catch (Throwable t) {
+            Log.v(TAG, "Tile cache clear skipped: " + t.getMessage());
+        }
+    }
+
+
+    /** 🌐 Apply Online mode */
     private static void applyOnlineMode(Context ctx, MapView mapView) {
-        // ⭐ 핵심: 기본 TileProvider 를 새로 만들어서 설정
-        // (기존 OfflineTileProvider 덮어쓰기)
         MapTileProviderBase defaultProvider = new MapTileProviderBasic(
                 ctx.getApplicationContext(),
                 TileSourceFactory.MAPNIK
         );
         mapView.setTileProvider(defaultProvider);
         mapView.setTileSource(TileSourceFactory.MAPNIK);
-        Log.v(TAG, "🌐 온라인 모드 적용");
+        mapView.setUseDataConnection(true);
+        Log.v(TAG, "🌐 Online mode applied");
     }
 
 
-    /** 📁 오프라인 모드 적용 */
-    private static void applyOfflineMode(Context ctx, MapView mapView) {
+    /**
+     * 📁 Apply Offline mode.
+     * @return Mode actually applied (may be ONLINE if MBTiles not found)
+     */
+    private static Mode applyOfflineMode(Context ctx, MapView mapView) {
         File mbtilesDir = new File(
                 ctx.getExternalFilesDir(null),
                 MBTILES_SUBDIR
@@ -127,15 +190,18 @@ public class MapModeManager {
             mapView.setTileSource(new XYTileSource(
                     "offline", 0, 18, 256, ".png", new String[]{}
             ));
-            Log.v(TAG, "📁 오프라인 모드 적용 - MBTiles " + mbtilesFiles.length + "개");
+            mapView.setUseDataConnection(false);
+            Log.v(TAG, "📁 Offline mode applied - MBTiles count: " + mbtilesFiles.length);
+            return Mode.OFFLINE;
         } else {
-            // MBTiles 파일 없음 → 온라인으로 자동 폴백
+            // MBTiles not found -> auto fallback to ONLINE
             Toast.makeText(ctx,
                     "오프라인 지도 파일이 없습니다.\n온라인 모드로 전환합니다.",
                     Toast.LENGTH_LONG).show();
-            setMode(ctx, Mode.ONLINE);
+            setMode(ctx, Mode.ONLINE);  // Save fallback mode
             applyOnlineMode(ctx, mapView);
-            Log.w(TAG, "MBTiles 없음 - 온라인으로 폴백");
+            Log.w(TAG, "MBTiles not found - fallback to online");
+            return Mode.ONLINE;  // ⭐ Tell caller actual applied mode
         }
     }
 }

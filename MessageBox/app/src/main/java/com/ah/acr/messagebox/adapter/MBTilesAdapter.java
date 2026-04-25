@@ -1,5 +1,6 @@
 package com.ah.acr.messagebox.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * MBTiles 파일 목록 어댑터
+ * MBTiles file list adapter
  */
 public class MBTilesAdapter extends RecyclerView.Adapter<MBTilesAdapter.MBTilesViewHolder> {
 
@@ -64,17 +65,20 @@ public class MBTilesAdapter extends RecyclerView.Adapter<MBTilesAdapter.MBTilesV
     @Override
     public void onBindViewHolder(@NonNull MBTilesViewHolder holder, int position) {
         File file = items.get(position);
+        Context ctx = holder.itemView.getContext();
 
-        // 파일명
+        // File name
         holder.tvFileName.setText(file.getName());
 
-        // 크기
+        // Size
         holder.tvFileSize.setText(formatFileSize(file.length()));
 
-        // 추가 날짜
-        holder.tvFileDate.setText("추가: " + dateFormat.format(new Date(file.lastModified())));
+        // ⭐ BUGFIX: Localized "Added: ..." (was Korean "추가:")
+        holder.tvFileDate.setText(ctx.getString(
+                R.string.maps_added_label,
+                dateFormat.format(new Date(file.lastModified()))));
 
-        // 삭제 버튼
+        // Delete button
         holder.btnDelete.setOnClickListener(v -> {
             if (listener != null) listener.onDeleteClick(file);
         });
@@ -86,7 +90,7 @@ public class MBTilesAdapter extends RecyclerView.Adapter<MBTilesAdapter.MBTilesV
     }
 
 
-    /** 파일 크기 포맷팅 */
+    /** Format file size */
     public static String formatFileSize(long bytes) {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return String.format(Locale.US, "%.1f KB", bytes / 1024.0);

@@ -893,5 +893,24 @@
     <string name="sos_header_hint">For SOS with map and saved history, use the SOS button at the top.</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MBTiles "Added: ..." label ════════ -->
+    <string name="maps_added_label">Added: %1$s</string>
+
+    <!-- ════════ Copy progress dialog ════════ -->
+    <string name="maps_progress_title">Copying file...</string>
+    <string name="maps_progress_starting">Starting...</string>
+    <string name="maps_progress_note">Please keep app open until copy completes</string>
+
+    <!-- ════════ Copy result messages ════════ -->
+    <string name="maps_copy_cancelled">Copy cancelled</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+
+
 
 </resources>

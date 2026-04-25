@@ -335,7 +335,9 @@ public class DevicesTabFragment extends Fragment {
                     requireContext(),
                     newMode -> {
                         applyMapSourceToAllMaps();
-                        syncOtherToggleUI(mapModeToggleSat);
+                        // ⭐ BUGFIX: Sync UI after apply (handles fallback case)
+                        MapModeToggleHelper.syncUI(mapModeToggleMyLoc, requireContext());
+                        MapModeToggleHelper.syncUI(mapModeToggleSat, requireContext());
                     }
             );
         }
@@ -346,7 +348,9 @@ public class DevicesTabFragment extends Fragment {
                     requireContext(),
                     newMode -> {
                         applyMapSourceToAllMaps();
-                        syncOtherToggleUI(mapModeToggleMyLoc);
+                        // ⭐ BUGFIX: Sync UI after apply (handles fallback case)
+                        MapModeToggleHelper.syncUI(mapModeToggleMyLoc, requireContext());
+                        MapModeToggleHelper.syncUI(mapModeToggleSat, requireContext());
                     }
             );
         }
@@ -359,13 +363,6 @@ public class DevicesTabFragment extends Fragment {
         }
         if (mapViewSatTracking != null) {
             MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
-        }
-    }
-
-
-    private void syncOtherToggleUI(View toggleRoot) {
-        if (toggleRoot != null) {
-            MapModeToggleHelper.setup(toggleRoot, requireContext(), null);
         }
     }
 
