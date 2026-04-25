@@ -724,4 +724,64 @@
     <string name="track_detail_invalid_date">無効な日付形式</string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MY GPS Tab (DevicesTabFragment) ════════ -->
+
+    <!-- Segment Tabs -->
+    <string name="mygps_tab_my_location">📱 自機の位置</string>
+    <string name="mygps_tab_satellite">🛰 衛星追跡</string>
+
+    <!-- ════════ My Location ════════ -->
+
+    <!-- Settings Card -->
+    <string name="mygps_section_track_settings">⚙ 追跡設定</string>
+    <string name="mygps_label_interval">間隔</string>
+    <string name="mygps_label_min_distance">最小距離</string>
+
+    <!-- Buttons -->
+    <string name="mygps_btn_start_tracking">🔴  追跡開始</string>
+    <string name="mygps_btn_stop_save">⏹  停止して保存</string>
+
+    <!-- Saved Tracks -->
+    <string name="mygps_section_saved_tracks">📊 保存した軌跡</string>
+    <string name="mygps_empty_no_tracks">保存された軌跡はありません。\n上の「追跡開始」をタップしてください！</string>
+
+    <!-- Tracking state -->
+    <string name="mygps_waiting_gps">🛰 GPS待機中...</string>
+
+    <!-- ════════ Satellite TRACK ════════ -->
+
+    <string name="mygps_sat_title">衛星追跡</string>
+    <string name="mygps_sat_no_session">⚠ アクティブなセッションなし</string>
+    <string name="mygps_sat_no_session_msg">設定からTRACKまたはSOSを開始すると、衛星GPSポイントの記録が始まります。</string>
+
+    <!-- Settings link -->
+    <string name="mygps_link_settings_title">設定へ移動</string>
+    <string name="mygps_link_settings_subtitle">間隔、距離を設定して追跡を開始</string>
+
+    <!-- Connected device -->
+    <string name="mygps_sat_connected_label">接続:</string>
+
+    <!-- Saved Sat Tracks -->
+    <string name="mygps_sat_section_saved_tracks">📊 保存した衛星軌跡</string>
+    <string name="mygps_sat_empty_no_tracks">保存された衛星軌跡はありません。\n設定から追跡を開始してください。</string>
+
+    <!-- Tracking state -->
+    <string name="mygps_sat_waiting_gps">🛰 衛星GPS待機中...</string>
+
+    <!-- ════════ Stats Labels (공용) ════════ -->
+
+    <string name="mygps_label_time">⏱ 時間</string>
+    <string name="mygps_label_distance">📏 距離</string>
+    <string name="mygps_label_points">📍 ポイント</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+
+
+
 </resources>

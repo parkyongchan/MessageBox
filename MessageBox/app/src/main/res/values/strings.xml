@@ -735,6 +735,60 @@
     <!-- <string name="btn_cancel">Cancel</string> -->
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <!-- ════════ MY GPS Tab (DevicesTabFragment) ════════ -->
+
+    <!-- Segment Tabs -->
+    <string name="mygps_tab_my_location">📱 My Location</string>
+    <string name="mygps_tab_satellite">🛰 Satellite TRACK</string>
+
+    <!-- ════════ My Location ════════ -->
+
+    <!-- Settings Card -->
+    <string name="mygps_section_track_settings">⚙ Track Settings</string>
+    <string name="mygps_label_interval">Interval</string>
+    <string name="mygps_label_min_distance">Min Distance</string>
+
+    <!-- Buttons -->
+    <string name="mygps_btn_start_tracking">🔴  Start Tracking</string>
+    <string name="mygps_btn_stop_save">⏹  Stop &amp; Save</string>
+
+    <!-- Saved Tracks -->
+    <string name="mygps_section_saved_tracks">📊 Saved Tracks</string>
+    <string name="mygps_empty_no_tracks">No saved tracks yet.\nTap \"Start Tracking\" above!</string>
+
+    <!-- Tracking state -->
+    <string name="mygps_waiting_gps">🛰 Waiting for GPS...</string>
+
+    <!-- ════════ Satellite TRACK ════════ -->
+
+    <string name="mygps_sat_title">Satellite TRACK</string>
+    <string name="mygps_sat_no_session">⚠ No active session</string>
+    <string name="mygps_sat_no_session_msg">Start TRACK or SOS from Settings to begin recording satellite GPS points.</string>
+
+    <!-- Settings link -->
+    <string name="mygps_link_settings_title">Go to Settings</string>
+    <string name="mygps_link_settings_subtitle">Configure interval, distance &amp; start tracking</string>
+
+    <!-- Connected device -->
+    <string name="mygps_sat_connected_label">Connected:</string>
+
+    <!-- Saved Sat Tracks -->
+    <string name="mygps_sat_section_saved_tracks">📊 Saved Satellite Tracks</string>
+    <string name="mygps_sat_empty_no_tracks">No saved satellite tracks yet.\nStart tracking from Settings.</string>
+
+    <!-- Tracking state -->
+    <string name="mygps_sat_waiting_gps">🛰 Waiting for satellite GPS...</string>
+
+    <!-- ════════ Stats Labels (공용) ════════ -->
+
+    <string name="mygps_label_time">⏱ TIME</string>
+    <string name="mygps_label_distance">📏 DISTANCE</string>
+    <string name="mygps_label_points">📍 POINTS</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
 
 </resources>

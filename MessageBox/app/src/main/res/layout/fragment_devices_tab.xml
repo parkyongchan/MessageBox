@@ -26,7 +26,7 @@
             android:background="@drawable/bg_segment_button"
             android:gravity="center"
             android:paddingHorizontal="8dp"
-            android:text="📱 My Location"
+            android:text="@string/mygps_tab_my_location"
             android:textColor="#0A1628"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -39,7 +39,7 @@
             android:background="@drawable/bg_segment_button"
             android:gravity="center"
             android:paddingHorizontal="8dp"
-            android:text="🛰 Satellite TRACK"
+            android:text="@string/mygps_tab_satellite"
             android:textColor="#95B0D4"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -47,9 +47,7 @@
     </LinearLayout>
 
 
-    <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Tab 1: My Location -->
-    <!-- ═══════════════════════════════════════════════════════ -->
     <FrameLayout
         android:id="@+id/containerMyLocation"
         android:layout_width="match_parent"
@@ -66,7 +64,6 @@
             android:padding="12dp"
             android:visibility="visible">
 
-            <!-- Settings Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -77,7 +74,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="⚙ Track Settings"
+                    android:text="@string/mygps_section_track_settings"
                     android:textColor="#00E5D1"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -97,7 +94,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Interval"
+                            android:text="@string/mygps_label_interval"
                             android:textColor="#95B0D4"
                             android:textSize="11sp" />
 
@@ -124,7 +121,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Min Distance"
+                            android:text="@string/mygps_label_min_distance"
                             android:textColor="#95B0D4"
                             android:textSize="11sp" />
 
@@ -148,7 +145,7 @@
                 android:layout_height="50dp"
                 android:layout_marginTop="10dp"
                 android:background="@drawable/btn_track_start"
-                android:text="🔴  Start Tracking"
+                android:text="@string/mygps_btn_start_tracking"
                 android:textColor="#FFFFFF"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -164,7 +161,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="📊 Saved Tracks"
+                    android:text="@string/mygps_section_saved_tracks"
                     android:textColor="#00E5D1"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -196,7 +193,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:padding="24dp"
-                android:text="No saved tracks yet.\nTap &quot;Start Tracking&quot; above!"
+                android:text="@string/mygps_empty_no_tracks"
                 android:textAlignment="center"
                 android:textColor="#666666"
                 android:textSize="13sp"
@@ -307,12 +304,11 @@
                     android:layout_gravity="center"
                     android:background="#CC000000"
                     android:padding="12dp"
-                    android:text="🛰 Waiting for GPS..."
+                    android:text="@string/mygps_waiting_gps"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:visibility="gone" />
 
-                <!-- ⭐ My Location 지도 모드 토글 (우측 상단) -->
                 <include
                     android:id="@+id/mapModeToggleMyLoc"
                     layout="@layout/view_map_mode_toggle"
@@ -330,7 +326,7 @@
                 android:layout_height="48dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/btn_track_start"
-                android:text="⏹  Stop &amp; Save"
+                android:text="@string/mygps_btn_stop_save"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -340,9 +336,7 @@
     </FrameLayout>
 
 
-    <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Tab 2: Satellite TRACK -->
-    <!-- ═══════════════════════════════════════════════════════ -->
     <FrameLayout
         android:id="@+id/containerSatellite"
         android:layout_width="match_parent"
@@ -351,7 +345,7 @@
         android:visibility="gone">
 
 
-        <!-- ═══════ State: Not Tracking (⭐ v4 Phase 3-1 재설계) ═══════ -->
+        <!-- State: Not Tracking -->
         <LinearLayout
             android:id="@+id/satStateNotTracking"
             android:layout_width="match_parent"
@@ -360,7 +354,6 @@
             android:padding="12dp"
             android:visibility="visible">
 
-            <!-- ⭐ 안내 카드 (START 버튼 대신) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -368,7 +361,6 @@
                 android:orientation="vertical"
                 android:padding="14dp">
 
-                <!-- 헤더 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -386,19 +378,18 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:text="Satellite TRACK"
+                        android:text="@string/mygps_sat_title"
                         android:textColor="#00E5D1"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
                 </LinearLayout>
 
-                <!-- ⚠ 비활성 상태 안내 -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="⚠ No active session"
+                    android:text="@string/mygps_sat_no_session"
                     android:textColor="#FFB84D"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -407,12 +398,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Start TRACK or SOS from Settings to begin recording satellite GPS points."
+                    android:text="@string/mygps_sat_no_session_msg"
                     android:textColor="#95B0D4"
                     android:textSize="12sp"
                     android:lineSpacingExtra="2dp" />
 
-                <!-- Settings 이동 링크 (강조됨) -->
                 <LinearLayout
                     android:id="@+id/linkSettings"
                     android:layout_width="match_parent"
@@ -443,7 +433,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Go to Settings"
+                            android:text="@string/mygps_link_settings_title"
                             android:textColor="#FFB300"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -452,7 +442,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Configure interval, distance &amp; start tracking"
+                            android:text="@string/mygps_link_settings_subtitle"
                             android:textColor="#95B0D4"
                             android:textSize="11sp" />
 
@@ -468,14 +458,12 @@
 
                 </LinearLayout>
 
-                <!-- 구분선 -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="12dp"
                     android:background="#1A2A44" />
 
-                <!-- Connected device -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -493,7 +481,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
-                        android:text="Connected:"
+                        android:text="@string/mygps_sat_connected_label"
                         android:textColor="#95B0D4"
                         android:textSize="12sp" />
 
@@ -513,10 +501,7 @@
 
             </LinearLayout>
 
-            <!-- ⭐ btnSatStart 제거됨 (v4 Phase 3-1) -->
-            <!-- 세션 시작은 Settings에서 처리 -->
 
-            <!-- 📊 Saved Satellite Tracks 헤더 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -527,7 +512,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="📊 Saved Satellite Tracks"
+                    android:text="@string/mygps_sat_section_saved_tracks"
                     android:textColor="#00E5D1"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -559,7 +544,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:padding="24dp"
-                android:text="No saved satellite tracks yet.\nStart tracking from Settings."
+                android:text="@string/mygps_sat_empty_no_tracks"
                 android:textAlignment="center"
                 android:textColor="#666666"
                 android:textSize="13sp"
@@ -568,8 +553,7 @@
         </LinearLayout>
 
 
-        <!-- ═══════ State: Tracking (⭐ UI-2026-04-23 재설계) ═══════ -->
-        <!-- 세션 정보 집중: 장비 상태는 헤더에 있으므로 제외 -->
+        <!-- State: Tracking -->
         <LinearLayout
             android:id="@+id/satStateTracking"
             android:layout_width="match_parent"
@@ -578,7 +562,6 @@
             android:padding="10dp"
             android:visibility="gone">
 
-            <!-- ═══════ 세션 헤더 (타이틀 + LIVE 뱃지) ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -606,7 +589,6 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <!-- LIVE 뱃지 -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -639,7 +621,6 @@
 
             </LinearLayout>
 
-            <!-- ═══════ 통계 그리드 (3칸) ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -648,7 +629,6 @@
                 android:orientation="horizontal"
                 android:padding="12dp">
 
-                <!-- TIME -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -660,7 +640,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.08"
-                        android:text="⏱ TIME"
+                        android:text="@string/mygps_label_time"
                         android:textColor="#5A7090"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -683,7 +663,6 @@
                     android:layout_height="match_parent"
                     android:background="#1A2A44" />
 
-                <!-- DISTANCE -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -695,7 +674,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.08"
-                        android:text="📏 DISTANCE"
+                        android:text="@string/mygps_label_distance"
                         android:textColor="#5A7090"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -717,7 +696,6 @@
                     android:layout_height="match_parent"
                     android:background="#1A2A44" />
 
-                <!-- POINTS -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -729,7 +707,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.08"
-                        android:text="📍 POINTS"
+                        android:text="@string/mygps_label_points"
                         android:textColor="#5A7090"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -748,7 +726,6 @@
 
             </LinearLayout>
 
-            <!-- ═══════ 지도 영역 ═══════ -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -767,12 +744,11 @@
                     android:layout_gravity="center"
                     android:background="#CC000000"
                     android:padding="12dp"
-                    android:text="🛰 Waiting for satellite GPS..."
+                    android:text="@string/mygps_sat_waiting_gps"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:visibility="gone" />
 
-                <!-- ⭐ Satellite 지도 모드 토글 (우측 상단) -->
                 <include
                     android:id="@+id/mapModeToggleSat"
                     layout="@layout/view_map_mode_toggle"
@@ -784,14 +760,13 @@
             </FrameLayout>
 
 
-            <!-- ⭐ v4 Phase 3-1: STOP 버튼 유지 -->
             <Button
                 android:id="@+id/btnSatStop"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/btn_track_start"
-                android:text="⏹  Stop &amp; Save"
+                android:text="@string/mygps_btn_stop_save"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
                 android:textStyle="bold" />
