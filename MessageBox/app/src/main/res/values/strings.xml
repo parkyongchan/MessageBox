@@ -292,5 +292,24 @@
     <string name="setting_tab_sos">SOS</string>
     <string name="setting_tab_firmware">Firmware</string>
     <string name="setting_tab_maps">Maps</string>
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MainActivity Toast Messages ════════ -->
+    <string name="toast_change_successful">Change successful.</string>
+    <string name="toast_change_failed">Change failed.</string>
+    <string name="toast_single_location_sent">A single location request has been sent.</string>
+    <string name="toast_tracking_started">Tracking mode started.</string>
+    <string name="toast_tracking_stopped">Tracking mode stopped.</string>
+    <string name="toast_sos_started">SOS mode started.</string>
+    <string name="toast_sos_stopped">SOS mode stopped.</string>
+    <string name="toast_all_messages_deleted">All messages deleted.</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+
+
+
 
 </resources>

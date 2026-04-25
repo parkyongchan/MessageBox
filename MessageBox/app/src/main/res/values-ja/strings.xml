@@ -287,5 +287,21 @@
     <string name="setting_tab_sos">SOS</string>
     <string name="setting_tab_firmware">ファームウェア</string>
     <string name="setting_tab_maps">地図</string>
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 📍 res/values-ja/strings.xml 의 </resources> 바로 위에 추가 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════ MainActivity Toast Messages ════════ -->
+    <string name="toast_change_successful">変更しました。</string>
+    <string name="toast_change_failed">変更に失敗しました。</string>
+    <string name="toast_single_location_sent">単発位置要求を送信しました。</string>
+    <string name="toast_tracking_started">追跡モードを開始しました。</string>
+    <string name="toast_tracking_stopped">追跡モードを停止しました。</string>
+    <string name="toast_sos_started">SOSモードを開始しました。</string>
+    <string name="toast_sos_stopped">SOSモードを停止しました。</string>
+    <string name="toast_all_messages_deleted">すべてのメッセージを削除しました。</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
 
 </resources>

@@ -120,9 +120,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   ⭐ NEW: 다국어 지원 (2026-04-24)
-    //   attachBaseContext는 Activity 생성 시 가장 먼저 호출됨
-    //   저장된 언어(en/ja)를 Context에 적용
+    //   Localization Support
+    //   attachBaseContext is called first when Activity is created.
+    //   Apply saved language (en/ja) to Context.
     // ═════════════════════════════════════════════════════════════
 
     @Override
@@ -131,8 +131,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * ⭐ Resources.getResources()도 override
-     * 일부 상황에서 getResources()가 원본 반환하는 것 방지
+     * Override Resources.getResources()
+     * Prevents getResources() from returning original in some cases.
      */
     @Override
     public android.content.res.Resources getResources() {
@@ -163,13 +163,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ⭐⭐⭐ 디버그 로그 - 실제 Locale과 리소스 값 확인 ⭐⭐⭐
+        // Debug log - check actual Locale and resource values
         try {
             Log.v("LOCALE-DEBUG", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Log.v("LOCALE-DEBUG", "저장된 언어: " + LocaleHelper.getLanguage(this));
-            Log.v("LOCALE-DEBUG", "현재 Locale: " +
+            Log.v("LOCALE-DEBUG", "Stored language: " + LocaleHelper.getLanguage(this));
+            Log.v("LOCALE-DEBUG", "Current Locale: " +
                     getResources().getConfiguration().getLocales().get(0).toString());
-            Log.v("LOCALE-DEBUG", "기본 Locale: " +
+            Log.v("LOCALE-DEBUG", "Default Locale: " +
                     java.util.Locale.getDefault().toString());
             Log.v("LOCALE-DEBUG", "ble_login_title: " +
                     getString(R.string.ble_login_title));
@@ -294,7 +294,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   스마트 자동 받기
+    //   Smart Auto Receive
     // ═════════════════════════════════════════════════════════════
 
     private boolean isAutoReceiveEnabled() {
@@ -305,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
     private void setAutoReceiveEnabled(boolean enabled) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.edit().putBoolean(PREF_AUTO_RECEIVE, enabled).apply();
-        Log.v("AUTO-RECV", "설정 변경: " + (enabled ? "ON" : "OFF"));
+        Log.v("AUTO-RECV", "Setting changed: " + (enabled ? "ON" : "OFF"));
     }
 
     private void setupAutoReceiveToggle() {
@@ -317,12 +317,15 @@ public class MainActivity extends AppCompatActivity {
             setAutoReceiveEnabled(newState);
             updateAutoReceiveToggleUI(newState, false);
 
-            String msg = newState ? "자동 받기 ON" : "자동 받기 OFF";
+            // Localized: Auto receive ON/OFF
+            String msg = newState
+                    ? getString(R.string.toast_auto_receive_on)
+                    : getString(R.string.toast_auto_receive_off);
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
 
             if (!newState && mIsAutoReceiving) {
                 stopAutoReceiveAnimation();
-                Log.v("AUTO-RECV", "사용자가 OFF로 변경");
+                Log.v("AUTO-RECV", "User changed to OFF");
             }
         });
     }
@@ -368,7 +371,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (currentInboxCount > mLastInboxCount || mLastInboxCount == 0) {
             mLastInboxCount = currentInboxCount;
-            Log.v("AUTO-RECV", "📍 inbox 변화 감지 → Service가 자동 수신 담당");
+            Log.v("AUTO-RECV", "Inbox change detected -> Service handles auto receive");
         }
     }
 
@@ -380,7 +383,7 @@ public class MainActivity extends AppCompatActivity {
         mAutoReceiveTimeoutRunnable = () -> {
             if (mIsAutoReceiving) {
                 long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
-                Log.w("AUTO-RECV", "⚠ 타임아웃 (" + elapsed + "ms) - 리셋");
+                Log.w("AUTO-RECV", "Timeout (" + elapsed + "ms) - Reset");
                 mIsAutoReceiving = false;
                 stopAutoReceiveAnimation();
             }
@@ -392,7 +395,7 @@ public class MainActivity extends AppCompatActivity {
     private void completeAutoReceive() {
         if (mIsAutoReceiving) {
             long elapsed = System.currentTimeMillis() - mLastAutoReceiveTime;
-            Log.v("AUTO-RECV", "✓ 완료 (" + elapsed + "ms)");
+            Log.v("AUTO-RECV", "Completed (" + elapsed + "ms)");
             mIsAutoReceiving = false;
             mLastInboxCount = 0;
 
@@ -412,12 +415,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         stopAutoReceiveAnimation();
-        Log.v("AUTO-RECV", "상태 리셋");
+        Log.v("AUTO-RECV", "State reset");
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   헤더 버튼
+    //   Header Buttons
     // ═════════════════════════════════════════════════════════════
 
     private void setupHeaderButtons() {
@@ -428,81 +431,86 @@ public class MainActivity extends AppCompatActivity {
 
     private void onTrackButtonClick() {
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-            Toast.makeText(this, "장비가 연결되어 있지 않습니다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (mIsTrackingMode) {
+            // TRACK Stop dialog (localized)
             new AlertDialog.Builder(this)
-                    .setTitle("추적 모드 중지")
-                    .setMessage("추적(Tracking) 모드를 중지하시겠습니까?")
-                    .setPositiveButton("중지", (d, w) -> {
+                    .setTitle(getString(R.string.dialog_track_stop_title))
+                    .setMessage(getString(R.string.dialog_track_stop_message))
+                    .setPositiveButton(getString(R.string.btn_stop), (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
                         Log.v("TRACK", "LOCATION=3");
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         } else {
             if (mIsSosMode) {
-                Toast.makeText(this, "SOS 모드 중에는 추적을 시작할 수 없습니다.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.toast_cannot_track_during_sos), Toast.LENGTH_LONG).show();
                 return;
             }
 
+            // TRACK Start dialog (localized)
             new AlertDialog.Builder(this)
-                    .setTitle("추적 모드 시작")
-                    .setMessage("추적(Tracking) 모드를 시작하시겠습니까?\n\n설정된 주기에 따라 위치가 전송됩니다.")
-                    .setPositiveButton("시작", (d, w) -> {
+                    .setTitle(getString(R.string.dialog_track_start_title))
+                    .setMessage(getString(R.string.dialog_track_start_message))
+                    .setPositiveButton(getString(R.string.btn_start), (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
                         Log.v("TRACK", "LOCATION=2");
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         }
     }
 
     private void onSosButtonClick() {
         if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-            Toast.makeText(this, "장비가 연결되어 있지 않습니다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (mIsSosMode) {
+            // SOS Stop dialog (localized)
             new AlertDialog.Builder(this)
-                    .setTitle("SOS 중지")
-                    .setMessage("SOS 긴급 모드를 중지하시겠습니까?")
-                    .setPositiveButton("중지", (d, w) -> {
+                    .setTitle(getString(R.string.dialog_sos_stop_title))
+                    .setMessage(getString(R.string.dialog_sos_stop_message))
+                    .setPositiveButton(getString(R.string.btn_stop), (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
                         Log.v("SOS", "LOCATION=5");
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         } else {
+            // SOS Start dialog (localized)
             new AlertDialog.Builder(this)
-                    .setTitle("🚨 SOS Emergency")
-                    .setMessage("SOS 긴급 신호를 전송하시겠습니까?\n\n3분 주기로 전송됩니다.")
-                    .setPositiveButton("전송", (d, w) -> {
+                    .setTitle(getString(R.string.dialog_sos_start_title))
+                    .setMessage(getString(R.string.dialog_sos_start_message))
+                    .setPositiveButton(getString(R.string.btn_send), (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=4");
                         Log.v("SOS", "LOCATION=4");
                     })
-                    .setNegativeButton("취소", null)
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         }
     }
 
     private void onExitButtonClick() {
+        // Exit App dialog (localized)
         new AlertDialog.Builder(this)
-                .setTitle("앱 종료")
-                .setMessage("TYTO Connect 를 종료하시겠습니까?")
-                .setPositiveButton("종료", (d, w) -> {
-                    Log.v("EXIT", "앱 종료");
+                .setTitle(getString(R.string.dialog_exit_title))
+                .setMessage(getString(R.string.dialog_exit_message))
+                .setPositiveButton(getString(R.string.btn_exit), (d, w) -> {
+                    Log.v("EXIT", "App exit");
                     try {
                         com.ah.acr.messagebox.service.TytoConnectService.stop(this);
                     } catch (Exception e) {
-                        Log.v("EXIT", "Service 중지 실패: " + e.getMessage());
+                        Log.v("EXIT", "Service stop failed: " + e.getMessage());
                     }
                     finishAndRemoveTask();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -530,7 +538,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   Satellite TRACK 세션 동기화
+    //   Satellite TRACK Session Sync
     // ═════════════════════════════════════════════════════════════
 
     private boolean mPrevSatSessionActive = false;
@@ -546,7 +554,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (currentMode == mPrevSatSessionMode) return;
 
-        Log.v("SAT-SESSION", "상태 변화: " + modeToString(mPrevSatSessionMode) + " → " + modeToString(currentMode));
+        Log.v("SAT-SESSION", "State change: " + modeToString(mPrevSatSessionMode) + " -> " + modeToString(currentMode));
 
         if (!mPrevSatSessionActive && currentActive) {
             startSatTrackSession(currentMode);
@@ -576,7 +584,7 @@ public class MainActivity extends AppCompatActivity {
                     m.invoke(devicesFragment, mode);
                 }
             } catch (Exception e) {
-                Log.v("SAT-SESSION", "세션 시작 실패: " + e.getMessage());
+                Log.v("SAT-SESSION", "Session start failed: " + e.getMessage());
             }
         });
     }
@@ -591,7 +599,7 @@ public class MainActivity extends AppCompatActivity {
                     m.invoke(devicesFragment, prevMode);
                 }
             } catch (Exception e) {
-                Log.v("SAT-SESSION", "세션 종료 실패: " + e.getMessage());
+                Log.v("SAT-SESSION", "Session end failed: " + e.getMessage());
             }
         });
     }
@@ -614,14 +622,14 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         } catch (Exception e) {
-            Log.v("SAT-SESSION", "Fragment 찾기 실패: " + e.getMessage());
+            Log.v("SAT-SESSION", "Fragment find failed: " + e.getMessage());
         }
         return null;
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   재연결 UI
+    //   Reconnect UI
     // ═════════════════════════════════════════════════════════════
 
     private void setupReconnectUI() {
@@ -670,24 +678,24 @@ public class MainActivity extends AppCompatActivity {
 
             if (BLE.CONNECT_STATUS_RECONNECTING.equals(currentStatus)) {
                 BLE.INSTANCE.cancelReconnect();
-                Toast.makeText(this, "재연결을 취소했습니다.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.toast_reconnect_cancelled), Toast.LENGTH_SHORT).show();
             } else if (BLE.CONNECT_STATUS_FAILED.equals(currentStatus)) {
                 BLE.INSTANCE.getSelectedDevice().postValue(null);
                 binding.statusArea.textReconnectCount.setVisibility(View.GONE);
                 binding.statusArea.btnConnectionAction.setVisibility(View.GONE);
                 binding.bottomNav.setSelectedItemId(R.id.tab_ble);
-                Toast.makeText(this, "장비를 다시 검색합니다.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.toast_searching_device), Toast.LENGTH_LONG).show();
             }
         });
     }
 
 
     // ═════════════════════════════════════════════════════════════
-    //   주기 동기화
+    //   Periodic Sync
     // ═════════════════════════════════════════════════════════════
 
     private void startPeriodicSync() {
-        Log.v("SYNC", "▶ Starting");
+        Log.v("SYNC", "Starting");
         mLastBroadReceivedTime = System.currentTimeMillis();
         mLastInfoReceivedTime = System.currentTimeMillis();
 
@@ -907,7 +915,7 @@ public class MainActivity extends AppCompatActivity {
 
             deleteTestLocationData();
             deleteTestMessages();
-            Toast.makeText(this, "🧪 Test mode OFF", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Test mode OFF", Toast.LENGTH_SHORT).show();
         } else {
             mIsTestMode = true;
             DeviceStatus test = new DeviceStatus();
@@ -927,7 +935,7 @@ public class MainActivity extends AppCompatActivity {
 
             insertTestLocationData();
             insertTestMessages();
-            Toast.makeText(this, "🧪 Test data injected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Test data injected", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -998,16 +1006,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void insertTestMessages() {
         String[][] testMsgs = {
-                {"안녕하세요",         "오늘도 좋은 하루 보내세요! 😊"},
-                {"날씨 확인",           "서울 현재 맑음, 기온 15도입니다."},
-                {"미팅 변경 안내",      "내일 오후 2시 미팅이 3시로 변경되었습니다."},
+                {"Hello",              "Have a wonderful day! :)"},
+                {"Weather Check",      "Seoul is currently sunny, 15 degrees."},
+                {"Meeting Update",     "Tomorrow's 2pm meeting moved to 3pm."},
                 {"Status OK",          "Base camp check-in at 10:30."},
-                {"복귀 예정",           "오늘 18시경 복귀 예정입니다."},
-                {"좌표 수신 확인",      "GPS 좌표 정상 수신했습니다."},
+                {"Return Schedule",    "Returning around 18:00 today."},
+                {"GPS Confirmed",      "GPS coordinates received normally."},
                 {"Weather Alert",      "Heavy rain expected after 16:00."},
-                {"저녁 식사",           "7시에 저녁 준비 완료됩니다."},
-                {"Signal Test",        "통신 테스트 - 신호 양호."},
-                {"작전 브리핑",         "내일 08시 작전 브리핑 예정."}
+                {"Dinner Ready",       "Dinner will be ready at 7pm."},
+                {"Signal Test",        "Communication test - signal good."},
+                {"Operation Briefing", "Operation briefing tomorrow at 08:00."}
         };
 
         Calendar cal = Calendar.getInstance();
@@ -1082,7 +1090,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   뒤로가기
+    //   Back Pressed
     // ═════════════════════════════════════════════════════════════
 
     @Override
@@ -1093,11 +1101,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // Exit App dialog (localized)
         new AlertDialog.Builder(this)
-                .setTitle("앱 종료")
-                .setMessage("TYTO Connect 를 종료하시겠습니까?")
-                .setPositiveButton("종료", (d, w) -> super.onBackPressed())
-                .setNegativeButton("취소", null)
+                .setTitle(getString(R.string.dialog_exit_title))
+                .setMessage(getString(R.string.dialog_exit_message))
+                .setPositiveButton(getString(R.string.btn_exit), (d, w) -> super.onBackPressed())
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show();
     }
 
@@ -1143,7 +1152,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   AutoRecv Broadcast 수신기
+    //   AutoRecv Broadcast Receiver
     // ═════════════════════════════════════════════════════════════
 
     private android.content.BroadcastReceiver mAutoRecvReceiver;
@@ -1200,7 +1209,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
-    //   위치 파싱
+    //   Location Parsing
     // ═════════════════════════════════════════════════════════════
 
     private String parseAddress(ByteBuf buffer, int senderLen) {
@@ -1294,20 +1303,20 @@ public class MainActivity extends AppCompatActivity {
             String msg = packet.substring(4);
             String[] vals = msg.split(",");
             if (vals[0].equals("OK")) {
-                Toast.makeText(this, "Change successful.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.toast_change_successful), Toast.LENGTH_LONG).show();
             } else if (vals[0].equals("FAIL")) {
-                Toast.makeText(this, "Change failed.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.toast_change_failed), Toast.LENGTH_LONG).show();
             } else {
                 BLE.INSTANCE.getDeviceSet().postValue(packet);
             }
         } else if (packet.startsWith("LOCATION=")) {
             String msg = packet.substring(9);
             String[] vals = msg.split(",");
-            if (vals[0].equals("1")) Toast.makeText(this, "A single location request has been sent.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("2")) Toast.makeText(this, "Tracking mode started.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("3")) Toast.makeText(this, "Tracking mode stopped.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("4")) Toast.makeText(this, "SOS mode started.", Toast.LENGTH_LONG).show();
-            if (vals[0].equals("5")) Toast.makeText(this, "SOS mode stopped.", Toast.LENGTH_LONG).show();
+            if (vals[0].equals("1")) Toast.makeText(this, getString(R.string.toast_single_location_sent), Toast.LENGTH_LONG).show();
+            if (vals[0].equals("2")) Toast.makeText(this, getString(R.string.toast_tracking_started), Toast.LENGTH_LONG).show();
+            if (vals[0].equals("3")) Toast.makeText(this, getString(R.string.toast_tracking_stopped), Toast.LENGTH_LONG).show();
+            if (vals[0].equals("4")) Toast.makeText(this, getString(R.string.toast_sos_started), Toast.LENGTH_LONG).show();
+            if (vals[0].equals("5")) Toast.makeText(this, getString(R.string.toast_sos_stopped), Toast.LENGTH_LONG).show();
         } else if (packet.startsWith("SENDING=")) {
             String msg = packet.substring(8);
             String[] vals = msg.split(",");
@@ -1531,7 +1540,7 @@ public class MainActivity extends AppCompatActivity {
             String msg = packet.substring(7);
             String[] vals = msg.split(",");
             if (vals[0].equals("OK")) {
-                Toast.makeText(getApplicationContext(), "All messages deleted.", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), getString(R.string.toast_all_messages_deleted), Toast.LENGTH_LONG).show();
             }
         } else if (packet.startsWith("BROAD=")) {
             String msg = packet.substring(6);
@@ -1574,7 +1583,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void bleSendMessage(String msg) {
-        // ⭐ null 체크 (Activity recreate 시 빈 큐 poll → null 가능)
+        // null check (when Activity recreates, polling empty queue may return null)
         if (msg == null || msg.isEmpty()) {
             return;
         }
@@ -1663,7 +1672,7 @@ public class MainActivity extends AppCompatActivity {
                                     packetIntent.setPackage(getPackageName());
                                     sendBroadcast(packetIntent);
                                 } catch (Exception e) {
-                                    Log.v("BLE", "⚠ 패킷 파싱 실패: " + e.getMessage());
+                                    Log.v("BLE", "Packet parse failed: " + e.getMessage());
                                     BLE.INSTANCE.getReceiveData().clear();
                                 }
                             }
