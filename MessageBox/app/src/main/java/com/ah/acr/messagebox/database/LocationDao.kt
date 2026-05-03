@@ -7,7 +7,6 @@ import java.util.Date
 
 @Dao
 interface LocationDao {
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLocation(location: LocationEntity): Long
 
@@ -16,7 +15,6 @@ interface LocationDao {
 
     @Delete
     suspend fun deleteLocation(location: LocationEntity)
-
 
     @Query("SELECT * FROM locations WHERE id = :id")
     suspend fun getLocationFromId(id: Int): LocationEntity?
@@ -31,7 +29,6 @@ interface LocationDao {
     @Query("SELECT * FROM locations ORDER BY id DESC")
     fun getAllLocationAddress(): LiveData<List<LocationWithAddress>>
 
-
     @Query("Update locations SET is_send = 1 WHERE id = :id")
     suspend fun updateLocationSended(id: Int)
 
@@ -41,16 +38,12 @@ interface LocationDao {
     @Query("Update locations SET is_read = 1 WHERE id = :id")
     suspend fun updateLocationReaded(id: Int)
 
-
     @Query("DELETE FROM locations WHERE id = :id")
     suspend fun deleteLocationById(id: Int)
 
-
     // ═══════════════════════════════════════════════════════
     // ⭐ 장비별 최신 위치 (필터 미적용)
-    //   - 송신(0x00-0x03) + 수신(0x10-0x13) 모두 포함
     // ═══════════════════════════════════════════════════════
-
     @Transaction
     @Query("""
         SELECT * FROM locations
@@ -66,7 +59,6 @@ interface LocationDao {
         startDate: Date,
         endDate: Date
     ): LiveData<List<LocationWithAddress>>
-
 
     // ═══════════════════════════════════════════════════════
     // ⭐ 필터 적용된 장비별 최신 위치
@@ -88,7 +80,6 @@ interface LocationDao {
     //     18 (0x12) = 남 UAV TRACK 수신
     //     19 (0x13) = 남 UAT TRACK 수신
     // ═══════════════════════════════════════════════════════
-
     @Transaction
     @Query("""
         SELECT * FROM locations
@@ -125,12 +116,9 @@ interface LocationDao {
         search: String
     ): LiveData<List<LocationWithAddress>>
 
-
     // ═══════════════════════════════════════════════════════
     // ⭐ 특정 장비의 전체 트랙 (상세 화면용)
-    //   - 시간 오름차순 (트랙 그리기 자연스러움)
     // ═══════════════════════════════════════════════════════
-
     @Transaction
     @Query("""
         SELECT * FROM locations 
@@ -144,4 +132,49 @@ interface LocationDao {
         endDate: Date
     ): LiveData<List<LocationWithAddress>>
 
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 중복 수신 차단 쿼리 (2026-05-03)
+    // ═════════════════════════════════════════════════════════
+    @Query("""
+        SELECT COUNT(*) FROM locations 
+        WHERE dedup_hash = :hash 
+          AND received_at_ms >= :since
+    """)
+    suspend fun countLocByHashSince(hash: String, since: Long): Int
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 일괄 삭제 쿼리 (2026-05-03)
+    //   - 장비별 전체 트랙 삭제
+    //   - 장비별 + 기간 트랙 삭제
+    //   - 전체 트랙 삭제 (모든 장비, 모든 기간)
+    // ═════════════════════════════════════════════════════════
+
+    /**
+     * 특정 장비의 모든 트랙 삭제 (기간 무관)
+     * @return 삭제된 row 수
+     */
+    @Query("DELETE FROM locations WHERE code_num = :codeNum")
+    suspend fun deleteAllByCodeNum(codeNum: String): Int
+
+    /**
+     * 특정 장비의 특정 기간 트랙 삭제
+     * @return 삭제된 row 수
+     */
+    @Query("""
+        DELETE FROM locations 
+        WHERE code_num = :codeNum 
+          AND create_at BETWEEN :startDate AND :endDate
+    """)
+    suspend fun deleteByCodeNumInRange(
+        codeNum: String,
+        startDate: Date,
+        endDate: Date
+    ): Int
+
+    /**
+     * 모든 트랙 삭제 (전체 초기화)
+     * @return 삭제된 row 수
+     */
+    @Query("DELETE FROM locations")
+    suspend fun deleteAll(): Int
 }

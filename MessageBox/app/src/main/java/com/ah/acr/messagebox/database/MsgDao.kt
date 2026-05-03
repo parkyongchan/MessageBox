@@ -7,7 +7,6 @@ import java.util.Date
 
 @Dao
 interface MsgDao {
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMsg(msg: MsgEntity): Long
 
@@ -71,11 +70,9 @@ interface MsgDao {
     @Query("SELECT COUNT(*) FROM messages WHERE code_num = :codeNum AND is_read = 0 AND is_send_msg = 0")
     fun getUnreadCount(codeNum: String): LiveData<Int>
 
-
     // ═════════════════════════════════════════════════════════
     //   ⭐ 자기 에코 매칭 쿼리
     // ═════════════════════════════════════════════════════════
-
     /**
      * 자기 자신이 보낸 메시지가 위성 경유하여 되돌아온 경우
      * 매칭되는 송신 레코드 찾기
@@ -99,7 +96,6 @@ interface MsgDao {
     """)
     suspend fun findSelfSentMessage(codeNum: String, message: String): MsgEntity?
 
-
     /**
      * 자기 에코 수신 처리:
      * - receiveAt 기록 (수신 시각)
@@ -112,4 +108,17 @@ interface MsgDao {
     """)
     suspend fun markSelfEchoReceived(msgId: Int, receiveAt: Date)
 
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 중복 수신 차단 쿼리 (2026-05-03)
+    // ═════════════════════════════════════════════════════════
+    /**
+     * 같은 dedup_hash가 윈도우 내에 이미 저장돼 있는지 확인.
+     * 0보다 크면 중복으로 판단하여 insert 스킵.
+     */
+    @Query("""
+        SELECT COUNT(*) FROM messages 
+        WHERE dedup_hash = :hash 
+          AND received_at_ms >= :since
+    """)
+    suspend fun countMsgByHashSince(hash: String, since: Long): Int
 }

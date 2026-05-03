@@ -66,25 +66,11 @@ import java.util.Locale;
  * - Hide map when search is focused (expand list)
  * - Manual map mode toggle (online/offline)
  *
- * Marker tap -> detail dialog (UI-2026-04-24)
- *    - AlertDialog popup on marker click
- *    - Detail info (IMEI, time, coordinates, mode etc)
- *    - "View Track Details" button (calls DeviceTrackDetail)
- *    - "Copy Coordinates" button
- *
- * Marker icon variants (by protocol ver):
- *
- *   Receive (other devices):
- *     0x10 = SOS receive -> red (ic_marker_sos)
- *     0x11, 0x12, 0x13 = TRACK receive -> blue (ic_marker_track)
- *
- *   Send (my device):
- *     0x00 = my SOS send -> orange (ic_marker_my_sos)
- *     0x01, 0x02, 0x03 = my TRACK send -> green (ic_marker_my_track)
- *
- *   Legacy (test data):
- *     4, 5 = SOS (red)
- *     2    = TRACK (blue)
+ * ⭐ v6 patch (2026-05-03):
+ * - Marker tap crash fix (Integer altitude/speed/direction → no %f)
+ * - UAT-spec unified popup
+ * - Bulk delete: trash icon → 3-option dialog (current range / full / cancel)
+ * - Refresh button long-press → delete ALL (with confirmation)
  */
 public class MapTabFragment extends Fragment {
     private static final String TAG = MapTabFragment.class.getSimpleName();
@@ -205,7 +191,6 @@ public class MapTabFragment extends Fragment {
 
     private void fitAllMarkers() {
         if (mMarkers.isEmpty()) {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.devices_toast_no_markers),
                     Toast.LENGTH_SHORT).show();
@@ -269,7 +254,6 @@ public class MapTabFragment extends Fragment {
                     && item.getAddress().getNumbersNic() != null) {
                 displayName = item.getAddress().getNumbersNic();
             } else {
-                // Localized
                 displayName = loc.getCodeNum() != null
                         ? loc.getCodeNum()
                         : getString(R.string.devices_marker_unknown);
@@ -282,15 +266,12 @@ public class MapTabFragment extends Fragment {
                 snippet += "\n" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
                         Locale.getDefault()).format(loc.getCreateAt());
             }
-            // Localized: "Tap for details" hint
             snippet += "\n" + getString(R.string.marker_snippet_tap_for_details);
             marker.setSnippet(snippet);
 
-            // Marker icon: determined by trackMode and isIncomeLoc
             Drawable icon = getMarkerIcon(loc.getTrackMode(), loc.isIncomeLoc());
             if (icon != null) marker.setIcon(icon);
 
-            // Marker tap -> detail dialog
             marker.setOnMarkerClickListener((m, mv) -> {
                 Log.v(TAG, "Marker tap: " + displayName);
                 showMarkerDetailDialog(loc, displayName);
@@ -310,12 +291,6 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /**
-     * Marker tap -> detail dialog
-     * - Shows detail info (IMEI, time, coords, altitude, mode)
-     * - "View Track Details" button -> DeviceTrackDetailFragment
-     * - "Copy Coordinates" button -> clipboard
-     */
     private void showMarkerDetailDialog(LocationEntity loc, String displayName) {
         SimpleDateFormat fmt = new SimpleDateFormat(
                 "yyyy-MM-dd HH:mm:ss", Locale.US);
@@ -324,22 +299,57 @@ public class MapTabFragment extends Fragment {
                 : "-";
 
         StringBuilder sb = new StringBuilder();
-        sb.append(getString(R.string.dialog_label_imei)).append(
-                loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
-        if (!displayName.equals(loc.getCodeNum())) {
-            sb.append(getString(R.string.dialog_label_name)).append(displayName).append("\n\n");
-        }
-        sb.append(getString(R.string.dialog_label_time)).append(time).append("\n\n");
-        sb.append(getString(R.string.dialog_label_coordinates)).append(String.format(Locale.US,
-                "%.6f, %.6f",
-                loc.getLatitude(), loc.getLongitude())).append("\n\n");
 
-        if (loc.getAltitude() != 0.0) {
-            sb.append(getString(R.string.dialog_label_altitude)).append(String.format(Locale.US,
-                    getString(R.string.dialog_altitude_unit), loc.getAltitude())).append("\n\n");
+        sb.append(getString(R.string.dialog_label_imei))
+                .append(loc.getCodeNum() != null ? loc.getCodeNum() : "-")
+                .append("\n\n");
+
+        if (displayName != null && !displayName.equals(loc.getCodeNum())) {
+            sb.append(getString(R.string.dialog_label_name))
+                    .append(displayName)
+                    .append("\n\n");
         }
 
-        String modeText = getTrackModeText(loc.getTrackMode(), loc.isIncomeLoc());
+        sb.append(getString(R.string.dialog_label_time))
+                .append(time)
+                .append("\n\n");
+
+        sb.append(getString(R.string.dialog_label_coordinates))
+                .append(String.format(Locale.US, "%.6f, %.6f",
+                        loc.getLatitude(), loc.getLongitude()))
+                .append("\n\n");
+
+        int trackMode = loc.getTrackMode();
+        boolean isUavOrUat = (trackMode == 0x02 || trackMode == 0x12
+                || trackMode == 0x03 || trackMode == 0x13);
+
+        if (isUavOrUat) {
+            Integer altitude = loc.getAltitude();
+            if (altitude != null && altitude != 0) {
+                sb.append(getString(R.string.dialog_label_altitude))
+                        .append(altitude)
+                        .append(" m")
+                        .append("\n\n");
+            }
+
+            Integer speed = loc.getSpeed();
+            if (speed != null && speed != 0) {
+                sb.append(getString(R.string.dialog_label_speed))
+                        .append(speed)
+                        .append(" km/h")
+                        .append("\n\n");
+            }
+
+            Integer direction = loc.getDirection();
+            if (direction != null) {
+                sb.append(getString(R.string.dialog_label_direction))
+                        .append(direction)
+                        .append("°")
+                        .append("\n\n");
+            }
+        }
+
+        String modeText = getTrackModeText(trackMode, loc.isIncomeLoc());
         sb.append(getString(R.string.dialog_label_mode)).append(modeText);
 
         final String devName = displayName;
@@ -350,9 +360,16 @@ public class MapTabFragment extends Fragment {
                 .setMessage(sb.toString())
                 .setPositiveButton(getString(R.string.btn_view_track_details), (d, w) -> {
                     if (codeNum != null) {
-                        DeviceTrackDetailFragment dialog =
-                                DeviceTrackDetailFragment.newInstance(codeNum, devName);
-                        dialog.show(getParentFragmentManager(), "DeviceTrackDetail");
+                        try {
+                            DeviceTrackDetailFragment dialog =
+                                    DeviceTrackDetailFragment.newInstance(codeNum, devName);
+                            dialog.show(getParentFragmentManager(), "DeviceTrackDetail");
+                        } catch (Exception e) {
+                            Log.e(TAG, "DeviceTrackDetail show failed: " + e.getMessage(), e);
+                            Toast.makeText(requireContext(),
+                                    "Track detail open failed: " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
                     } else {
                         Toast.makeText(requireContext(),
                                 getString(R.string.toast_no_imei),
@@ -377,15 +394,8 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /**
-     * Convert trackMode value to readable text
-     *
-     * isIncomeLoc = true  -> Receive (incoming)
-     * isIncomeLoc = false -> Send
-     */
     private String getTrackModeText(int trackMode, boolean isIncomeLoc) {
         if (isIncomeLoc) {
-            // Receive (from other devices)
             switch (trackMode) {
                 case 0x10: return getString(R.string.mode_rx_sos);
                 case 0x11: return getString(R.string.mode_rx_car_track);
@@ -397,7 +407,6 @@ public class MapTabFragment extends Fragment {
                 default: return getString(R.string.mode_rx_unknown, trackMode);
             }
         } else {
-            // Send (my device)
             switch (trackMode) {
                 case 0x00: return getString(R.string.mode_tx_sos);
                 case 0x01: return getString(R.string.mode_tx_car_track);
@@ -409,16 +418,9 @@ public class MapTabFragment extends Fragment {
     }
 
 
-    /**
-     * Marker icon selection (by protocol ver + tx/rx)
-     *
-     * isIncomeLoc = true  -> Receive
-     * isIncomeLoc = false -> Send
-     */
     private Drawable getMarkerIcon(int trackMode, boolean isIncomeLoc) {
         int iconRes;
 
-        // ═══ Receive (from other devices) - isIncomeLoc = true ═══
         if (isIncomeLoc) {
             if (trackMode == 0x10 || trackMode == 4 || trackMode == 5) {
                 iconRes = R.drawable.ic_marker_sos;
@@ -431,7 +433,6 @@ public class MapTabFragment extends Fragment {
                 iconRes = R.drawable.ic_marker_device;
             }
         }
-        // ═══ Send (my device) - isIncomeLoc = false ═══
         else {
             if (trackMode == 0x00) {
                 iconRes = R.drawable.ic_marker_my_sos;
@@ -663,15 +664,126 @@ public class MapTabFragment extends Fragment {
     }
 
 
+    /**
+     * ⭐ v6 patch (2026-05-03):
+     * - Refresh button click: 기존 동작 (RECEIVED=? 송신 + UI 새로고침)
+     * - Refresh button long-press: 전체 트랙 삭제 (모든 장비, 모든 기간)
+     */
     private void setupRefresh() {
         binding.buttonReflesh.setOnClickListener(view -> {
             BLE.INSTANCE.getWriteQueue().offer("RECEIVED=?");
             locationViewModel.refresh();
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.devices_toast_refreshing),
                     Toast.LENGTH_SHORT).show();
         });
+
+        // ⭐ v6: 길게 누르기 = 전체 삭제
+        binding.buttonReflesh.setOnLongClickListener(view -> {
+            showDeleteAllDialog();
+            return true;  // 이벤트 소비 (단일 클릭 트리거 방지)
+        });
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ v6 일괄 삭제 (2026-05-03)
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 휴지통 아이콘 클릭 시 다이얼로그 — 3 옵션
+     * 1. 현재 기간만 삭제 (필터 적용된 startDate~endDate 범위)
+     * 2. 전체 트랙 삭제 (이 장비의 모든 트랙)
+     * 3. 취소
+     */
+    public void handleLocationDelClick(LocationEntity location) {
+        if (location.getCodeNum() == null) {
+            Toast.makeText(getContext(),
+                    getString(R.string.devices_toast_invalid),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final String codeNum = location.getCodeNum();
+        String displayName = codeNum;
+
+        // 닉네임 찾기
+        int count = mAdapter.getItemCount();
+        for (int i = 0; i < count; i++) {
+            LocationWithAddress item = mAdapter.getCurrentList().get(i);
+            if (item.getLocation().getId() == location.getId()) {
+                if (item.getAddress() != null
+                        && item.getAddress().getNumbersNic() != null) {
+                    displayName = item.getAddress().getNumbersNic();
+                }
+                break;
+            }
+        }
+
+        final String finalDisplayName = displayName;
+        String message = getString(R.string.devices_dialog_delete_choice_msg, finalDisplayName);
+
+        new AlertDialog.Builder(getContext())
+                .setTitle(getString(R.string.devices_dialog_delete_title))
+                .setMessage(message)
+                .setPositiveButton(getString(R.string.devices_btn_delete_range), (dialog, which) -> {
+                    // 현재 기간만 삭제
+                    locationViewModel.deleteByCodeNumInCurrentRange(codeNum, deletedCount -> {
+                        if (deletedCount >= 0) {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_deleted_count, deletedCount),
+                                    Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_delete_failed),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        return null;
+                    });
+                })
+                .setNeutralButton(getString(R.string.devices_btn_delete_all_device), (dialog, which) -> {
+                    // 이 장비의 전체 트랙 삭제
+                    locationViewModel.deleteAllByCodeNum(codeNum, deletedCount -> {
+                        if (deletedCount >= 0) {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_deleted_count, deletedCount),
+                                    Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_delete_failed),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        return null;
+                    });
+                })
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .show();
+    }
+
+
+    /**
+     * 새로고침 버튼 길게 누름 → 전체 삭제 다이얼로그
+     */
+    private void showDeleteAllDialog() {
+        new AlertDialog.Builder(getContext())
+                .setTitle(getString(R.string.devices_dialog_delete_all_title))
+                .setMessage(getString(R.string.devices_dialog_delete_all_msg))
+                .setPositiveButton(getString(R.string.devices_btn_delete_all_confirm), (dialog, which) -> {
+                    locationViewModel.deleteAll(deletedCount -> {
+                        if (deletedCount >= 0) {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_deleted_count, deletedCount),
+                                    Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(),
+                                    getString(R.string.devices_toast_delete_failed),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        return null;
+                    });
+                })
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .show();
     }
 
 
@@ -698,17 +810,6 @@ public class MapTabFragment extends Fragment {
         }
     }
 
-    public void handleLocationDelClick(LocationEntity location) {
-        // Localized
-        new AlertDialog.Builder(getContext())
-                .setTitle(getString(R.string.devices_dialog_delete_title))
-                .setMessage(getString(R.string.devices_dialog_delete_msg))
-                .setPositiveButton(getString(R.string.addr_btn_delete), (dialog, which) ->
-                        locationViewModel.delete(location))
-                .setNegativeButton(getString(R.string.btn_cancel), null)
-                .show();
-    }
-
     public void handleLocationCopyClick(LocationEntity location) {
         String loc = String.format(Locale.US, "%f,%f",
                 location.getLatitude(), location.getLongitude());
@@ -716,7 +817,6 @@ public class MapTabFragment extends Fragment {
                 getContext().getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("copy", loc);
         clipboard.setPrimaryClip(clip);
-        // Localized
         Toast.makeText(getContext(),
                 getString(R.string.devices_toast_copied),
                 Toast.LENGTH_SHORT).show();
@@ -724,7 +824,6 @@ public class MapTabFragment extends Fragment {
 
     public void handleLocationMapClick(LocationEntity location) {
         if (location.getCodeNum() == null) {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.devices_toast_invalid),
                     Toast.LENGTH_SHORT).show();
@@ -790,7 +889,6 @@ public class MapTabFragment extends Fragment {
             String code = etCode.getText().toString().trim();
 
             if (name.isEmpty() || code.isEmpty()) {
-                // Localized
                 Toast.makeText(getContext(),
                         getString(R.string.devices_toast_fill_all),
                         Toast.LENGTH_SHORT).show();
@@ -804,7 +902,6 @@ public class MapTabFragment extends Fragment {
             }
 
             dialog.dismiss();
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.devices_toast_saved),
                     Toast.LENGTH_SHORT).show();

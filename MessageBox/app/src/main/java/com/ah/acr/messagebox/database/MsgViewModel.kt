@@ -8,8 +8,8 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 class MsgViewModel(application: Application) : AndroidViewModel(application) {
-
     private val repository: MsgRepository
+
     val allMsgs: LiveData<List<MsgEntity>>
     val allMsgAddress: LiveData<List<MsgWithAddress>>
     val lastMsgPerContact: LiveData<List<MsgWithAddress>>
@@ -116,11 +116,9 @@ class MsgViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-
     // ═════════════════════════════════════════════════════════
     //   ⭐ 자기 에코 매칭
     // ═════════════════════════════════════════════════════════
-
     /**
      * 자기 에코 메시지 처리
      * - 자기 자신이 보낸 메시지가 위성 경유하여 되돌아온 경우
@@ -151,6 +149,30 @@ class MsgViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("MsgViewModel", "자기 에코 처리 실패", e)
             onResult(false)
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 중복 수신 차단 (2026-05-03)
+    // ═════════════════════════════════════════════════════════
+    /**
+     * 중복 체크 후 메시지 저장.
+     *
+     * 사용처: MainActivity.receivePacketProcess() RECEIVED= 처리부에서
+     *        자기 에코 매칭 실패 후 호출
+     *
+     * @param msg 저장할 메시지
+     * @param onResult 콜백: InsertResult.Inserted(id) = 신규 저장 성공
+     *                      InsertResult.Duplicate = 중복으로 스킵됨
+     *                      Exception 발생 시에도 Duplicate로 처리
+     */
+    fun insertWithDedup(msg: MsgEntity, onResult: (InsertResult) -> Unit) = viewModelScope.launch {
+        try {
+            val result = repository.insertWithDedup(msg)
+            onResult(result)
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "메세지 dedup 추가 실패", e)
+            onResult(InsertResult.Duplicate)
         }
     }
 }

@@ -9,42 +9,27 @@ import java.util.Calendar
 import java.util.Date
 
 class LocationViewModel(application: Application) : AndroidViewModel(application) {
-
     private val repository: LocationRepository
+
     val allLocations: LiveData<List<LocationEntity>>
     val allLocationAddress: LiveData<List<LocationWithAddress>>
 
-
     companion object {
-        /**
-         * ⭐ v4 Phase B-3-fix (2026-04-24):
-         * Quick 필터(1h, 24h, 3d, 7d, 30d) 선택 시 endDate를 이 시간만큼
-         * 미래로 설정하여 "새로 들어오는 메시지도 자동 포함" 되도록 함.
-         *
-         * 배경:
-         * - 기존: endDate = Date() (앱 시작 시각 고정)
-         * - 문제: 이후 수신되는 메시지는 endDate 이후 시각 → 필터 탈락
-         * - 해결: endDate를 충분히 먼 미래(100년)로 설정
-         */
         private const val FUTURE_YEARS = 100
     }
-
 
     // ═══════════════════════════════════════════════════════
     // 필터 상태 관리
     // ═══════════════════════════════════════════════════════
-
     private val _startDate = MutableLiveData<Date>(defaultStartDate())
     private val _endDate = MutableLiveData<Date>(defaultFarFuture())
     private val _searchText = MutableLiveData<String>("")
     private val _filterMode = MutableLiveData<Int>(0)
 
-
     val startDate: LiveData<Date> = _startDate
     val endDate: LiveData<Date> = _endDate
     val searchText: LiveData<String> = _searchText
     val filterMode: LiveData<Int> = _filterMode
-
 
     fun setDateRange(start: Date, end: Date) {
         _startDate.value = start
@@ -72,63 +57,43 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         refresh()
     }
 
-    /**
-     * ⭐ Quick 시간 범위 설정 (1h, 24h)
-     *
-     * 변경:
-     * - 기존: endDate = 현재 시각 (고정됨, 미래 메시지 필터 탈락)
-     * - 수정: endDate = 먼 미래 (자동으로 새 메시지 포함)
-     */
     fun setQuickRange(hours: Int) {
         val now = Date()
         val cal = Calendar.getInstance()
         cal.time = now
         cal.add(Calendar.HOUR, -hours)
-        // ⭐ endDate를 먼 미래로 설정 → 새 메시지 자동 포함
         setDateRange(cal.time, defaultFarFuture())
     }
 
-    /**
-     * ⭐ Quick 일 범위 설정 (3d, 7d, 30d)
-     *
-     * 변경:
-     * - 기존: endDate = 현재 시각 (고정됨)
-     * - 수정: endDate = 먼 미래 (자동으로 새 메시지 포함)
-     */
     fun setQuickDays(days: Int) {
         val now = Date()
         val cal = Calendar.getInstance()
         cal.time = now
         cal.add(Calendar.DAY_OF_MONTH, -days)
-        // ⭐ endDate를 먼 미래로 설정 → 새 메시지 자동 포함
         setDateRange(cal.time, defaultFarFuture())
     }
-
 
     // ═══════════════════════════════════════════════════════
     // 메인 화면 조회
     // ═══════════════════════════════════════════════════════
-
     private val _filteredLocations = MediatorLiveData<List<LocationWithAddress>>()
     val filteredLocations: LiveData<List<LocationWithAddress>> = _filteredLocations
 
     private var currentQuerySource: LiveData<List<LocationWithAddress>>? = null
-
 
     init {
         val locationDao = MsgRoomDatabase.getDatabase(application).locationDao()
         repository = LocationRepository(locationDao)
         allLocations = repository.allLocations
         allLocationAddress = repository.allLocationAddress
+
         refresh()
     }
-
 
     fun refresh() {
         currentQuerySource?.let { _filteredLocations.removeSource(it) }
 
         val start = _startDate.value ?: defaultStartDate()
-        // ⭐ endDate가 없거나 과거 값이면 먼 미래로 보정
         val end = _endDate.value ?: defaultFarFuture()
         val search = _searchText.value ?: ""
         val mode = _filterMode.value ?: 0
@@ -141,22 +106,15 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-
     // ═══════════════════════════════════════════════════════
     // ⭐ 상세 팝업용 - 직접 조회
     // ═══════════════════════════════════════════════════════
-
-    /** 특정 장비의 전체 트랙 조회 (메인 필터 무관) */
     fun getTrackByDevice(codeNum: String): LiveData<List<LocationWithAddress>> {
         val start = _startDate.value ?: defaultStartDate()
         val end = _endDate.value ?: defaultFarFuture()
         return repository.getTrackByDevice(codeNum, start, end)
     }
 
-    /**
-     * ⭐ 특정 장비의 특정 기간 트랙 조회 (상세 팝업 전용)
-     * - 메인 화면의 필터 상태와 완전히 독립적
-     */
     fun getTrackByDeviceDirect(
         codeNum: String,
         start: Date,
@@ -165,9 +123,7 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         return repository.getTrackByDevice(codeNum, start, end)
     }
 
-    /** Repository 접근자 (null check용) */
     fun getRepository(): LocationRepository = repository
-
 
     private fun defaultStartDate(): Date {
         val cal = Calendar.getInstance()
@@ -175,28 +131,15 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         return cal.time
     }
 
-
-    /**
-     * ⭐ v4 Phase B-3-fix: 먼 미래 날짜 반환 (100년 후)
-     *
-     * 왜 먼 미래?
-     * - 앱 사용 중 새로 들어오는 메시지의 create_at이
-     *   endDate를 초과하면 필터에서 탈락됨
-     * - endDate를 충분히 먼 미래로 설정하여 이 문제 방지
-     * - 사용자가 "지금까지의 데이터"를 원하는 경우
-     *   endDate picker로 수동 설정 가능 (기존 동작 유지)
-     */
     private fun defaultFarFuture(): Date {
         val cal = Calendar.getInstance()
         cal.add(Calendar.YEAR, FUTURE_YEARS)
         return cal.time
     }
 
-
     // ═══════════════════════════════════════════════════════
     // 기존 메서드
     // ═══════════════════════════════════════════════════════
-
     fun insert(location: LocationEntity) = viewModelScope.launch {
         try {
             repository.insert(location)
@@ -263,8 +206,69 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
             Log.e("LocationViewModel", "위치 Device Send Update 실패", e)
         }
     }
-}
 
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 중복 수신 차단 (2026-05-03)
+    // ═════════════════════════════════════════════════════════
+    fun insertWithDedup(location: LocationEntity, onResult: (InsertResult) -> Unit) = viewModelScope.launch {
+        try {
+            val result = repository.insertWithDedup(location)
+            onResult(result)
+        } catch (e: Exception) {
+            Log.e("LocationViewModel", "위치 dedup 추가 실패", e)
+            onResult(InsertResult.Duplicate)
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v6 일괄 삭제 (2026-05-03)
+    // ═════════════════════════════════════════════════════════
+
+    /**
+     * 특정 장비의 모든 트랙 삭제 (기간 무관)
+     * @param onResult 콜백: 삭제된 row 수 (실패 시 -1)
+     */
+    fun deleteAllByCodeNum(codeNum: String, onResult: (Int) -> Unit) = viewModelScope.launch {
+        try {
+            val count = repository.deleteAllByCodeNum(codeNum)
+            onResult(count)
+        } catch (e: Exception) {
+            Log.e("LocationViewModel", "장비 전체 삭제 실패", e)
+            onResult(-1)
+        }
+    }
+
+    /**
+     * 특정 장비의 현재 필터 기간 트랙 삭제
+     * (UI에서 보여지는 startDate~endDate 범위)
+     * @param onResult 콜백: 삭제된 row 수 (실패 시 -1)
+     */
+    fun deleteByCodeNumInCurrentRange(codeNum: String, onResult: (Int) -> Unit) = viewModelScope.launch {
+        try {
+            val start = _startDate.value ?: defaultStartDate()
+            val end = _endDate.value ?: defaultFarFuture()
+            val count = repository.deleteByCodeNumInRange(codeNum, start, end)
+            onResult(count)
+        } catch (e: Exception) {
+            Log.e("LocationViewModel", "장비 기간 삭제 실패", e)
+            onResult(-1)
+        }
+    }
+
+    /**
+     * 모든 트랙 삭제 (전체 초기화)
+     * @param onResult 콜백: 삭제된 row 수 (실패 시 -1)
+     */
+    fun deleteAll(onResult: (Int) -> Unit) = viewModelScope.launch {
+        try {
+            val count = repository.deleteAll()
+            onResult(count)
+        } catch (e: Exception) {
+            Log.e("LocationViewModel", "전체 삭제 실패", e)
+            onResult(-1)
+        }
+    }
+}
 
 class LocationViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

@@ -62,6 +62,13 @@ import java.util.Locale;
  * - Expanded info box (ALT, SEND_TIME, RECV_TIME)
  * - Export feature (GPX/KML/CSV)
  * - Localized for ko/en/ja
+ *
+ * ⭐ v6 patch (2026-05-03):
+ * - Fix marker tap crash (IllegalFormatConversionException: f != Integer)
+ *   Cause: altitude/speed/direction are Integer in LocationEntity,
+ *          but %.1f format expects Double.
+ * - Unified UAT spec: show altitude + speed + direction for UAV/UAT modes
+ * - Null safety on all Integer fields
  */
 public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String TAG = DeviceTrackDetailFragment.class.getSimpleName();
@@ -303,7 +310,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 : null;
 
         if (mCurrentTrackLive == null) {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.track_detail_loading),
                     Toast.LENGTH_SHORT).show();
@@ -422,6 +428,12 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
     /**
      * Point detail dialog (localized for ko/en/ja)
+     *
+     * ⭐ v6 patch (2026-05-03):
+     * - Fixed crash: Integer altitude was passed to %.1f format → IllegalFormatConversionException
+     * - Use String.valueOf for integer fields (no format)
+     * - Null safety on all nullable Integer fields
+     * - UAT-spec: show altitude + speed + direction (only for UAV/UAT modes)
      */
     private void showPointDetailDialog(LocationEntity loc, int number) {
         SimpleDateFormat fullFmt = new SimpleDateFormat(
@@ -431,18 +443,59 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 : "-";
 
         StringBuilder sb = new StringBuilder();
-        sb.append(getString(R.string.point_detail_label_imei)).append(
-                loc.getCodeNum() != null ? loc.getCodeNum() : "-").append("\n\n");
-        sb.append(getString(R.string.point_detail_label_time)).append(time).append("\n\n");
-        sb.append(getString(R.string.point_detail_label_coordinates)).append(String.format(Locale.US,
-                "%.6f, %.6f", loc.getLatitude(), loc.getLongitude())).append("\n\n");
 
-        if (loc.getAltitude() != 0.0) {
-            sb.append(getString(R.string.point_detail_label_altitude)).append(String.format(Locale.US,
-                    "%.1f m", loc.getAltitude())).append("\n\n");
+        // IMEI
+        sb.append(getString(R.string.point_detail_label_imei))
+                .append(loc.getCodeNum() != null ? loc.getCodeNum() : "-")
+                .append("\n\n");
+
+        // Time
+        sb.append(getString(R.string.point_detail_label_time))
+                .append(time)
+                .append("\n\n");
+
+        // Coordinates (Double, %f safe)
+        sb.append(getString(R.string.point_detail_label_coordinates))
+                .append(String.format(Locale.US, "%.6f, %.6f",
+                        loc.getLatitude(), loc.getLongitude()))
+                .append("\n\n");
+
+        // ⭐ v6: Altitude / Speed / Direction (Integer, no %f) — UAV/UAT modes only
+        int trackMode = loc.getTrackMode();
+        boolean isUavOrUat = (trackMode == 0x02 || trackMode == 0x12
+                || trackMode == 0x03 || trackMode == 0x13);
+
+        if (isUavOrUat) {
+            // Altitude — Integer, null safe
+            Integer altitude = loc.getAltitude();
+            if (altitude != null && altitude != 0) {
+                sb.append(getString(R.string.point_detail_label_altitude))
+                        .append(altitude)
+                        .append(" m")
+                        .append("\n\n");
+            }
+
+            // Speed — Integer, null safe
+            Integer speed = loc.getSpeed();
+            if (speed != null && speed != 0) {
+                sb.append(getString(R.string.dialog_label_speed))
+                        .append(speed)
+                        .append(" km/h")
+                        .append("\n\n");
+            }
+
+            // Direction — Integer, null safe
+            Integer direction = loc.getDirection();
+            if (direction != null) {
+                sb.append(getString(R.string.dialog_label_direction))
+                        .append(direction)
+                        .append("°")
+                        .append("\n\n");
+            }
         }
 
-        String modeText = getTrackModeText(loc.getTrackMode());
+        // Mode (always last)
+        String modeText = getTrackModeText(trackMode);
         sb.append(getString(R.string.point_detail_label_mode)).append(modeText);
 
         new AlertDialog.Builder(requireContext())
@@ -627,7 +680,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
     private void showExportDialog() {
         if (mTrackPoints.isEmpty()) {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.export_toast_no_data),
                     Toast.LENGTH_SHORT).show();
@@ -706,7 +758,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         if (result.success) {
             showExportSuccessDialog(result.file, format);
         } else {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.export_failed, result.errorMessage),
                     Toast.LENGTH_LONG).show();
@@ -779,7 +830,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                     loadTrackRange(start, c.getTime());
                 }
             } catch (Exception e) {
-                // Localized
                 Toast.makeText(getContext(),
                         getString(R.string.track_detail_invalid_date),
                         Toast.LENGTH_SHORT).show();
@@ -833,7 +883,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
     private void togglePlay() {
         if (mTrackPoints.isEmpty()) {
-            // Localized
             Toast.makeText(getContext(),
                     getString(R.string.track_detail_no_points),
                     Toast.LENGTH_SHORT).show();

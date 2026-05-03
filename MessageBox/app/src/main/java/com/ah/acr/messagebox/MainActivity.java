@@ -34,6 +34,7 @@ import com.ah.acr.messagebox.ble.BleViewModel;
 import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.data.DeviceStatus;
 import com.ah.acr.messagebox.data.FirmUpdate;
+import com.ah.acr.messagebox.database.InsertResult;
 import com.ah.acr.messagebox.database.LocationEntity;
 import com.ah.acr.messagebox.database.LocationViewModel;
 import com.ah.acr.messagebox.database.MsgEntity;
@@ -1226,6 +1227,75 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // ═════════════════════════════════════════════════════════════
+    //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
+    //   - 중복 수신 패킷 차단
+    //   - 자기 에코 메시지는 update로 처리 (insert 안 함)
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 위치 dedup insert.
+     * 결과에 따라 SatTrackStateHolder.recordPoint() 호출 여부 결정.
+     */
+    private void insertLocationWithDedup(LocationEntity loc,
+                                         double lat, double lng,
+                                         double alt, double speed, double dir,
+                                         Date gpsDate, int ver,
+                                         boolean notifyService) {
+        locationViewModel.insertWithDedup(loc, result -> {
+            if (result instanceof InsertResult.Inserted) {
+                if (notifyService) {
+                    com.ah.acr.messagebox.service.TytoConnectService
+                            .notifyPointSavedByActivity(MainActivity.this);
+                }
+                SatTrackStateHolder.recordPoint(this, lat, lng, alt, speed, dir, gpsDate, ver);
+            } else {
+                Log.d("RECEVICE", "Dup loc skip: ver=0x" + Integer.toHexString(ver));
+            }
+            return null;
+        });
+    }
+
+    /**
+     * 메시지 dedup insert (자기 에코 매칭 우선).
+     *
+     * 순서:
+     * 1. 자기 에코 매칭 시도 (codeNum이 내 IMEI이고 같은 메시지가 송신 대기중)
+     * 2. 매칭 성공 → 기존 송신 레코드 update, insert 안 함
+     * 3. 매칭 실패 → dedup insert (수신 메시지)
+     */
+    private void insertMsgWithDedupAndEcho(MsgEntity addMsg, String codeNum, String message) {
+        String myImei = ImeiStorage.getLast(this);
+        boolean isMyImei = codeNum != null && myImei != null && codeNum.equals(myImei);
+
+        if (isMyImei) {
+            // 자기 에코 가능성 → 매칭 시도
+            msgViewModel.tryMarkSelfEcho(codeNum, message, isEcho -> {
+                if (isEcho) {
+                    Log.v("RECEVICE", "Self-echo matched, update only");
+                } else {
+                    // 자기 IMEI지만 매칭되는 송신 레코드 없음 → 수신으로 dedup insert
+                    msgViewModel.insertWithDedup(addMsg, result -> {
+                        if (result instanceof InsertResult.Duplicate) {
+                            Log.d("RECEVICE", "Dup msg skip (no echo)");
+                        }
+                        return null;
+                    });
+                }
+                return null;
+            });
+        } else {
+            // 다른 사람 메시지 → 바로 dedup insert
+            msgViewModel.insertWithDedup(addMsg, result -> {
+                if (result instanceof InsertResult.Duplicate) {
+                    Log.d("RECEVICE", "Dup msg skip");
+                }
+                return null;
+            });
+        }
+    }
+
+
     public void receivePacketProcess(String packet) throws Exception {
         Log.v("RECEVICE", packet);
 
@@ -1342,6 +1412,7 @@ public class MainActivity extends AppCompatActivity {
                 ByteBuf buffer = Unpooled.wrappedBuffer(data);
                 byte ver = buffer.getByte(0);
 
+                // ⭐ v6 (2026-05-03): 모든 위치/메시지 insert를 dedup 버전으로 변경
                 if (ver == 0x00 || ver == 0x01) {
                     buffer.readByte();
                     double lat = buffer.readFloat();
@@ -1353,15 +1424,7 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, 0, 0, 0, now,
                             now, false, false, false);
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) {
-                            com.ah.acr.messagebox.service.TytoConnectService
-                                    .notifyPointSavedByActivity(MainActivity.this);
-                        }
-                        return null;
-                    });
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, 0.0, 0.0, 0.0, null, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, 0.0, 0.0, 0.0, null, ver, true);
 
                 } else if (ver == 0x11 || ver == 0x10) {
                     int senderLen = buffer.readableBytes() - 10;
@@ -1380,15 +1443,7 @@ public class MainActivity extends AppCompatActivity {
                             lat, lng, 0, 0, 0, now, now,
                             false, false, false);
 
-                    locationViewModel.insert(addLoc, success -> {
-                        if (success) {
-                            com.ah.acr.messagebox.service.TytoConnectService
-                                    .notifyPointSavedByActivity(MainActivity.this);
-                        }
-                        return null;
-                    });
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, 0.0, 0.0, 0.0, null, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, 0.0, 0.0, 0.0, null, ver, true);
 
                 } else if (ver == 0x02) {
                     buffer.readByte();
@@ -1404,9 +1459,7 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, alt, dir, speed, now,
                             now, false, false, false);
-                    locationViewModel.insert(addLoc, success -> null);
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, null, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, null, ver, false);
 
                 } else if (ver == 0x12) {
                     int senderLen = buffer.readableBytes() - 14;
@@ -1428,9 +1481,7 @@ public class MainActivity extends AppCompatActivity {
                             lat, lng, alt, dir, speed,
                             now, now, false, false, false);
 
-                    locationViewModel.insert(addLoc, success -> null);
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, null, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, null, ver, false);
 
                 } else if (ver == 0x03) {
                     buffer.readByte();
@@ -1456,9 +1507,7 @@ public class MainActivity extends AppCompatActivity {
                     LocationEntity addLoc = new LocationEntity(0, true, ver,
                             myImei, lat, lng, alt, dir, speed, date,
                             new Date(), false, false, false);
-                    locationViewModel.insert(addLoc, success -> null);
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, date, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, date, ver, false);
 
                 } else if (ver == 0x13) {
                     int senderLen = buffer.readableBytes() - 21;
@@ -1491,9 +1540,7 @@ public class MainActivity extends AppCompatActivity {
                             date, new Date(),
                             false, false, false);
 
-                    locationViewModel.insert(addLoc, success -> null);
-
-                    SatTrackStateHolder.recordPoint(this, lat, lng, (double) alt, (double) speed, (double) dir, date, ver);
+                    insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, date, ver, false);
 
                 } else if (ver == 0x16) {
                     byte[] header = new byte[21];
@@ -1509,7 +1556,7 @@ public class MainActivity extends AppCompatActivity {
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-                    msgViewModel.insert(addMsg, success -> null);
+                    insertMsgWithDedupAndEcho(addMsg, codeNum, message);
 
                 } else if (ver == 0x17) {
                     buffer.readByte();
@@ -1528,9 +1575,10 @@ public class MainActivity extends AppCompatActivity {
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
                             false, false, false);
-                    msgViewModel.insert(addMsg, success -> null);
+                    insertMsgWithDedupAndEcho(addMsg, codeNum, message);
                 }
 
+                // ★ ACK는 항상 송신 (중복이든 아니든 단말 큐에서 제거되어야 함)
                 BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,OK", vals[0]));
             } catch (Exception e) {
                 Log.e("RECEIVE-ERR", "PARSE FAILED: " + e.getMessage(), e);

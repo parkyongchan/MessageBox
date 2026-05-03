@@ -910,7 +910,33 @@
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <string name="dialog_label_speed">🏃 Speed: </string>
+    <string name="dialog_label_direction">🧭 Direction: </string>
 
 
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ res/values/strings.xml (기본 또는 영어) -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+
+    <!-- v6: Bulk delete dialog (장비 단위 삭제) -->
+    <string name="devices_dialog_delete_choice_msg">How do you want to delete tracks for "%1$s"?</string>
+    <string name="devices_btn_delete_range">Current range only</string>
+    <string name="devices_btn_delete_all_device">All tracks</string>
+
+    <!-- v6: Delete all (refresh button long-press) -->
+    <string name="devices_dialog_delete_all_title">Delete ALL tracks</string>
+    <string name="devices_dialog_delete_all_msg">This will delete ALL tracks for ALL devices. This cannot be undone. Continue?</string>
+    <string name="devices_btn_delete_all_confirm">Delete All</string>
+
+    <!-- v6: Toast messages -->
+    <string name="devices_toast_deleted_count">%1$d tracks deleted</string>
+    <string name="devices_toast_delete_failed">Delete failed</string>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ res/values/strings.xml (기본 또는 영어) -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+
+    <!-- v6: Setting dirty state lock -->
+    <string name="setting_toast_save_first">Please save settings first</string>
 
 </resources>

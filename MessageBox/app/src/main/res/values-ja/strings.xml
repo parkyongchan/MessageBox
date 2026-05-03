@@ -900,6 +900,30 @@
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
+    <string name="dialog_label_speed">🏃 速度: </string>
+    <string name="dialog_label_direction">🧭 方向: </string>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ res/values-ja/strings.xml (일본어) -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+
+    <string name="devices_dialog_delete_choice_msg">「%1$s」のトラックをどのように削除しますか？</string>
+    <string name="devices_btn_delete_range">現在の期間のみ</string>
+    <string name="devices_btn_delete_all_device">全トラック</string>
+
+    <string name="devices_dialog_delete_all_title">全トラック削除</string>
+    <string name="devices_dialog_delete_all_msg">すべてのデバイスの全トラックを削除します。元に戻せません。続行しますか？</string>
+    <string name="devices_btn_delete_all_confirm">全削除</string>
+
+    <string name="devices_toast_deleted_count">%1$d件のトラック削除完了</string>
+    <string name="devices_toast_delete_failed">削除失敗</string>
+
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- ⭐ res/values-ja/strings.xml (일본어) -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+
+    <string name="setting_toast_save_first">先に設定を保存してください</string>
 
 
 
