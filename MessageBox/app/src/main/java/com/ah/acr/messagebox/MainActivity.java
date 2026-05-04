@@ -962,8 +962,9 @@ public class MainActivity extends AppCompatActivity {
             cal.add(Calendar.MINUTE, -(10 * (trackCoords.length - i)));
             Date pastTime = cal.getTime();
 
+            // 테스트 데이터 - TRACK은 RECV로 표시 (다른 단말이 보낸 것처럼)
             LocationEntity entity = new LocationEntity(
-                    0, false, 2, TEST_IMEI_TRACK,
+                    0, true, 0x11, TEST_IMEI_TRACK,
                     trackCoords[i][0], trackCoords[i][1],
                     10 + i * 5, 45 + i * 10, 15 + i,
                     pastTime, pastTime,
@@ -977,8 +978,9 @@ public class MainActivity extends AppCompatActivity {
             cal.add(Calendar.MINUTE, -(5 * (sosCoords.length - i) + 5));
             Date pastTime = cal.getTime();
 
+            // 테스트 데이터 - SOS는 RECV로 표시 (다른 단말이 보낸 것처럼)
             LocationEntity entity = new LocationEntity(
-                    0, false, 4, TEST_IMEI_SOS,
+                    0, true, 0x10, TEST_IMEI_SOS,
                     sosCoords[i][0], sosCoords[i][1],
                     0, 0, 0,
                     pastTime, pastTime,
@@ -1228,6 +1230,35 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ═════════════════════════════════════════════════════════════
+    //   ⭐ Phase 5-P 후속 패치 (2026-05-04): isIncomeLoc 의미 정리
+    //
+    //   LocationEntity.isIncomeLoc 의미:
+    //   - true  = 수신 메시지 (다른 단말 → 나에게)   → MapTabFragment의 if 분기
+    //   - false = 송신 메시지 (내가 → 다른 단말)     → MapTabFragment의 else 분기
+    //
+    //   판정 기준 (ver 값):
+    //   - RECV mode: 0x10(SOS), 0x11(CAR), 0x12(UAV), 0x13(UAT), 0x17(FREE)
+    //   - SEND mode: 0x00(SOS), 0x01(CAR), 0x02(UAV), 0x03(UAT), 0x07(FREE)
+    //
+    //   기존 버그: isMyEcho를 isIncomeLoc 자리에 넣어서
+    //              ATAK이 보낸 SOS(0x10)가 "My Transmit"으로 잘못 표시됨
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * ⭐ Phase 5-P 후속 패치: ver가 RECV mode인지 판정.
+     * LocationEntity.isIncomeLoc 결정에 사용.
+     *
+     * @param ver 메시지 mode byte
+     * @return true=수신(0x10/11/12/13/17), false=송신(0x00/01/02/03/07)
+     */
+    private static boolean isRecvMode(int ver) {
+        return ver == 0x10 || ver == 0x11
+            || ver == 0x12 || ver == 0x13
+            || ver == 0x17;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
     //   - 중복 수신 패킷 차단
     //   - 자기 에코 메시지는 update로 처리 (insert 안 함)
@@ -1257,42 +1288,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 메시지 dedup insert (자기 에코 매칭 우선).
+     * 메시지 dedup insert.
      *
-     * 순서:
-     * 1. 자기 에코 매칭 시도 (codeNum이 내 IMEI이고 같은 메시지가 송신 대기중)
-     * 2. 매칭 성공 → 기존 송신 레코드 update, insert 안 함
-     * 3. 매칭 실패 → dedup insert (수신 메시지)
+     * ⭐ Phase 5-Q 후속 (2026-05-04): self-echo 매칭 로직 제거.
+     *
+     * 이전 동작: codeNum=myImei면 tryMarkSelfEcho로 송신 레코드 찾아 update
+     * 변경 사유: 웹/다른 단말이 보낸 메시지에서 payload Address가 수신자(자기)
+     *           IMEI라 isMyImei=true 오판정. findSelfSentMessage가 우연히
+     *           오래된 송신 레코드와 매칭되어 메시지가 화면에서 사라지는 버그.
+     *
+     * 새 동작: 모든 받은 메시지를 dedup insert.
+     *         - dedup_hash + 30초 윈도우로 중복 수신 차단
+     *         - 자기 자신에게 보낸 메시지는 송신/수신 둘 다 표시되지만 큰 문제 없음
      */
     private void insertMsgWithDedupAndEcho(MsgEntity addMsg, String codeNum, String message) {
-        String myImei = ImeiStorage.getLast(this);
-        boolean isMyImei = codeNum != null && myImei != null && codeNum.equals(myImei);
-
-        if (isMyImei) {
-            // 자기 에코 가능성 → 매칭 시도
-            msgViewModel.tryMarkSelfEcho(codeNum, message, isEcho -> {
-                if (isEcho) {
-                    Log.v("RECEVICE", "Self-echo matched, update only");
-                } else {
-                    // 자기 IMEI지만 매칭되는 송신 레코드 없음 → 수신으로 dedup insert
-                    msgViewModel.insertWithDedup(addMsg, result -> {
-                        if (result instanceof InsertResult.Duplicate) {
-                            Log.d("RECEVICE", "Dup msg skip (no echo)");
-                        }
-                        return null;
-                    });
-                }
-                return null;
-            });
-        } else {
-            // 다른 사람 메시지 → 바로 dedup insert
-            msgViewModel.insertWithDedup(addMsg, result -> {
-                if (result instanceof InsertResult.Duplicate) {
-                    Log.d("RECEVICE", "Dup msg skip");
-                }
-                return null;
-            });
-        }
+        msgViewModel.insertWithDedup(addMsg, result -> {
+            if (result instanceof InsertResult.Duplicate) {
+                Log.d("RECEVICE", "Dup msg skip");
+            }
+            return null;
+        });
     }
 
 
@@ -1413,7 +1428,12 @@ public class MainActivity extends AppCompatActivity {
                 byte ver = buffer.getByte(0);
 
                 // ⭐ v6 (2026-05-03): 모든 위치/메시지 insert를 dedup 버전으로 변경
+                // ⭐ Phase 5-P 후속 (2026-05-04): isIncomeLoc은 isRecvMode(ver)로 결정
+                //   - RECV mode (0x10/0x11/0x12/0x13/0x17): true (수신)
+                //   - SEND mode (0x00/0x01/0x02/0x03):     false (송신)
+
                 if (ver == 0x00 || ver == 0x01) {
+                    // SOS_SEND(0x00) / CAR_SEND(0x01) - 자기가 보낸 메시지
                     buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1421,12 +1441,13 @@ public class MainActivity extends AppCompatActivity {
 
                     String myImei = ImeiStorage.getLast(this);
                     Date now = new Date();
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                    LocationEntity addLoc = new LocationEntity(0, isRecvMode(ver), ver,
                             myImei, lat, lng, 0, 0, 0, now,
                             now, false, false, false);
                     insertLocationWithDedup(addLoc, lat, lng, 0.0, 0.0, 0.0, null, ver, true);
 
                 } else if (ver == 0x11 || ver == 0x10) {
+                    // SOS_RECV(0x10) / CAR_RECV(0x11) - 다른 단말이 보낸 메시지
                     int senderLen = buffer.readableBytes() - 10;
                     buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
@@ -1435,17 +1456,16 @@ public class MainActivity extends AppCompatActivity {
                     byte etc = buffer.readByte();
 
                     Date now = new Date();
-                    String myImei = ImeiStorage.getLast(this);
-                    boolean isMyEcho = sender != null && myImei != null && sender.equals(myImei);
-
+                    // sender = 송신자 IMEI (Phase 5-P 변경 후 payload IMEI 의미 반전)
                     LocationEntity addLoc = new LocationEntity(
-                            0, isMyEcho, ver, sender,
+                            0, isRecvMode(ver), ver, sender,
                             lat, lng, 0, 0, 0, now, now,
                             false, false, false);
 
                     insertLocationWithDedup(addLoc, lat, lng, 0.0, 0.0, 0.0, null, ver, true);
 
                 } else if (ver == 0x02) {
+                    // UAV_SEND - 자기가 보낸 메시지
                     buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1456,12 +1476,13 @@ public class MainActivity extends AppCompatActivity {
 
                     String myImei = ImeiStorage.getLast(this);
                     Date now = new Date();
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                    LocationEntity addLoc = new LocationEntity(0, isRecvMode(ver), ver,
                             myImei, lat, lng, alt, dir, speed, now,
                             now, false, false, false);
                     insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, null, ver, false);
 
                 } else if (ver == 0x12) {
+                    // UAV_RECV - 다른 단말이 보낸 메시지
                     int senderLen = buffer.readableBytes() - 14;
                     buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
@@ -1473,17 +1494,16 @@ public class MainActivity extends AppCompatActivity {
                     byte etc = buffer.readByte();
 
                     Date now = new Date();
-                    String myImeiUav = ImeiStorage.getLast(this);
-                    boolean isMyEchoUav = sender != null && myImeiUav != null && sender.equals(myImeiUav);
-
+                    // sender = 송신자 IMEI (Phase 5-P 변경 후 payload IMEI 의미 반전)
                     LocationEntity addLoc = new LocationEntity(
-                            0, isMyEchoUav, ver, sender,
+                            0, isRecvMode(ver), ver, sender,
                             lat, lng, alt, dir, speed,
                             now, now, false, false, false);
 
                     insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, null, ver, false);
 
                 } else if (ver == 0x03) {
+                    // UAT_SEND - 자기가 보낸 메시지
                     buffer.readByte();
                     double lat = buffer.readFloat();
                     double lng = buffer.readFloat();
@@ -1504,12 +1524,13 @@ public class MainActivity extends AppCompatActivity {
                     Date date = Date.from(zdtUtc.toInstant());
 
                     String myImei = ImeiStorage.getLast(this);
-                    LocationEntity addLoc = new LocationEntity(0, true, ver,
+                    LocationEntity addLoc = new LocationEntity(0, isRecvMode(ver), ver,
                             myImei, lat, lng, alt, dir, speed, date,
                             new Date(), false, false, false);
                     insertLocationWithDedup(addLoc, lat, lng, (double) alt, (double) speed, (double) dir, date, ver, false);
 
                 } else if (ver == 0x13) {
+                    // UAT_RECV - 다른 단말이 보낸 메시지
                     int senderLen = buffer.readableBytes() - 21;
                     buffer.readByte();
                     String sender = parseAddress(buffer, senderLen);
@@ -1531,11 +1552,9 @@ public class MainActivity extends AppCompatActivity {
                     ZonedDateTime zdtUtc = ldt.atZone(ZoneId.of("UTC"));
                     Date date = Date.from(zdtUtc.toInstant());
 
-                    String myImeiUat = ImeiStorage.getLast(this);
-                    boolean isMyEchoUat = sender != null && myImeiUat != null && sender.equals(myImeiUat);
-
+                    // sender = 송신자 IMEI (Phase 5-P 변경 후 payload IMEI 의미 반전)
                     LocationEntity addLoc = new LocationEntity(
-                            0, isMyEchoUat, ver, sender,
+                            0, isRecvMode(ver), ver, sender,
                             lat, lng, alt, dir, speed,
                             date, new Date(),
                             false, false, false);

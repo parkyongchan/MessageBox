@@ -65,10 +65,13 @@ import java.util.Locale;
  *
  * ⭐ v6 patch (2026-05-03):
  * - Fix marker tap crash (IllegalFormatConversionException: f != Integer)
- *   Cause: altitude/speed/direction are Integer in LocationEntity,
- *          but %.1f format expects Double.
- * - Unified UAT spec: show altitude + speed + direction for UAV/UAT modes
- * - Null safety on all Integer fields
+ * - Unified UAT spec
+ *
+ * ⭐ Phase 5-P 후속 패치 (2026-05-04):
+ * - 트랙 번호 정순 변경: 1번=가장 오래된 점, N번=최신 점
+ *   (이전: 1번=최신, N번=가장 오래된 점)
+ * - mTrackPoints는 DB 순서(시간 ASC = 오래된 → 최신) 그대로 유지
+ * - 모든 인덱스/번호 계산 로직을 자연스러운 순서로 통일
  */
 public class DeviceTrackDetailFragment extends DialogFragment {
     private static final String TAG = DeviceTrackDetailFragment.class.getSimpleName();
@@ -89,6 +92,11 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     private String codeNum;
     private String deviceName;
 
+    /**
+     * mTrackPoints 순서: DB ASC (시간 오래된 → 최신)
+     *   [0] = 가장 오래된 점 (#1로 표시됨)
+     *   [N-1] = 최신 점 (#N으로 표시됨)
+     */
     private List<LocationWithAddress> mTrackPoints = new ArrayList<>();
     private final List<Marker> mMarkers = new ArrayList<>();
     private Polyline mPolyline;
@@ -265,6 +273,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
 
 
     private void setupTrackList() {
+        // ⭐ Phase 5-P 후속: position이 곧 mTrackPoints의 인덱스 (정순)
         trackAdapter = new TrackPointAdapter((position, item) -> {
             selectPoint(position);
         });
@@ -327,11 +336,18 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
+    /**
+     * ⭐ Phase 5-P 후속 (2026-05-04):
+     * 트랙 리스트 표시 - 정순 (오래된 → 최신)
+     *   #1 = 가장 오래된 점 (mTrackPoints[0])
+     *   #N = 최신 점 (mTrackPoints[N-1])
+     *
+     * 이전: reversed (최신이 #1)
+     * 변경: mTrackPoints를 DB 순서 그대로 어댑터에 전달
+     */
     private void updateTrackList() {
-        List<LocationWithAddress> reversed = new ArrayList<>(mTrackPoints);
-        java.util.Collections.reverse(reversed);
-
-        trackAdapter.setItems(reversed);
+        // ⭐ reverse 제거 - mTrackPoints 그대로 사용
+        trackAdapter.setItems(new ArrayList<>(mTrackPoints));
 
         int count = mTrackPoints.size();
         binding.tvTotalCount.setText(String.valueOf(count));
@@ -346,6 +362,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
+    /**
+     * ⭐ Phase 5-P 후속: 마커 번호 정순 (오래된=#1, 최신=#N)
+     * "isLatest" 강조 표시는 인덱스 N-1 (마지막)에 적용
+     */
     private void drawTrackOnMap() {
         if (mMapView == null) return;
 
@@ -356,10 +376,9 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             return;
         }
 
-        int total = mTrackPoints.size();
         List<GeoPoint> polylinePoints = new ArrayList<>();
 
-        // Step 1: collect valid points
+        // Step 1: collect valid points (DB 순서대로 = 오래된 → 최신)
         List<LocationEntity> validLocations = new ArrayList<>();
         for (LocationWithAddress item : mTrackPoints) {
             LocationEntity loc = item.getLocation();
@@ -374,7 +393,7 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             return;
         }
 
-        // Step 2: Polyline
+        // Step 2: Polyline (오래된 → 최신 순으로 라인 연결)
         if (polylinePoints.size() > 1) {
             mPolyline = new Polyline();
             mPolyline.setPoints(polylinePoints);
@@ -384,13 +403,27 @@ public class DeviceTrackDetailFragment extends DialogFragment {
             mMapView.getOverlays().add(0, mPolyline);
         }
 
-        // Step 3: numbered markers
+        // Step 3: numbered markers (정순: #1=가장 오래됨, #N=최신)
         for (int i = 0; i < validTotal; i++) {
             final LocationEntity loc = validLocations.get(i);
             GeoPoint point = new GeoPoint(loc.getLatitude(), loc.getLongitude());
 
-            final int number = validTotal - i;
-            float alpha = NumberedMarkerUtil.calculateAlpha(i, validTotal);
+            // ⭐ Phase 5-P 후속: 번호는 i+1 (정순)
+            //    i=0 → #1 (가장 오래됨)
+            //    i=N-1 → #N (최신)
+            final int number = i + 1;
+
+            // ⭐ Alpha: 오래된 점은 흐리게, 최신 점은 진하게
+            //    i=0 (오래됨) → alpha 낮음
+            //    i=N-1 (최신) → alpha 높음
+            // 기존 NumberedMarkerUtil.calculateAlpha(i, validTotal)이
+            // i 작을수록 alpha 낮은지 높은지 모르므로, 인덱스를 반대로 전달하여
+            // "가장 오래된 점이 흐리고, 최신 점이 강조"되도록 처리.
+            // → 역순 인덱스 사용: validTotal - 1 - i
+            float alpha = NumberedMarkerUtil.calculateAlpha(
+                    validTotal - 1 - i, validTotal);
+
+            // ⭐ isLatest는 마지막 점 (최신 = i == validTotal - 1)
             boolean isLatest = (i == validTotal - 1);
             int color = getColorForTrackMode(loc.getTrackMode());
 
@@ -430,8 +463,8 @@ public class DeviceTrackDetailFragment extends DialogFragment {
      * Point detail dialog (localized for ko/en/ja)
      *
      * ⭐ v6 patch (2026-05-03):
-     * - Fixed crash: Integer altitude was passed to %.1f format → IllegalFormatConversionException
-     * - Use String.valueOf for integer fields (no format)
+     * - Fixed crash: Integer altitude was passed to %.1f format
+     * - Use String.valueOf for integer fields
      * - Null safety on all nullable Integer fields
      * - UAT-spec: show altitude + speed + direction (only for UAV/UAT modes)
      */
@@ -454,19 +487,18 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                 .append(time)
                 .append("\n\n");
 
-        // Coordinates (Double, %f safe)
+        // Coordinates
         sb.append(getString(R.string.point_detail_label_coordinates))
                 .append(String.format(Locale.US, "%.6f, %.6f",
                         loc.getLatitude(), loc.getLongitude()))
                 .append("\n\n");
 
-        // ⭐ v6: Altitude / Speed / Direction (Integer, no %f) — UAV/UAT modes only
+        // ⭐ v6: Altitude / Speed / Direction (UAV/UAT modes only)
         int trackMode = loc.getTrackMode();
         boolean isUavOrUat = (trackMode == 0x02 || trackMode == 0x12
                 || trackMode == 0x03 || trackMode == 0x13);
 
         if (isUavOrUat) {
-            // Altitude — Integer, null safe
             Integer altitude = loc.getAltitude();
             if (altitude != null && altitude != 0) {
                 sb.append(getString(R.string.point_detail_label_altitude))
@@ -475,7 +507,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                         .append("\n\n");
             }
 
-            // Speed — Integer, null safe
             Integer speed = loc.getSpeed();
             if (speed != null && speed != 0) {
                 sb.append(getString(R.string.dialog_label_speed))
@@ -484,7 +515,6 @@ public class DeviceTrackDetailFragment extends DialogFragment {
                         .append("\n\n");
             }
 
-            // Direction — Integer, null safe
             Integer direction = loc.getDirection();
             if (direction != null) {
                 sb.append(getString(R.string.dialog_label_direction))
@@ -601,13 +631,18 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
-    private void selectPoint(int reversedListPosition) {
-        int pointIndex = mTrackPoints.size() - 1 - reversedListPosition;
-        if (pointIndex < 0 || pointIndex >= mTrackPoints.size()) return;
+    /**
+     * ⭐ Phase 5-P 후속: position이 곧 mTrackPoints의 인덱스 (정순)
+     * 어댑터가 mTrackPoints 그대로 표시하므로, 어댑터의 position이 곧 인덱스.
+     *
+     * @param position 0=가장 오래된 점, N-1=최신 점
+     */
+    private void selectPoint(int position) {
+        if (position < 0 || position >= mTrackPoints.size()) return;
 
-        trackAdapter.setSelectedPosition(reversedListPosition);
+        trackAdapter.setSelectedPosition(position);
 
-        LocationWithAddress item = mTrackPoints.get(pointIndex);
+        LocationWithAddress item = mTrackPoints.get(position);
         LocationEntity loc = item.getLocation();
         if (loc.getLatitude() == null || loc.getLongitude() == null) return;
 
@@ -872,6 +907,15 @@ public class DeviceTrackDetailFragment extends DialogFragment {
     }
 
 
+    // ═══════════════════════════════════════════════════════════════
+    //   ⭐ Phase 5-P 후속 (2026-05-04): 재생 컨트롤 — 정순으로 통일
+    //
+    //   재생 순서: mTrackPoints[0] (#1, 가장 오래됨) → [N-1] (#N, 최신)
+    //   - mCurrentPlayIndex는 mTrackPoints의 인덱스 (정순)
+    //   - 어댑터의 position도 mTrackPoints의 인덱스 (정순)
+    //   - reverse 변환 불필요
+    // ═══════════════════════════════════════════════════════════════
+
     private void setupPlaybackControls() {
         binding.btnRewind.setOnClickListener(v -> rewindToStart());
         binding.btnPrev.setOnClickListener(v -> stepPrev());
@@ -912,50 +956,61 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         updatePlayIcon();
     }
 
+    /**
+     * ⭐ Phase 5-P 후속: 재생 진행 (정순)
+     * mCurrentPlayIndex 0 → N-1 순서로 진행 (오래된 → 최신)
+     */
     private void advancePlayback() {
         mCurrentPlayIndex++;
         if (mCurrentPlayIndex >= mTrackPoints.size()) {
             mCurrentPlayIndex = mTrackPoints.size() - 1;
             return;
         }
-        int reversedPos = mTrackPoints.size() - 1 - mCurrentPlayIndex;
-        selectPoint(reversedPos);
+        // ⭐ position이 곧 mCurrentPlayIndex (정순)
+        selectPoint(mCurrentPlayIndex);
         updateProgressLabel();
 
-        binding.listTracks.smoothScrollToPosition(reversedPos);
+        binding.listTracks.smoothScrollToPosition(mCurrentPlayIndex);
     }
 
+    /**
+     * ⭐ Phase 5-P 후속: 처음으로 (가장 오래된 점)
+     */
     private void rewindToStart() {
         stopPlayback();
         mCurrentPlayIndex = -1;
         if (!mTrackPoints.isEmpty()) {
             mCurrentPlayIndex = 0;
-            int reversedPos = mTrackPoints.size() - 1;
-            selectPoint(reversedPos);
+            // ⭐ 정순: index 0 = 가장 오래된 점 = #1
+            selectPoint(0);
             updateProgressLabel();
-            binding.listTracks.smoothScrollToPosition(reversedPos);
+            binding.listTracks.smoothScrollToPosition(0);
         }
     }
 
+    /**
+     * ⭐ Phase 5-P 후속: 다음 점 (시간 순서로 다음 = 더 최신)
+     */
     private void stepNext() {
         stopPlayback();
         if (mCurrentPlayIndex < mTrackPoints.size() - 1) {
             mCurrentPlayIndex++;
-            int reversedPos = mTrackPoints.size() - 1 - mCurrentPlayIndex;
-            selectPoint(reversedPos);
+            selectPoint(mCurrentPlayIndex);
             updateProgressLabel();
-            binding.listTracks.smoothScrollToPosition(reversedPos);
+            binding.listTracks.smoothScrollToPosition(mCurrentPlayIndex);
         }
     }
 
+    /**
+     * ⭐ Phase 5-P 후속: 이전 점 (시간 순서로 이전 = 더 오래됨)
+     */
     private void stepPrev() {
         stopPlayback();
         if (mCurrentPlayIndex > 0) {
             mCurrentPlayIndex--;
-            int reversedPos = mTrackPoints.size() - 1 - mCurrentPlayIndex;
-            selectPoint(reversedPos);
+            selectPoint(mCurrentPlayIndex);
             updateProgressLabel();
-            binding.listTracks.smoothScrollToPosition(reversedPos);
+            binding.listTracks.smoothScrollToPosition(mCurrentPlayIndex);
         }
     }
 
@@ -971,6 +1026,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
         );
     }
 
+    /**
+     * ⭐ Phase 5-P 후속: 진행 상태 표시 (정순)
+     * mCurrentPlayIndex가 곧 mTrackPoints의 인덱스이므로 그대로 사용.
+     */
     private void updateProgressLabel() {
         if (binding == null) return;
         int current = mCurrentPlayIndex + 1;
