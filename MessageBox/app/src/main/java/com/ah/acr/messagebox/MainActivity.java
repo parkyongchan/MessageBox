@@ -546,7 +546,11 @@ public class MainActivity extends AppCompatActivity {
     private int mPrevSatSessionMode = 0;
 
     private void syncSatTrackSession(boolean isTracking, boolean isSos) {
+        // [DISABLED 2026-05] Satellite track session creation removed per user request.
+        // Header TRACK/SOS buttons still send BLE commands but do not create DB sessions.
+        if (true) return;
         int currentMode;
+
         if (isSos) currentMode = 2;
         else if (isTracking) currentMode = 1;
         else currentMode = 0;
@@ -1279,7 +1283,9 @@ public class MainActivity extends AppCompatActivity {
                     com.ah.acr.messagebox.service.TytoConnectService
                             .notifyPointSavedByActivity(MainActivity.this);
                 }
-                SatTrackStateHolder.recordPoint(this, lat, lng, alt, speed, dir, gpsDate, ver);
+                // [DISABLED 2026-05] Satellite track point DB save removed per user request.
+                // BLE transmission and packet processing remain functional.
+                // SatTrackStateHolder.recordPoint(this, lat, lng, alt, speed, dir, gpsDate, ver);
             } else {
                 Log.d("RECEVICE", "Dup loc skip: ver=0x" + Integer.toHexString(ver));
             }

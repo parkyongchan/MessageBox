@@ -32,18 +32,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.adapter.MyTrackAdapter;
-import com.ah.acr.messagebox.adapter.SatTrackAdapter;
-import com.ah.acr.messagebox.ble.BLE;
 import com.ah.acr.messagebox.database.MyTrackEntity;
 import com.ah.acr.messagebox.database.MyTrackViewModel;
-import com.ah.acr.messagebox.database.SatTrackEntity;
-import com.ah.acr.messagebox.database.SatTrackStateHolder;
-import com.ah.acr.messagebox.database.SatTrackViewModel;
 import com.ah.acr.messagebox.service.LocationPermissionHelper;
 import com.ah.acr.messagebox.service.LocationTrackingService;
 import com.ah.acr.messagebox.util.MapModeManager;
 import com.ah.acr.messagebox.util.MapModeToggleHelper;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
@@ -57,19 +51,21 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Self tab - My Location (phone GPS) tracking only.
+ *
+ * [Removed 2026-05] Satellite TRACK section completely removed per user request.
+ * - Header TRACK/SOS buttons still transmit BLE commands but no longer save to DB.
+ * - Existing sat_track DB data is preserved (read-only via SatTrackDetailFragment if used).
+ * - Segmented tabs removed - My Location is now the only screen on Self tab.
+ */
 public class DevicesTabFragment extends Fragment {
 
     private static final String TAG = "DevicesTabFragment";
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
 
-    private static final int TAB_MY_LOCATION = 0;
-    private static final int TAB_SATELLITE = 1;
-    private int currentTab = TAB_MY_LOCATION;
-
-    private TextView segMyLocation;
-    private TextView segSatellite;
+    // ===== My Location (phone GPS) views =====
     private View containerMyLocation;
-    private View containerSatellite;
 
     private View stateNotTracking;
     private Spinner spinnerInterval;
@@ -90,39 +86,11 @@ public class DevicesTabFragment extends Fragment {
 
     private View mapModeToggleMyLoc;
 
-    private View satStateNotTracking;
-    private View linkSettings;
-    private TextView tvSatConnectedImei;
-    private RecyclerView rvSatTracks;
-    private TextView tvSatTrackCount;
-    private TextView tvEmptySatTracks;
-
-    private View satStateTracking;
-    private TextView tvSatElapsed;
-    private TextView tvSatDistance;
-    private TextView tvSatPoints;
-    private TextView tvSatWaitingGps;
-    private MapView mapViewSatTracking;
-    private Button btnSatStop;
-
-    private TextView tvSatSessionIcon;
-    private TextView tvSatSessionTitle;
-
-    private final List<Marker> satNumberedMarkers = new ArrayList<>();
-
-    private View mapModeToggleSat;
-
-
+    // ===== ViewModels & state =====
     private MyTrackViewModel myTrackViewModel;
     private MyTrackAdapter trackAdapter;
     private int currentTrackId = -1;
     private long trackingStartTime = 0;
-
-    private SatTrackViewModel satTrackViewModel;
-    private SatTrackAdapter satTrackAdapter;
-    private int currentSatTrackId = -1;
-    private long satTrackingStartTime = 0;
-    private String connectedImei = null;
 
     private Polyline pathPolyline;
     private Marker currentLocationMarker;
@@ -130,13 +98,8 @@ public class DevicesTabFragment extends Fragment {
 
     private final List<Marker> myNumberedMarkers = new ArrayList<>();
 
-    private Polyline satPolyline;
-    private Marker satCurrentMarker;
-    private List<GeoPoint> satPathPoints = new ArrayList<>();
-
     private Handler uiHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
-    private Runnable satTimerRunnable;
 
     private final int[] INTERVAL_SECONDS = {10, 30, 60, 120, 300, 600};
     private final int[] MIN_DISTANCES = {5, 10, 20, 50, 100};
@@ -154,20 +117,6 @@ public class DevicesTabFragment extends Fragment {
             }
         }
     };
-
-
-    private BroadcastReceiver satEchoReceiver;
-
-
-    /**
-     * Check if current Sat session is SOS mode
-     */
-    private boolean isCurrentSessionSos() {
-        if (tvSatSessionTitle == null) return false;
-        CharSequence title = tvSatSessionTitle.getText();
-        if (title == null) return false;
-        return title.toString().contains("SOS");
-    }
 
 
     @Nullable
@@ -189,30 +138,18 @@ public class DevicesTabFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_devices_tab, container, false);
 
         bindViews(root);
-        setupSegmentTabs();
         setupSpinners();
         setupRecyclerViews();
         setupButtons();
         setupViewModels();
         setupMap();
-        setupSatMap();
-        setupMapModeToggles(root);
-        observeBleStatus();
-
-        updateSegmentVisuals(TAB_MY_LOCATION);
+        setupMapModeToggle();
 
         if (LocationTrackingService.isServiceRunning) {
             currentTrackId = LocationTrackingService.currentTrackId;
             switchToTrackingState();
         } else {
             switchToNotTrackingState();
-        }
-
-        if (SatTrackStateHolder.isSessionActive()) {
-            currentSatTrackId = SatTrackStateHolder.activeTrackId;
-            switchToSatTrackingState();
-        } else {
-            switchToSatNotTrackingState();
         }
 
         return root;
@@ -229,21 +166,12 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .registerReceiver(locationReceiver, filter);
 
-        registerSatEchoReceiver();
-
         if (mapViewTracking != null) mapViewTracking.onResume();
-        if (mapViewSatTracking != null) mapViewSatTracking.onResume();
 
         if (LocationTrackingService.isServiceRunning) {
             currentTrackId = LocationTrackingService.currentTrackId;
             switchToTrackingState();
             reloadPathFromDb();
-        }
-
-        if (SatTrackStateHolder.isSessionActive()) {
-            currentSatTrackId = SatTrackStateHolder.activeTrackId;
-            switchToSatTrackingState();
-            reloadSatPathFromDb();
         }
     }
 
@@ -255,60 +183,9 @@ public class DevicesTabFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext())
                 .unregisterReceiver(locationReceiver);
 
-        unregisterSatEchoReceiver();
-
         if (mapViewTracking != null) mapViewTracking.onPause();
-        if (mapViewSatTracking != null) mapViewSatTracking.onPause();
 
         stopElapsedTimer();
-        stopSatElapsedTimer();
-    }
-
-
-    private void registerSatEchoReceiver() {
-        if (satEchoReceiver != null) return;
-
-        satEchoReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent == null) return;
-                String action = intent.getAction();
-                if (com.ah.acr.messagebox.service.TytoConnectService
-                        .BROADCAST_ECHO_RECEIVED.equals(action)) {
-                    Log.v(TAG, "ECHO received -> Satellite map auto refresh");
-                    if (currentSatTrackId > 0) {
-                        reloadSatPathFromDb();
-                    }
-                }
-            }
-        };
-
-        IntentFilter filter = new IntentFilter(
-                com.ah.acr.messagebox.service.TytoConnectService
-                        .BROADCAST_ECHO_RECEIVED);
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requireContext().registerReceiver(
-                        satEchoReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                requireContext().registerReceiver(satEchoReceiver, filter);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Sat ECHO receiver register failed: " + e.getMessage());
-        }
-    }
-
-
-    private void unregisterSatEchoReceiver() {
-        if (satEchoReceiver != null) {
-            try {
-                requireContext().unregisterReceiver(satEchoReceiver);
-            } catch (Exception e) {
-                // ignore
-            }
-            satEchoReceiver = null;
-        }
     }
 
 
@@ -316,41 +193,21 @@ public class DevicesTabFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         stopElapsedTimer();
-        stopSatElapsedTimer();
         if (mapViewTracking != null) {
             mapViewTracking.onDetach();
             mapViewTracking = null;
         }
-        if (mapViewSatTracking != null) {
-            mapViewSatTracking.onDetach();
-            mapViewSatTracking = null;
-        }
     }
 
 
-    private void setupMapModeToggles(View root) {
+    private void setupMapModeToggle() {
         if (mapModeToggleMyLoc != null) {
             MapModeToggleHelper.setup(
                     mapModeToggleMyLoc,
                     requireContext(),
                     newMode -> {
                         applyMapSourceToAllMaps();
-                        // ⭐ BUGFIX: Sync UI after apply (handles fallback case)
                         MapModeToggleHelper.syncUI(mapModeToggleMyLoc, requireContext());
-                        MapModeToggleHelper.syncUI(mapModeToggleSat, requireContext());
-                    }
-            );
-        }
-
-        if (mapModeToggleSat != null) {
-            MapModeToggleHelper.setup(
-                    mapModeToggleSat,
-                    requireContext(),
-                    newMode -> {
-                        applyMapSourceToAllMaps();
-                        // ⭐ BUGFIX: Sync UI after apply (handles fallback case)
-                        MapModeToggleHelper.syncUI(mapModeToggleMyLoc, requireContext());
-                        MapModeToggleHelper.syncUI(mapModeToggleSat, requireContext());
                     }
             );
         }
@@ -361,17 +218,11 @@ public class DevicesTabFragment extends Fragment {
         if (mapViewTracking != null) {
             MapModeManager.applyToMapView(requireContext(), mapViewTracking);
         }
-        if (mapViewSatTracking != null) {
-            MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
-        }
     }
 
 
     private void bindViews(View root) {
-        segMyLocation = root.findViewById(R.id.segMyLocation);
-        segSatellite = root.findViewById(R.id.segSatellite);
         containerMyLocation = root.findViewById(R.id.containerMyLocation);
-        containerSatellite = root.findViewById(R.id.containerSatellite);
 
         stateNotTracking = root.findViewById(R.id.stateNotTracking);
         spinnerInterval = root.findViewById(R.id.spinnerInterval);
@@ -391,58 +242,6 @@ public class DevicesTabFragment extends Fragment {
         btnStopTracking = root.findViewById(R.id.btnStopTracking);
 
         mapModeToggleMyLoc = root.findViewById(R.id.mapModeToggleMyLoc);
-
-        satStateNotTracking = root.findViewById(R.id.satStateNotTracking);
-        linkSettings = root.findViewById(R.id.linkSettings);
-        tvSatConnectedImei = root.findViewById(R.id.tvSatConnectedImei);
-        rvSatTracks = root.findViewById(R.id.rvSatTracks);
-        tvSatTrackCount = root.findViewById(R.id.tvSatTrackCount);
-        tvEmptySatTracks = root.findViewById(R.id.tvEmptySatTracks);
-
-        satStateTracking = root.findViewById(R.id.satStateTracking);
-        tvSatElapsed = root.findViewById(R.id.tvSatElapsed);
-        tvSatDistance = root.findViewById(R.id.tvSatDistance);
-        tvSatPoints = root.findViewById(R.id.tvSatPoints);
-        tvSatWaitingGps = root.findViewById(R.id.tvSatWaitingGps);
-        mapViewSatTracking = root.findViewById(R.id.mapViewSatTracking);
-        btnSatStop = root.findViewById(R.id.btnSatStop);
-
-        tvSatSessionIcon = root.findViewById(R.id.tvSatSessionIcon);
-        tvSatSessionTitle = root.findViewById(R.id.tvSatSessionTitle);
-
-        mapModeToggleSat = root.findViewById(R.id.mapModeToggleSat);
-    }
-
-
-    private void setupSegmentTabs() {
-        segMyLocation.setOnClickListener(v -> switchTab(TAB_MY_LOCATION));
-        segSatellite.setOnClickListener(v -> switchTab(TAB_SATELLITE));
-    }
-
-
-    private void switchTab(int tabIndex) {
-        if (currentTab == tabIndex) return;
-        currentTab = tabIndex;
-        updateSegmentVisuals(tabIndex);
-    }
-
-
-    private void updateSegmentVisuals(int tabIndex) {
-        if (tabIndex == TAB_MY_LOCATION) {
-            segMyLocation.setSelected(true);
-            segSatellite.setSelected(false);
-            segMyLocation.setTextColor(0xFF0A1628);
-            segSatellite.setTextColor(0xFF95B0D4);
-            containerMyLocation.setVisibility(View.VISIBLE);
-            containerSatellite.setVisibility(View.GONE);
-        } else {
-            segMyLocation.setSelected(false);
-            segSatellite.setSelected(true);
-            segMyLocation.setTextColor(0xFF95B0D4);
-            segSatellite.setTextColor(0xFF0A1628);
-            containerMyLocation.setVisibility(View.GONE);
-            containerSatellite.setVisibility(View.VISIBLE);
-        }
     }
 
 
@@ -483,52 +282,12 @@ public class DevicesTabFragment extends Fragment {
         rvTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvTracks.setAdapter(trackAdapter);
         rvTracks.setNestedScrollingEnabled(false);
-
-        satTrackAdapter = new SatTrackAdapter(new SatTrackAdapter.OnTrackActionListener() {
-            @Override public void onTrackClick(SatTrackEntity track) { openSatTrackDetail(track); }
-            @Override public void onTrackDelete(SatTrackEntity track) { confirmDeleteSatTrack(track); }
-            @Override public void onTrackExport(SatTrackEntity track) {
-                Toast.makeText(requireContext(),
-                        getString(R.string.mygps_export_hint),
-                        Toast.LENGTH_SHORT).show();
-                openSatTrackDetail(track);
-            }
-        });
-        rvSatTracks.setLayoutManager(new LinearLayoutManager(requireContext()));
-        rvSatTracks.setAdapter(satTrackAdapter);
-        rvSatTracks.setNestedScrollingEnabled(false);
     }
 
 
     private void setupButtons() {
         btnStartTracking.setOnClickListener(v -> onStartClicked());
         btnStopTracking.setOnClickListener(v -> onStopClicked());
-
-        btnSatStop.setOnClickListener(v -> onSatStopClicked());
-
-        if (linkSettings != null) {
-            linkSettings.setOnClickListener(v -> navigateToSettings());
-        }
-    }
-
-
-    private void navigateToSettings() {
-        try {
-            View bottomNav = requireActivity().findViewById(R.id.bottom_nav);
-            if (bottomNav instanceof BottomNavigationView) {
-                ((BottomNavigationView) bottomNav)
-                        .setSelectedItemId(R.id.tab_settings);
-            } else {
-                Toast.makeText(requireContext(),
-                        getString(R.string.mygps_settings_manual_open),
-                        Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Navigate to settings failed: " + e.getMessage());
-            Toast.makeText(requireContext(),
-                    getString(R.string.mygps_settings_manual_open),
-                    Toast.LENGTH_SHORT).show();
-        }
     }
 
 
@@ -548,45 +307,6 @@ public class DevicesTabFragment extends Fragment {
                 trackAdapter.submitList(tracks);
             }
         });
-
-        satTrackViewModel = new ViewModelProvider(this).get(SatTrackViewModel.class);
-
-        satTrackViewModel.getCompletedTracks().observe(getViewLifecycleOwner(), tracks -> {
-            int count = tracks != null ? tracks.size() : 0;
-            tvSatTrackCount.setText(String.valueOf(count));
-
-            if (count == 0) {
-                tvEmptySatTracks.setVisibility(View.VISIBLE);
-                rvSatTracks.setVisibility(View.GONE);
-            } else {
-                tvEmptySatTracks.setVisibility(View.GONE);
-                rvSatTracks.setVisibility(View.VISIBLE);
-                satTrackAdapter.submitList(tracks);
-            }
-        });
-    }
-
-
-    private void observeBleStatus() {
-        BLE.INSTANCE.getDeviceInfo().observe(getViewLifecycleOwner(), info -> {
-            if (info != null && info.getImei() != null && !info.getImei().isEmpty()) {
-                connectedImei = info.getImei();
-                tvSatConnectedImei.setText(connectedImei);
-                tvSatConnectedImei.setTextColor(0xFF00E5D1);
-            } else {
-                connectedImei = null;
-                tvSatConnectedImei.setText(getString(R.string.mygps_imei_not_connected));
-                tvSatConnectedImei.setTextColor(0xFFFF5252);
-            }
-        });
-
-        BLE.INSTANCE.getSelectedDevice().observe(getViewLifecycleOwner(), device -> {
-            if (device == null) {
-                connectedImei = null;
-                tvSatConnectedImei.setText(getString(R.string.mygps_imei_not_connected));
-                tvSatConnectedImei.setTextColor(0xFFFF5252);
-            }
-        });
     }
 
 
@@ -602,27 +322,6 @@ public class DevicesTabFragment extends Fragment {
                 .setMessage(getString(R.string.mygps_dialog_delete_msg, track.getName()))
                 .setPositiveButton(getString(R.string.addr_btn_delete), (d, w) -> {
                     myTrackViewModel.deleteTrack(track);
-                    Toast.makeText(requireContext(),
-                            getString(R.string.mygps_toast_track_deleted),
-                            Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton(getString(R.string.btn_cancel), null)
-                .show();
-    }
-
-
-    private void openSatTrackDetail(SatTrackEntity track) {
-        SatTrackDetailFragment dialog = SatTrackDetailFragment.newInstance(track.getId());
-        dialog.show(getParentFragmentManager(), "SatTrackDetail");
-    }
-
-
-    private void confirmDeleteSatTrack(SatTrackEntity track) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.mygps_dialog_delete_sat_title))
-                .setMessage(getString(R.string.mygps_dialog_delete_msg, track.getName()))
-                .setPositiveButton(getString(R.string.addr_btn_delete), (d, w) -> {
-                    satTrackViewModel.deleteTrack(track);
                     Toast.makeText(requireContext(),
                             getString(R.string.mygps_toast_track_deleted),
                             Toast.LENGTH_SHORT).show();
@@ -651,28 +350,6 @@ public class DevicesTabFragment extends Fragment {
         currentLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         currentLocationMarker.setTitle(getString(R.string.mygps_marker_current_pos));
         mapViewTracking.getOverlays().add(currentLocationMarker);
-    }
-
-
-    private void setupSatMap() {
-        mapViewSatTracking.setMultiTouchControls(true);
-        mapViewSatTracking.setBuiltInZoomControls(false);
-        mapViewSatTracking.setTilesScaledToDpi(true);
-
-        MapModeManager.applyToMapView(requireContext(), mapViewSatTracking);
-
-        mapViewSatTracking.getController().setZoom(14.0);
-        mapViewSatTracking.getController().setCenter(DEFAULT_CENTER);
-
-        satPolyline = new Polyline();
-        satPolyline.setColor(Color.parseColor("#378ADD"));
-        satPolyline.setWidth(8.0f);
-        mapViewSatTracking.getOverlays().add(satPolyline);
-
-        satCurrentMarker = new Marker(mapViewSatTracking);
-        satCurrentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        satCurrentMarker.setTitle(getString(R.string.mygps_marker_last_pos));
-        mapViewSatTracking.getOverlays().add(satCurrentMarker);
     }
 
 
@@ -748,238 +425,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    private void onSatStartClicked() {
-        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-            Toast.makeText(requireContext(),
-                    getString(R.string.mygps_toast_ble_required),
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        if (connectedImei == null || connectedImei.isEmpty()) {
-            Toast.makeText(requireContext(),
-                    getString(R.string.mygps_toast_waiting_device_info),
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.mygps_dialog_sat_start_title))
-                .setMessage(getString(R.string.mygps_dialog_sat_start_msg, connectedImei))
-                .setPositiveButton(getString(R.string.mygps_btn_start),
-                        (d, w) -> startSatTracking())
-                .setNegativeButton(getString(R.string.btn_cancel), null)
-                .show();
-    }
-
-
-    private void startSatTracking() {
-        String trackName = "SatTrack " + android.text.format.DateFormat.format(
-                "MM/dd HH:mm", new Date()).toString();
-
-        satTrackViewModel.startNewTrack(trackName, connectedImei, trackId -> {
-            currentSatTrackId = trackId.intValue();
-            satTrackingStartTime = System.currentTimeMillis();
-
-            SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
-
-            BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");
-
-            requireActivity().runOnUiThread(() -> {
-                switchToSatTrackingState();
-                Toast.makeText(requireContext(),
-                        getString(R.string.mygps_toast_sat_track_started),
-                        Toast.LENGTH_SHORT).show();
-            });
-            return null;
-        });
-    }
-
-
-    private void onSatStopClicked() {
-        boolean isSos = isCurrentSessionSos();
-        String modeLabel = isSos ? "SOS" : "TRACK";
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.mygps_dialog_sat_stop_title, modeLabel))
-                .setMessage(getString(R.string.mygps_dialog_sat_stop_msg, modeLabel))
-                .setPositiveButton(getString(R.string.mygps_btn_stop_save_text),
-                        (d, w) -> stopSatTracking())
-                .setNegativeButton(getString(R.string.btn_cancel), null)
-                .show();
-    }
-
-
-    /**
-     * Stop SOS/TRACK session
-     */
-    private void stopSatTracking() {
-        boolean isSos = isCurrentSessionSos();
-
-        if (isSos) {
-            BLE.INSTANCE.getWriteQueue().offer("LOCATION=5");
-        } else {
-            BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");
-        }
-
-        if (currentSatTrackId > 0) {
-            satTrackViewModel.stopTrack(currentSatTrackId);
-        }
-
-        SatTrackStateHolder.stopSession();
-
-        String modeLabel = isSos ? "SOS" : "Satellite TRACK";
-        Toast.makeText(requireContext(),
-                getString(R.string.mygps_toast_sat_saved, modeLabel),
-                Toast.LENGTH_SHORT).show();
-
-        currentSatTrackId = -1;
-        satTrackingStartTime = 0;
-        switchToSatNotTrackingState();
-    }
-
-
-    public void startSatSessionFromHeader(int mode) {
-        if (currentSatTrackId > 0) {
-            return;
-        }
-
-        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-            return;
-        }
-
-        if (connectedImei == null || connectedImei.isEmpty()) {
-            return;
-        }
-
-        String modeLabel = (mode == 2) ? "SOS" : "TRACK";
-        String trackName = modeLabel + " " + android.text.format.DateFormat.format(
-                "MM/dd HH:mm", new Date()).toString();
-
-        satTrackViewModel.startNewTrack(trackName, connectedImei, trackId -> {
-            currentSatTrackId = trackId.intValue();
-            satTrackingStartTime = System.currentTimeMillis();
-
-            SatTrackStateHolder.startSession(currentSatTrackId, connectedImei);
-
-            if (isAdded() && getActivity() != null) {
-                requireActivity().runOnUiThread(() -> {
-                    if (currentTab != TAB_SATELLITE) {
-                        switchTab(TAB_SATELLITE);
-                    }
-                    switchToSatTrackingState();
-
-                    if (tvSatSessionIcon != null && tvSatSessionTitle != null) {
-                        if (mode == 2) {
-                            tvSatSessionIcon.setText("🆘");
-                            tvSatSessionTitle.setText("SOS Active");
-                        } else {
-                            tvSatSessionIcon.setText("🛰");
-                            tvSatSessionTitle.setText("TRACK Active");
-                        }
-                    }
-
-                    Toast.makeText(requireContext(),
-                            getString(R.string.mygps_toast_session_started, modeLabel),
-                            Toast.LENGTH_SHORT).show();
-                });
-            }
-            return null;
-        });
-    }
-
-    public void stopSatSessionFromHeader(int prevMode) {
-        if (currentSatTrackId <= 0) {
-            return;
-        }
-
-        if (isAdded() && getActivity() != null) {
-            requireActivity().runOnUiThread(() -> {
-                showSaveShareDialog(prevMode);
-            });
-        }
-    }
-
-    private void showSaveShareDialog(int mode) {
-        if (!isAdded() || getActivity() == null) return;
-
-        String modeLabel = (mode == 2) ? "SOS" : "TRACK";
-        int pointCount = satPathPoints.size();
-        String duration = formatElapsed(System.currentTimeMillis() - satTrackingStartTime);
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.mygps_dialog_session_ended_title, modeLabel))
-                .setMessage(getString(R.string.mygps_dialog_session_ended_msg,
-                        modeLabel, pointCount, duration))
-                .setPositiveButton(getString(R.string.mygps_btn_save), (d, w) -> saveSatSession())
-                .setNeutralButton(getString(R.string.mygps_btn_save_share), (d, w) -> saveAndShareSatSession())
-                .setNegativeButton(getString(R.string.mygps_btn_discard), (d, w) -> discardSatSession())
-                .setCancelable(false)
-                .show();
-    }
-
-    private void saveSatSession() {
-        if (currentSatTrackId > 0) {
-            satTrackViewModel.stopTrack(currentSatTrackId);
-        }
-        SatTrackStateHolder.stopSession();
-
-        Toast.makeText(requireContext(),
-                getString(R.string.mygps_toast_session_saved),
-                Toast.LENGTH_SHORT).show();
-
-        resetSatSession();
-    }
-
-    private void saveAndShareSatSession() {
-        if (currentSatTrackId > 0) {
-            satTrackViewModel.stopTrack(currentSatTrackId);
-        }
-        SatTrackStateHolder.stopSession();
-
-        try {
-            android.content.Intent shareIntent = new android.content.Intent(
-                    android.content.Intent.ACTION_SEND);
-            shareIntent.setType("text/plain");
-
-            String text = getString(R.string.mygps_share_text,
-                    satPathPoints.size(),
-                    formatElapsed(System.currentTimeMillis() - satTrackingStartTime));
-            shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
-
-            startActivity(android.content.Intent.createChooser(
-                    shareIntent, getString(R.string.mygps_share_chooser)));
-        } catch (Exception e) {
-            // ignore
-        }
-
-        Toast.makeText(requireContext(),
-                getString(R.string.mygps_toast_session_saved_shared),
-                Toast.LENGTH_SHORT).show();
-
-        resetSatSession();
-    }
-
-    private void discardSatSession() {
-        if (currentSatTrackId > 0) {
-            satTrackViewModel.stopTrack(currentSatTrackId);
-        }
-        SatTrackStateHolder.stopSession();
-
-        Toast.makeText(requireContext(),
-                getString(R.string.mygps_toast_session_ended),
-                Toast.LENGTH_SHORT).show();
-
-        resetSatSession();
-    }
-
-    private void resetSatSession() {
-        currentSatTrackId = -1;
-        satTrackingStartTime = 0;
-        switchToSatNotTrackingState();
-    }
-
-
     private void switchToTrackingState() {
         stateNotTracking.setVisibility(View.GONE);
         stateTracking.setVisibility(View.VISIBLE);
@@ -1012,37 +457,6 @@ public class DevicesTabFragment extends Fragment {
     }
 
 
-    private void switchToSatTrackingState() {
-        satStateNotTracking.setVisibility(View.GONE);
-        satStateTracking.setVisibility(View.VISIBLE);
-
-        tvSatDistance.setText("0.00 km");
-        tvSatPoints.setText("0");
-        tvSatElapsed.setText("00:00:00");
-        tvSatWaitingGps.setVisibility(View.VISIBLE);
-
-        satPathPoints.clear();
-        if (satPolyline != null) satPolyline.setPoints(satPathPoints);
-
-        if (mapViewSatTracking != null) {
-            for (Marker m : satNumberedMarkers) {
-                mapViewSatTracking.getOverlays().remove(m);
-            }
-            satNumberedMarkers.clear();
-            mapViewSatTracking.invalidate();
-        }
-
-        startSatElapsedTimer();
-    }
-
-
-    private void switchToSatNotTrackingState() {
-        satStateTracking.setVisibility(View.GONE);
-        satStateNotTracking.setVisibility(View.VISIBLE);
-        stopSatElapsedTimer();
-    }
-
-
     private void startElapsedTimer() {
         stopElapsedTimer();
 
@@ -1072,39 +486,6 @@ public class DevicesTabFragment extends Fragment {
         if (timerRunnable != null) {
             uiHandler.removeCallbacks(timerRunnable);
             timerRunnable = null;
-        }
-    }
-
-
-    private void startSatElapsedTimer() {
-        stopSatElapsedTimer();
-
-        if (satTrackingStartTime == 0 && currentSatTrackId > 0) {
-            satTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
-                if (track != null && satTrackingStartTime == 0) {
-                    satTrackingStartTime = track.getStartTime().getTime();
-                }
-            });
-        }
-
-        satTimerRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (satTrackingStartTime > 0) {
-                    long elapsed = System.currentTimeMillis() - satTrackingStartTime;
-                    tvSatElapsed.setText(formatElapsed(elapsed));
-                }
-                uiHandler.postDelayed(this, 1000);
-            }
-        };
-        uiHandler.post(satTimerRunnable);
-    }
-
-
-    private void stopSatElapsedTimer() {
-        if (satTimerRunnable != null) {
-            uiHandler.removeCallbacks(satTimerRunnable);
-            satTimerRunnable = null;
         }
     }
 
@@ -1228,146 +609,6 @@ public class DevicesTabFragment extends Fragment {
         }
 
         mapViewTracking.invalidate();
-    }
-
-
-    private void reloadSatPathFromDb() {
-        if (currentSatTrackId <= 0) return;
-
-        satTrackViewModel.getPointsByTrack(currentSatTrackId)
-                .observe(getViewLifecycleOwner(), points -> {
-                    if (points == null || points.isEmpty()) return;
-
-                    satPathPoints.clear();
-                    for (com.ah.acr.messagebox.database.SatTrackPointEntity p : points) {
-                        satPathPoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
-                    }
-                    satPolyline.setPoints(satPathPoints);
-
-                    redrawSatNumberedMarkers();
-
-                    if (!satPathPoints.isEmpty()) {
-                        GeoPoint last = satPathPoints.get(satPathPoints.size() - 1);
-                        satCurrentMarker.setPosition(last);
-                        satCurrentMarker.setVisible(false);
-                        mapViewSatTracking.getController().animateTo(last);
-                        tvSatWaitingGps.setVisibility(View.GONE);
-                    }
-
-                    mapViewSatTracking.invalidate();
-                });
-
-        satTrackViewModel.getActiveTrack().observe(getViewLifecycleOwner(), track -> {
-            if (track == null) return;
-            double distanceKm = track.getTotalDistance() / 1000.0;
-            tvSatDistance.setText(String.format(Locale.US, "%.2f km", distanceKm));
-            tvSatPoints.setText(String.format(Locale.US, "%d", track.getPointCount()));
-            if (satTrackingStartTime == 0) {
-                satTrackingStartTime = track.getStartTime().getTime();
-            }
-        });
-    }
-
-
-    private void redrawSatNumberedMarkers() {
-        if (mapViewSatTracking == null) return;
-
-        for (Marker m : satNumberedMarkers) {
-            mapViewSatTracking.getOverlays().remove(m);
-        }
-        satNumberedMarkers.clear();
-
-        int total = satPathPoints.size();
-        if (total == 0) return;
-
-        Context ctx = requireContext();
-
-        int color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_TRACK;
-        boolean isSos = false;
-        if (tvSatSessionTitle != null) {
-            CharSequence title = tvSatSessionTitle.getText();
-            if (title != null && title.toString().contains("SOS")) {
-                color = com.ah.acr.messagebox.util.NumberedMarkerUtil.COLOR_SOS;
-                isSos = true;
-            }
-        }
-
-        final boolean isSosFinal = isSos;
-
-        for (int i = 0; i < total; i++) {
-            final GeoPoint pt = satPathPoints.get(i);
-            final int number = total - i;
-
-            float alpha = com.ah.acr.messagebox.util.NumberedMarkerUtil
-                    .calculateAlpha(i, total);
-            boolean isLatest = (i == total - 1);
-
-            Marker marker = new Marker(mapViewSatTracking);
-            marker.setPosition(pt);
-            com.ah.acr.messagebox.util.NumberedMarkerUtil.applyToMarker(
-                    marker, ctx, number, color, alpha, isLatest);
-
-            // Localized snippet
-            String title = "📍 #" + number;
-            String snippet = String.format(Locale.US,
-                    "%.6f, %.6f\n(%s)",
-                    pt.getLatitude(), pt.getLongitude(),
-                    getString(R.string.point_detail_marker_tap_for_details));
-            marker.setTitle(title);
-            marker.setSnippet(snippet);
-
-            marker.setOnMarkerClickListener((m, mv) -> {
-                showSatMarkerDialog(number, pt, isSosFinal);
-                return true;
-            });
-
-            mapViewSatTracking.getOverlays().add(marker);
-            satNumberedMarkers.add(marker);
-        }
-
-        mapViewSatTracking.invalidate();
-    }
-
-
-    /**
-     * Sat marker tap -> detail dialog (localized)
-     */
-    private void showSatMarkerDialog(int number, GeoPoint point, boolean isSos) {
-        String modeLabel = isSos ? "SOS" : "TRACK";
-        String currentTime = new java.text.SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date());
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(getString(R.string.point_detail_label_mode)).append(modeLabel).append("\n\n");
-        sb.append(getString(R.string.point_detail_label_coordinates)).append(String.format(Locale.US,
-                "%.6f, %.6f",
-                point.getLatitude(), point.getLongitude())).append("\n\n");
-        sb.append(getString(R.string.mygps_marker_label_view_time)).append(currentTime);
-
-        if (connectedImei != null && !connectedImei.isEmpty()) {
-            sb.append("\n\n").append(getString(R.string.point_detail_label_imei))
-                    .append(connectedImei);
-        }
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.mygps_marker_title, modeLabel, number))
-                .setMessage(sb.toString())
-                .setPositiveButton(getString(R.string.btn_copy_coordinates), (d, w) -> {
-                    android.content.ClipboardManager clipboard =
-                            (android.content.ClipboardManager) requireContext()
-                                    .getSystemService(Context.CLIPBOARD_SERVICE);
-                    String coords = String.format(Locale.US, "%f,%f",
-                            point.getLatitude(), point.getLongitude());
-                    android.content.ClipData clip =
-                            android.content.ClipData.newPlainText(
-                                    getString(R.string.clipboard_label_coordinates), coords);
-                    clipboard.setPrimaryClip(clip);
-                    Toast.makeText(requireContext(),
-                            getString(R.string.point_detail_toast_copied),
-                            Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton(getString(R.string.btn_close), null)
-                .show();
     }
 
 
