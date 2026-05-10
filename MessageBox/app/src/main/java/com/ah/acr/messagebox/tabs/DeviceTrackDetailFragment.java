@@ -347,7 +347,10 @@ public class DeviceTrackDetailFragment extends DialogFragment {
      */
     private void updateTrackList() {
         // ⭐ reverse 제거 - mTrackPoints 그대로 사용
-        trackAdapter.setItems(new ArrayList<>(mTrackPoints));
+        List<LocationWithAddress> displayList = new ArrayList<>(mTrackPoints);
+        java.util.Collections.reverse(displayList);
+        trackAdapter.setItems(displayList);
+        trackAdapter.setDisplayReversed(true);
 
         int count = mTrackPoints.size();
         binding.tvTotalCount.setText(String.valueOf(count));
