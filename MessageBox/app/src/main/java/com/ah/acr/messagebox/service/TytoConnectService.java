@@ -5,11 +5,15 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -17,6 +21,13 @@ import androidx.core.app.NotificationCompat;
 
 import com.ah.acr.messagebox.MainActivity;
 import com.ah.acr.messagebox.R;
+import com.clj.fastble.BleManager;
+import com.clj.fastble.callback.BleWriteCallback;
+import com.clj.fastble.data.BleDevice;
+import com.clj.fastble.exception.BleException;
+
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 /**
  * ⭐ v4 Phase B-1: TYTO Connect Foreground Service
@@ -34,10 +45,19 @@ import com.ah.acr.messagebox.R;
  * Phase B-1 범위:
  * - Service 뼈대 + Notification만
  * - BLE 이관은 Phase B-2에서
+ *
+ * ⭐ v5 Phase B-2-6 (2026-05-11): writeQueue 송신 처리 Service로 이관
+ * - 배경: MainActivity.observe는 lifecycle 종속 → STOPPED 시 콜백 안 옴
+ * - 해결: Service에서 observeForever로 처리 (lifecycle 무관)
+ * - 효과: 백그라운드에서도 RECEIVED=? 등 BLE 명령 정상 송신
  */
 public class TytoConnectService extends Service {
 
     private static final String TAG = "TytoConnectService";
+
+    // ⭐ v5 Phase B-2-6: BLE 송신용 UUID (MainActivity와 동일)
+    private static final UUID BLE_SERVICE_UUID =
+            UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
 
     // ═════════════════════════════════════════════════════════
     //   Notification 상수
@@ -209,6 +229,24 @@ public class TytoConnectService extends Service {
                     }
             );
 
+            // ⭐ v5 Phase B-2-6 (2026-05-11): writeQueue 송신 처리 Service로 이관
+            // 배경: MainActivity.observe는 lifecycle 종속이라 백그라운드에서 멈춤
+            //       → RECEIVED=? 등의 명령이 단말기에 안 감
+            // 해결: Service에서 observeForever로 lifecycle 무관 처리
+            com.ah.acr.messagebox.ble.BLE.INSTANCE.getWriteQueue().observeForever(
+                    queue -> {
+                        if (queue == null) return;
+                        // queue에서 모두 꺼내 처리 (offer가 여러 번 됐을 수 있음)
+                        while (!queue.isEmpty()) {
+                            String request = queue.poll();
+                            if (request != null && !request.isEmpty()) {
+                                bleSendMessageFromService(request);
+                            }
+                        }
+                    }
+            );
+            Log.v(TAG, "✅ writeQueue observer 등록 (Service-bound, 백그라운드 안전)");
+
             // ⭐ v4 Phase B-2-3: 패킷 수신은 Broadcast 방식 사용
             // (observeForever 방식은 메인 스레드 경합으로 폐기)
             registerPacketReceiver();
@@ -217,6 +255,85 @@ public class TytoConnectService extends Service {
         } catch (Exception e) {
             Log.v(TAG, "BLE observer 등록 실패: " + e.getMessage());
         }
+    }
+
+
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v5 Phase B-2-6 (2026-05-11): BLE 송신 (Service 주도, 백그라운드 안정)
+    //   MainActivity.bleSendMessage의 로직을 Service용으로 이관
+    // ═════════════════════════════════════════════════════════
+
+    /**
+     * BLE를 통해 단말기에 명령 전송 (백그라운드 안전).
+     *
+     * MainActivity.bleSendMessage와 동일한 로직이나 Service에서 호출됨.
+     * Snackbar UI 표시는 제외 (Service에서 불가). 대신 Log만 남김.
+     *
+     * @param msg 전송할 명령 문자열 (예: "RECEIVED=?", "INFO=?", "BROAD=5")
+     */
+    private void bleSendMessageFromService(String msg) {
+        if (msg == null || msg.isEmpty()) {
+            return;
+        }
+
+        Log.v(TAG, "📤 BLE Write: " + msg);
+
+        String sendMsg = String.format("%s\n",
+                Base64.encodeToString(
+                        msg.getBytes(StandardCharsets.UTF_8),
+                        Base64.NO_WRAP));
+
+        BleDevice bleDevice = com.ah.acr.messagebox.ble.BLE.INSTANCE
+                .getSelectedDevice().getValue();
+        if (bleDevice == null) {
+            Log.v(TAG, "⚠ BLE write 실패: device == null (msg=" + msg + ")");
+            return;
+        }
+
+        BluetoothGattCharacteristic characteristic =
+                getWriteCharacteristicForService(bleDevice);
+        if (characteristic == null) {
+            Log.v(TAG, "⚠ BLE write 실패: characteristic == null");
+            BleManager.getInstance().disconnect(bleDevice);
+            return;
+        }
+
+        BleManager.getInstance().write(
+                bleDevice,
+                BLE_SERVICE_UUID.toString(),
+                characteristic.getUuid().toString(),
+                sendMsg.getBytes(),
+                new BleWriteCallback() {
+                    @Override
+                    public void onWriteSuccess(int current, int total, byte[] justWrite) {
+                        Log.v(TAG, "✅ BLE write 성공: " + msg);
+                    }
+
+                    @Override
+                    public void onWriteFailure(BleException exception) {
+                        Log.v(TAG, "⚠ BLE write 실패: " + msg + " - " + exception.getDescription());
+                    }
+                });
+    }
+
+    /**
+     * Write 권한이 있는 BluetoothGattCharacteristic 찾기.
+     * MainActivity.getWriteCharacteristic의 Service용 복제.
+     */
+    private BluetoothGattCharacteristic getWriteCharacteristicForService(BleDevice bleDevice) {
+        BluetoothGatt gatt = BleManager.getInstance().getBluetoothGatt(bleDevice);
+        if (gatt == null) return null;
+
+        BluetoothGattService service = gatt.getService(BLE_SERVICE_UUID);
+        if (service == null) return null;
+
+        for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+            int charaProp = characteristic.getProperties();
+            if ((charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE) > 0) {
+                return characteristic;
+            }
+        }
+        return null;
     }
 
 
@@ -496,6 +613,12 @@ public class TytoConnectService extends Service {
         android.content.SharedPreferences prefs =
                 android.preference.PreferenceManager.getDefaultSharedPreferences(this);
         boolean isEnabled = prefs.getBoolean("pref_auto_receive_enabled", true);
+
+        // ⭐⭐ DEBUG 2026-05-11: 자동수신 디버그 (검증 후 제거)
+        Log.v(TAG, "🔍 AUTO-RECV: inbox=" + currentInbox
+                + ", enabled=" + isEnabled
+                + ", lastInbox=" + mAutoReceiveLastInbox
+                + ", receiving=" + mIsAutoReceiving);
 
         if (!isEnabled) {
             // 설정 OFF면 스킵

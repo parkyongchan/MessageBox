@@ -273,10 +273,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        BLE.INSTANCE.getWriteQueue().observe(this, queue -> {
-            String request = queue.poll();
-            bleSendMessage(request);
-        });
+        // ⭐ v5 Phase B-2-6 (2026-05-11): writeQueue 송신을 Service로 완전 이관
+        // 배경: observe(this, ...)는 Activity lifecycle 종속이라 STOPPED(백그라운드) 시
+        //       콜백 호출 안 됨 → RECEIVED=? 등의 명령이 단말기에 전달 안 됨
+        // 해결: TytoConnectService.setupBleObservers에서 observeForever로 처리
+        //       (Service는 백그라운드에서도 lifecycle 유효)
+        // BLE.INSTANCE.getWriteQueue().observe(this, queue -> {
+        //     String request = queue.poll();
+        //     bleSendMessage(request);
+        // });
 
         mKeyViewModel = new ViewModelProvider(this).get(KeyViewModel.class);
         mBleViewModel = new ViewModelProvider(this).get(BleViewModel.class);
