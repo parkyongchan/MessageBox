@@ -148,12 +148,12 @@
 
     <!-- ════════ BLE ログイン画面 ════════ -->
     <string name="ble_login_title">BLEログイン</string>
-    <string name="ble_login_subtitle">TYTO2に接続するためパスワードを入力</string>
+    <string name="ble_login_subtitle">TYTOに接続するためパスワードを入力</string>
     <string name="ble_login_imei_label">IMEI</string>
     <string name="ble_login_password_label">パスワード</string>
     <string name="ble_login_password_hint">9桁の数字パスワードを入力</string>
     <string name="ble_login_remember_password">パスワードを記憶</string>
-    <string name="ble_login_connect_button">TYTO2に接続</string>
+    <string name="ble_login_connect_button">TYTOに接続</string>
     <string name="ble_login_status_hint">👆 上をタップして接続</string>
     <string name="ble_login_connecting">接続中...</string>
     <string name="ble_login_connected">接続済み ✓</string>
@@ -197,7 +197,7 @@
     <string name="toast_device_not_connected">デバイスが接続されていません。</string>
     <string name="toast_cannot_track_during_sos">SOSモード中は追跡を開始できません。</string>
     <string name="toast_reconnect_cancelled">再接続をキャンセルしました。</string>
-    <string name="toast_searching_device">デバイスを検索します。TYTO2の電源を確認してください。</string>
+    <string name="toast_searching_device">デバイスを検索します。TYTOの電源を確認してください。</string>
 
     <!-- ════════ 自動受信 ════════ -->
     <string name="toast_auto_receive_on">自動受信 ON</string>

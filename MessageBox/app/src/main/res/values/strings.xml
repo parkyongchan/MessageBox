@@ -153,12 +153,12 @@
 
     <!-- ════════ BLE Login Screen ════════ -->
     <string name="ble_login_title">BLE Login</string>
-    <string name="ble_login_subtitle">Enter password to connect TYTO2</string>
+    <string name="ble_login_subtitle">Enter password to connect TYTO</string>
     <string name="ble_login_imei_label">IMEI</string>
     <string name="ble_login_password_label">Password</string>
     <string name="ble_login_password_hint">Enter 9-digit number password</string>
     <string name="ble_login_remember_password">Remember password</string>
-    <string name="ble_login_connect_button">Connect to TYTO2</string>
+    <string name="ble_login_connect_button">Connect to TYTO</string>
     <string name="ble_login_status_hint">👆 Tap above to connect</string>
     <string name="ble_login_connecting">Connecting...</string>
     <string name="ble_login_connected">Connected ✓</string>
@@ -202,7 +202,7 @@
     <string name="toast_device_not_connected">Device is not connected.</string>
     <string name="toast_cannot_track_during_sos">Cannot start tracking during SOS mode.</string>
     <string name="toast_reconnect_cancelled">Reconnection cancelled.</string>
-    <string name="toast_searching_device">Searching for device. Please check TYTO2 power.</string>
+    <string name="toast_searching_device">Searching for device. Please check TYTO power.</string>
 
     <!-- ════════ Auto Receive ════════ -->
     <string name="toast_auto_receive_on">Auto Receive ON</string>

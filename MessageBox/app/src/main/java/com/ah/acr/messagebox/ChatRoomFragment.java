@@ -8,6 +8,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
+import android.content.Intent;
+import android.os.Build;
 import android.text.InputFilter;
 import android.util.Base64;
 import android.util.Log;
@@ -75,6 +80,9 @@ public class ChatRoomFragment extends Fragment {
     // Sending progress dialog
     private ProgressDialog sendDialog;
 
+    // ECHO 수신 시 채팅 화면 자동 새로고침 (지도와 동일 방식)
+    private BroadcastReceiver mEchoReceiver;
+
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -113,6 +121,7 @@ public class ChatRoomFragment extends Fragment {
         setupClickListeners();
         observeAddressForAvatar();
         observeUnsentMessages();  // FAB update
+        registerEchoReceiver();   // ECHO 수신 → 자동 새로고침
     }
 
 
@@ -311,6 +320,45 @@ public class ChatRoomFragment extends Fragment {
                 }
             }
         });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //   ECHO 수신 → 채팅 화면 자동 새로고침 (LocationFragment와 동일 방식)
+    //   배경: getMsgsByContact는 address 조인(@Relation) 쿼리라
+    //         백그라운드 insert 시 LiveData invalidation이 누락될 수 있음.
+    //         메시지 저장 시 Service가 쏘는 ECHO 브로드캐스트를 받아
+    //         observe를 다시 붙여 강제 갱신한다.
+    // ═══════════════════════════════════════════════════════════════
+    private void registerEchoReceiver() {
+        mEchoReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (com.ah.acr.messagebox.service.TytoConnectService
+                        .BROADCAST_ECHO_RECEIVED.equals(action)) {
+                    Log.v(TAG, "📨 ECHO 수신 → 채팅 자동 새로고침");
+                    if (binding != null && mCodeNum != null) {
+                        setupObserver();  // observe 재등록 → 즉시 갱신
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(
+                com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_ECHO_RECEIVED);
+
+        Context ctx = requireContext();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ctx.registerReceiver(mEchoReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                ctx.registerReceiver(mEchoReceiver, filter);
+            }
+            Log.v(TAG, "📡 ECHO 수신기 등록");
+        } catch (Exception e) {
+            Log.e(TAG, "ECHO 수신기 등록 실패: " + e.getMessage());
+        }
     }
 
 
@@ -648,6 +696,14 @@ public class ChatRoomFragment extends Fragment {
         super.onDestroyView();
         if (sendDialog != null && sendDialog.isShowing()) {
             sendDialog.dismiss();
+        }
+        if (mEchoReceiver != null) {
+            try {
+                requireContext().unregisterReceiver(mEchoReceiver);
+            } catch (Exception e) {
+                // ignore
+            }
+            mEchoReceiver = null;
         }
         binding = null;
     }

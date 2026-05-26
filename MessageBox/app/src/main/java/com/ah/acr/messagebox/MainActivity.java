@@ -1743,6 +1743,7 @@ public class MainActivity extends AppCompatActivity {
                                     String packet = new String(Base64.decode(reads, Base64.NO_WRAP));
 
                                     receivePacketProcess(packet);
+                                    android.util.Log.e("RX_DEBUG", "ms=" + System.currentTimeMillis() + " len=" + packet.length() + " packet=[" + packet + "]");
 
                                     Intent packetIntent = new Intent(
                                         com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_PACKET_RECEIVED);

@@ -119,8 +119,8 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
             //viewHolder.btn_connect = (Button) convertView.findViewById(R.id.btn_connect);
         } else {
             viewHolder.img_blue.setImageResource(R.mipmap.ic_blue_remote);
-            viewHolder.txt_name.setTextColor(0xFF000000);
-            viewHolder.txt_mac.setTextColor(0xFF000000);
+            viewHolder.txt_name.setTextColor(0xFFFFFFFF);
+            viewHolder.txt_mac.setTextColor(0xFFB8CEE8);
             viewHolder.layout_idle.setVisibility(View.VISIBLE);
             viewHolder.layout_connected.setVisibility(View.GONE);
         }

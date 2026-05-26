@@ -340,7 +340,7 @@ public class BleLoginFragment extends Fragment {
     private void setButtonDefault() {
         if (binding == null) return;
         try {
-            binding.textLoginLabel.setText("Connect to TYTO2");
+            binding.textLoginLabel.setText("Connect to TYTO");
             binding.buttonLogin.setEnabled(true);
             binding.buttonLogin.setAlpha(1.0f);
             binding.textStatusHint.setText("👆 Tap above to connect");
