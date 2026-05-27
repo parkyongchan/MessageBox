@@ -71,9 +71,9 @@ public class SettingFragment extends Fragment {
     private static final int COLOR_SAVE_OK  = 0xFF00E5D1;  // 청록 (저장됨)
 
     // ⭐ 최소/최대값 상수
-    private static final int MIN_TIME = 1;
+    private static final int MIN_TIME = 0;
     private static final int MAX_TIME = 9999;
-    private static final int MIN_DIST = 1;
+    private static final int MIN_DIST = 0;
     private static final int MAX_DIST = 9999;
 
     // ⭐ Disable 시각화 alpha
@@ -585,12 +585,6 @@ public class SettingFragment extends Fragment {
 
     private void setupCheckBoxes() {
         binding.chkDist.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                String cur = binding.textDist.getText().toString().trim();
-                if (cur.isEmpty() || cur.equals("0")) {
-                    setDistValue(10, false);
-                }
-            }
             // ⭐ Disable 시각화
             applyDistanceEnableVisual(isChecked);
             // ⭐ 변경 감지
@@ -598,12 +592,6 @@ public class SettingFragment extends Fragment {
         });
 
         binding.chkTime.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                String cur = binding.textTime.getText().toString().trim();
-                if (cur.isEmpty() || cur.equals("0")) {
-                    setTimeValue(3, false);
-                }
-            }
             // ⭐ Disable 시각화
             applyTimeEnableVisual(isChecked);
             // ⭐ 변경 감지
@@ -627,9 +615,8 @@ public class SettingFragment extends Fragment {
                 try {
                     int val = Integer.parseInt(s.toString());
                     updateTimePresetSelection(val);
-                    if (val >= MIN_TIME && !binding.chkTime.isChecked()) {
-                        binding.chkTime.setChecked(true);
-                    }
+                    // ⭐ 0 = 꺼짐, 1 이상 = 켜짐
+                    binding.chkTime.setChecked(val > 0);
                     // ⭐ 변경 감지
                     if (!mIsInitializing) markDirty();
                 } catch (NumberFormatException ignored) {}
@@ -647,9 +634,8 @@ public class SettingFragment extends Fragment {
                     int val = Integer.parseInt(s.toString());
                     updateDistDisplay(val);
                     updateDistPresetSelection(val);
-                    if (val >= MIN_DIST && !binding.chkDist.isChecked()) {
-                        binding.chkDist.setChecked(true);
-                    }
+                    // ⭐ 0 = 꺼짐, 1 이상 = 켜짐
+                    binding.chkDist.setChecked(val > 0);
                     // ⭐ 변경 감지
                     if (!mIsInitializing) markDirty();
                 } catch (NumberFormatException ignored) {}
