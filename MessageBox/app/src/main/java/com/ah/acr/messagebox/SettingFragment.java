@@ -45,13 +45,14 @@ import java.util.Locale;
  * - Save button highlight: 미저장 시 색상 강조 (주황색)
  * - Distance disable visualization: Enable 체크박스 OFF 시 chip 영역 비활성화
  *
- * ⭐ patch (2026-05-28): SET 응답 실시간 자동 갱신
+ * ⭐ patch (2026-05-28): SET 응답 실시간 자동 갱신 — observeForever 방식
  * - 문제: ViewPager2(FragmentStateAdapter) 탭에서 getViewLifecycleOwner()로
  *         observe하면 lifecycle 타이밍 때문에 deviceSet LiveData 콜백을 놓쳐
  *         설정 변경 후 탭을 나갔다 와야만 화면에 반영됨.
- * - 해결: MainActivity가 패킷 받을 때 쏘는 BROADCAST_PACKET_RECEIVED를
- *         직접 수신하여 applySetResponse() 호출 → lifecycle 무관하게 즉시 갱신.
- *         기존 observe도 그대로 유지(이중 안전망).
+ * - 1차 시도(BroadcastReceiver)는 SettingFragment에 도달하지 않아 실패.
+ * - 최종 해결: deviceSet을 observeForever로 관찰 → ViewPager lifecycle과
+ *         무관하게 deviceSet.postValue가 발생하면 무조건 콜백 수신.
+ *         onDestroyView에서 removeObserver로 누수 방지.
  *
  * 변경 감지 대상:
  *   - Unit Type (Spinner)
@@ -69,8 +70,8 @@ public class SettingFragment extends Fragment {
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
-    // ★★★ 추가: SET 응답 실시간 수신용 BroadcastReceiver
-    private android.content.BroadcastReceiver mSetReceiver;
+    // ★★★ observeForever용 Observer 참조 (onDestroyView에서 제거하기 위해 보관)
+    private Observer<String> mDeviceSetObserver;
 
     // 장비 전송용 코드 배열
     private static final String[] UNIT_TYPE_CODES = {"CAR", "UAV", "UAT"};
@@ -146,52 +147,23 @@ public class SettingFragment extends Fragment {
             }
         });
 
-        // 장비 설정 수신 (기존 observe - 이중 안전망으로 유지)
-        BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), new Observer<String>() {
+        // ★★★ 장비 설정(SET) 수신 — observeForever 방식
+        // ViewPager2 lifecycle과 무관하게 deviceSet 변경을 무조건 수신.
+        // (기존 getViewLifecycleOwner observe는 탭 lifecycle 때문에 콜백을 놓쳐
+        //  설정 변경 후 탭 이동해야만 반영되던 문제 → observeForever로 해결)
+        mDeviceSetObserver = new Observer<String>() {
             @Override
             public void onChanged(String s) {
                 applySetResponse(s);
             }
-        });
-
-        // ★★★ 추가: SET 응답 실시간 갱신 (BroadcastReceiver)
-        // ViewPager lifecycle 때문에 위 observe가 콜백을 놓치는 경우를 우회.
-        // MainActivity가 패킷 받을 때마다 쏘는 BROADCAST_PACKET_RECEIVED를 받아 처리.
-        registerSetReceiver();
+        };
+        BLE.INSTANCE.getDeviceSet().observeForever(mDeviceSetObserver);
 
         return binding.getRoot();
     }
 
 
-    // ★★★ 추가: SET 응답 BroadcastReceiver 등록
-    private void registerSetReceiver() {
-        if (mSetReceiver != null) return;
-        mSetReceiver = new android.content.BroadcastReceiver() {
-            @Override
-            public void onReceive(android.content.Context context, android.content.Intent intent) {
-                if (intent == null) return;
-                String packet = intent.getStringExtra("packet");
-                if (packet != null && packet.startsWith("SET=")) {
-                    applySetResponse(packet);
-                }
-            }
-        };
-        android.content.IntentFilter filter = new android.content.IntentFilter(
-                com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_PACKET_RECEIVED);
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                requireContext().registerReceiver(mSetReceiver, filter,
-                        Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                requireContext().registerReceiver(mSetReceiver, filter);
-            }
-        } catch (Exception e) {
-            Log.v(TAG, "SET receiver 등록 실패: " + e.getMessage());
-        }
-    }
-
-
-    // SET 응답을 화면에 반영 (observe + Broadcast 양쪽에서 호출)
+    // SET 응답을 화면에 반영 (observeForever 콜백에서 호출)
     private void applySetResponse(String s) {
         if (binding == null) return;
         if (s == null || !s.startsWith("SET=")) return;
@@ -805,13 +777,10 @@ public class SettingFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        // ★★★ 추가: SET receiver 해제 (메모리 누수 방지)
-        if (mSetReceiver != null) {
-            try {
-                requireContext().unregisterReceiver(mSetReceiver);
-            } catch (Exception ignored) {
-            }
-            mSetReceiver = null;
+        // ★★★ observeForever 해제 (메모리 누수 방지) — 반드시 필요
+        if (mDeviceSetObserver != null) {
+            BLE.INSTANCE.getDeviceSet().removeObserver(mDeviceSetObserver);
+            mDeviceSetObserver = null;
         }
         super.onDestroyView();
         binding = null;
