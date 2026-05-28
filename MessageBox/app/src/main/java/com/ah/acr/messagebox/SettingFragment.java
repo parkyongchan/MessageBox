@@ -43,7 +43,15 @@ import java.util.Locale;
  * ⭐ v6 patch (2026-05-03):
  * - Dirty state lock: 변경사항 미저장 시 Start 버튼 비활성화 (회색 + Toast)
  * - Save button highlight: 미저장 시 색상 강조 (주황색)
- * - Distance disable visualization: Enable 체크박스 OFF 시 chip 영역 전체 비활성화
+ * - Distance disable visualization: Enable 체크박스 OFF 시 chip 영역 비활성화
+ *
+ * ⭐ patch (2026-05-28): SET 응답 실시간 자동 갱신
+ * - 문제: ViewPager2(FragmentStateAdapter) 탭에서 getViewLifecycleOwner()로
+ *         observe하면 lifecycle 타이밍 때문에 deviceSet LiveData 콜백을 놓쳐
+ *         설정 변경 후 탭을 나갔다 와야만 화면에 반영됨.
+ * - 해결: MainActivity가 패킷 받을 때 쏘는 BROADCAST_PACKET_RECEIVED를
+ *         직접 수신하여 applySetResponse() 호출 → lifecycle 무관하게 즉시 갱신.
+ *         기존 observe도 그대로 유지(이중 안전망).
  *
  * 변경 감지 대상:
  *   - Unit Type (Spinner)
@@ -60,6 +68,9 @@ public class SettingFragment extends Fragment {
     private KeyViewModel mKeyViewModel;
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
+
+    // ★★★ 추가: SET 응답 실시간 수신용 BroadcastReceiver
+    private android.content.BroadcastReceiver mSetReceiver;
 
     // 장비 전송용 코드 배열
     private static final String[] UNIT_TYPE_CODES = {"CAR", "UAV", "UAT"};
@@ -135,77 +146,101 @@ public class SettingFragment extends Fragment {
             }
         });
 
-        // 장비 설정 수신 (기존 로직)
+        // 장비 설정 수신 (기존 observe - 이중 안전망으로 유지)
         BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
-                if (s == null || !s.startsWith("SET=")) return;
-
-                String msg = s.substring(4);
-                String[] vals = msg.split(",");
-
-                if (vals[0].equals("OK") || vals[0].equals("FAIL")) {
-                    Toast.makeText(getContext(), s, Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                // ⭐ 단말 SET 응답 수신 시 = 동기화됨 → dirty 해제
-                mIsInitializing = true;
-
-                String type = vals[0];
-                String time = vals[1].replaceAll("[^0-9]", "");
-                String dist = vals[2].replaceAll("[^0-9]", "");
-
-                try {
-                    int timeVal = Integer.parseInt(time);
-                    int distVal = Integer.parseInt(dist);
-
-                    if (timeVal != 0) binding.chkTime.setChecked(true);
-                    else binding.chkTime.setChecked(false);
-
-                    if (distVal != 0) binding.chkDist.setChecked(true);
-                    else binding.chkDist.setChecked(false);
-
-                    if (timeVal > 0) setTimeValue(timeVal, false);
-                    if (distVal > 0) setDistValue(distVal, false);
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "parse error: " + e);
-                }
-
-                // Receiver 처리
-                if (vals.length > 3) {
-                    String receiver = vals[3];
-                    if (!receiver.equals("0")) {
-                        addressViewModel.getAddressByNumbers(receiver).observe(getViewLifecycleOwner(), addressEntity -> {
-                            if (addressEntity != null) {
-                                setReceiverFromContact(receiver, addressEntity.getNumbersNic());
-                            } else {
-                                setReceiverManual(receiver);
-                            }
-                        });
-                    } else {
-                        setReceiverWeb();
-                    }
-                }
-
-                int position = findCodeIndex(type);
-                if (position >= 0) {
-                    binding.spinnerUnitType.setSelection(position);
-                }
-
-                // ⭐ 동기화 완료 → dirty 해제
-                mIsInitializing = false;
-                clearDirty();
-
-                // ⭐ Distance enable 상태에 따라 chip 활성화/비활성화 시각화
-                applyDistanceEnableVisual(binding.chkDist.isChecked());
-                applyTimeEnableVisual(binding.chkTime.isChecked());
+                applySetResponse(s);
             }
         });
+
+        // ★★★ 추가: SET 응답 실시간 갱신 (BroadcastReceiver)
+        // ViewPager lifecycle 때문에 위 observe가 콜백을 놓치는 경우를 우회.
+        // MainActivity가 패킷 받을 때마다 쏘는 BROADCAST_PACKET_RECEIVED를 받아 처리.
+        registerSetReceiver();
 
         return binding.getRoot();
     }
 
+
+    // ★★★ 추가: SET 응답 BroadcastReceiver 등록
+    private void registerSetReceiver() {
+        if (mSetReceiver != null) return;
+        mSetReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, android.content.Intent intent) {
+                if (intent == null) return;
+                String packet = intent.getStringExtra("packet");
+                if (packet != null && packet.startsWith("SET=")) {
+                    applySetResponse(packet);
+                }
+            }
+        };
+        android.content.IntentFilter filter = new android.content.IntentFilter(
+                com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_PACKET_RECEIVED);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                requireContext().registerReceiver(mSetReceiver, filter,
+                        Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                requireContext().registerReceiver(mSetReceiver, filter);
+            }
+        } catch (Exception e) {
+            Log.v(TAG, "SET receiver 등록 실패: " + e.getMessage());
+        }
+    }
+
+
+    // SET 응답을 화면에 반영 (observe + Broadcast 양쪽에서 호출)
+    private void applySetResponse(String s) {
+        if (binding == null) return;
+        if (s == null || !s.startsWith("SET=")) return;
+        String msg = s.substring(4);
+        String[] vals = msg.split(",");
+        if (vals.length == 0) return;
+        if (vals[0].equals("OK") || vals[0].equals("FAIL")) {
+            Toast.makeText(getContext(), s, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (vals.length < 3) return;
+
+        mIsInitializing = true;
+        String type = vals[0];
+        String time = vals[1].replaceAll("[^0-9]", "");
+        String dist = vals[2].replaceAll("[^0-9]", "");
+        try {
+            int timeVal = Integer.parseInt(time);
+            int distVal = Integer.parseInt(dist);
+            binding.chkTime.setChecked(timeVal != 0);
+            binding.chkDist.setChecked(distVal != 0);
+            if (timeVal > 0) setTimeValue(timeVal, false);
+            if (distVal > 0) setDistValue(distVal, false);
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "parse error: " + e);
+        }
+        if (vals.length > 3) {
+            String receiver = vals[3];
+            if (!receiver.equals("0")) {
+                addressViewModel.getAddressByNumbers(receiver).observe(getViewLifecycleOwner(), addressEntity -> {
+                    if (addressEntity != null) {
+                        setReceiverFromContact(receiver, addressEntity.getNumbersNic());
+                    } else {
+                        setReceiverManual(receiver);
+                    }
+                });
+            } else {
+                setReceiverWeb();
+            }
+        }
+        int position = findCodeIndex(type);
+        if (position >= 0) {
+            binding.spinnerUnitType.setSelection(position);
+        }
+        mIsInitializing = false;
+        clearDirty();
+        applyDistanceEnableVisual(binding.chkDist.isChecked());
+        applyTimeEnableVisual(binding.chkTime.isChecked());
+    }
 
     private int findCodeIndex(String code) {
         for (int i = 0; i < UNIT_TYPE_CODES.length; i++) {
@@ -285,7 +320,7 @@ public class SettingFragment extends Fragment {
         mIsDirty = true;
         updateSaveButtonHighlight();
         updateStartButtonByDirtyState();
-        Log.v(TAG, "→ DIRTY (변경사항 있음)");
+        Log.v(TAG, "-> DIRTY (변경사항 있음)");
     }
 
     /**
@@ -295,7 +330,7 @@ public class SettingFragment extends Fragment {
         mIsDirty = false;
         updateSaveButtonHighlight();
         updateStartButtonByDirtyState();
-        Log.v(TAG, "→ CLEAN (저장됨)");
+        Log.v(TAG, "-> CLEAN (저장됨)");
     }
 
     /**
@@ -770,6 +805,14 @@ public class SettingFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        // ★★★ 추가: SET receiver 해제 (메모리 누수 방지)
+        if (mSetReceiver != null) {
+            try {
+                requireContext().unregisterReceiver(mSetReceiver);
+            } catch (Exception ignored) {
+            }
+            mSetReceiver = null;
+        }
         super.onDestroyView();
         binding = null;
     }
