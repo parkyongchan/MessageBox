@@ -750,6 +750,13 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             if (BLE.INSTANCE.getSelectedDevice().getValue() == null) return;
 
+            // ⭐ 펌웨어 전송 중에는 주기 송신 차단
+            Boolean fwUpdating = BLE.INSTANCE.isFirmwareUdate().getValue();
+            if (fwUpdating != null && fwUpdating) {
+                mSyncHandler.postDelayed(this, PERIODIC_SYNC_MS);
+                return;
+            }
+
             long broadElapsed = System.currentTimeMillis() - mLastBroadReceivedTime;
             if (broadElapsed >= BROAD_TIMEOUT_MS) {
                 BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
@@ -1696,6 +1703,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void setConnectBleDevice(@NonNull BleDevice bleDevice) {
+        // ⭐ 새 연결 시 펌웨어 플래그 무조건 리셋 (이전 전송이 멈춰서 갇힌 경우 방지)
+        BLE.INSTANCE.isFirmwareUdate().postValue(false);
         try {
             BLE.INSTANCE.getReceiveData().clear();
         } catch (Exception e) {

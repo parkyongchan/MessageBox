@@ -236,12 +236,22 @@ public class TytoConnectService extends Service {
             com.ah.acr.messagebox.ble.BLE.INSTANCE.getWriteQueue().observeForever(
                     queue -> {
                         if (queue == null) return;
+                        Boolean fwUpdating = com.ah.acr.messagebox.ble.BLE.INSTANCE
+                                .isFirmwareUdate().getValue();
+                        boolean isFw = (fwUpdating != null && fwUpdating);
                         // queue에서 모두 꺼내 처리 (offer가 여러 번 됐을 수 있음)
                         while (!queue.isEmpty()) {
                             String request = queue.poll();
-                            if (request != null && !request.isEmpty()) {
-                                bleSendMessageFromService(request);
+                            if (request == null || request.isEmpty()) continue;
+                            // 펌웨어 전송 중에는 주기 송신(BROAD)만 차단.
+                            // INFO/LOGIN/RECEIVED 등 필수 명령은 통과시킴.
+                            // 펌웨어 중에는 주기 송신(BROAD/INFO) 차단. 청크 충돌 방지.
+                            // (로그인용 INFO는 펌웨어 시작 전에 이미 완료되므로 영향 없음)
+                            if (isFw && (request.startsWith("BROAD") || request.startsWith("INFO"))) {
+                                Log.v(TAG, "fw uploading, skip periodic: " + request);
+                                continue;
                             }
+                            bleSendMessageFromService(request);
                         }
                     }
             );

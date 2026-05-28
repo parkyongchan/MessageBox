@@ -44,6 +44,8 @@ public class FirmwareFragment extends Fragment {
     private FragmentFirmwareBinding binding;
     private Uri selectedFileUri;
     private byte[] firmwareData;
+    private String selectedFileName = "";
+    private static final String PREF_LAST_FW = "pref_last_firmware_file";;
 
     private int sendPacketSize = 0;
 
@@ -79,6 +81,11 @@ public class FirmwareFragment extends Fragment {
         setupViews();
         observeBleConnection();
 
+        // 버전 정보 초기 표시
+        updateVersionInfo();
+        // 장비 버전 실시간 갱신 (INFO 응답 올 때마다)
+        BLE.INSTANCE.getDeviceInfo().observe(getViewLifecycleOwner(), info -> updateVersionInfo());
+
         return binding.getRoot();
     }
 
@@ -112,6 +119,8 @@ public class FirmwareFragment extends Fragment {
                     updateFirmwareDataSender(firmUpdate.getIdx() + 1);
 
                 } else if (firmUpdate.getState().equals("FAILEND")) {
+                    // ⭐ 펌웨어 실패: 주기 송신 재개
+                    BLE.INSTANCE.isFirmwareUdate().postValue(false);
                     // Localized
                     binding.textProgressStatus.setText(getString(R.string.fw_status_failed));
                     resetUI();
@@ -120,6 +129,11 @@ public class FirmwareFragment extends Fragment {
                     updateFirmwareDataSender(firmUpdate.getIdx());
 
                 } else if (firmUpdate.getState().equals("END")) {
+                    // ⭐ 펌웨어 완료: 주기 송신 재개
+                    BLE.INSTANCE.isFirmwareUdate().postValue(false);
+                    // 업로드 성공한 파일명 저장
+                    saveLastFirmware(selectedFileName);
+                    updateVersionInfo();
                     // Localized
                     binding.textProgressStatus.setText(getString(R.string.fw_status_complete));
                     Toast.makeText(getContext(),
@@ -151,6 +165,7 @@ public class FirmwareFragment extends Fragment {
     private void handleSelectedFile(Uri uri) {
         try {
             String fileName = getFileName(uri);
+            selectedFileName = fileName;
             binding.textFileName.setText(fileName);
 
             InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
@@ -225,6 +240,9 @@ public class FirmwareFragment extends Fragment {
             return;
         }
 
+        // ⭐ 펌웨어 전송 시작: 주기 송신(BROAD/INFO/RECEIVED) 차단하여 BLE 채널 독점
+        BLE.INSTANCE.isFirmwareUdate().postValue(true);
+
         // UI update
         binding.buttonSelectFile.setEnabled(false);
         binding.buttonSend.setEnabled(false);
@@ -248,6 +266,8 @@ public class FirmwareFragment extends Fragment {
 
     private void cancelTransfer() {
         isTransferCancelled = true;
+        // ⭐ 펌웨어 취소: 주기 송신 재개
+        BLE.INSTANCE.isFirmwareUdate().postValue(false);
         // Localized
         Toast.makeText(getContext(),
                 getString(R.string.fw_toast_cancelled),
@@ -355,10 +375,49 @@ public class FirmwareFragment extends Fragment {
             imm.hideSoftInputFromWindow(requireActivity().getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
         }
     }
+    // 업로드 성공한 펌웨어 파일명 저장
+    private void saveLastFirmware(String fileName) {
+        if (fileName == null || fileName.isEmpty()) return;
+        try {
+            android.content.SharedPreferences prefs =
+                    android.preference.PreferenceManager
+                            .getDefaultSharedPreferences(requireContext());
+            prefs.edit().putString(PREF_LAST_FW, fileName).apply();
+        } catch (Exception e) {
+            // ignore
+        }
+    }
 
+    // 버전 정보 표시 갱신 (장비 버전 + 마지막 업로드 파일)
+    private void updateVersionInfo() {
+        if (binding == null) return;
+
+        // 장비 버전 (INFO 응답에서)
+        String ver = "-";
+        try {
+            com.ah.acr.messagebox.data.DeviceInfo info =
+                    BLE.INSTANCE.getDeviceInfo().getValue();
+            if (info != null && info.getVersion() != null && !info.getVersion().isEmpty()) {
+                ver = info.getVersion();
+            }
+        } catch (Exception ignored) {}
+        binding.textDeviceVersion.setText("장비 버전: " + ver);
+
+        // 마지막 업로드 파일명
+        String last = "-";
+        try {
+            android.content.SharedPreferences prefs =
+                    android.preference.PreferenceManager
+                            .getDefaultSharedPreferences(requireContext());
+            last = prefs.getString(PREF_LAST_FW, "-");
+        } catch (Exception ignored) {}
+        binding.textLastFirmware.setText("마지막 업로드: " + last);
+    }
 
     @Override
     public void onDestroyView() {
+        // ⭐ 펌웨어 화면 벗어날 때 플래그 리셋 (갇힘 방지)
+        BLE.INSTANCE.isFirmwareUdate().postValue(false);
         super.onDestroyView();
         binding = null;
     }

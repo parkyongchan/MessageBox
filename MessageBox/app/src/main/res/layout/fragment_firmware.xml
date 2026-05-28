@@ -151,6 +151,69 @@
 
             </LinearLayout>
 
+            <!-- ═══════ VERSION INFO ═══════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_info"
+                    app:tint="#95B0D4"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Version" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="VERSION"
+                    android:textColor="#95B0D4"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_input_card"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:layout_marginBottom="18dp">
+
+                <TextView
+                    android:id="@+id/text_device_version"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="장비 버전: -"
+                    android:textColor="#00E5D1"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="middle" />
+
+                <TextView
+                    android:id="@+id/text_last_firmware"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="마지막 업로드: -"
+                    android:textColor="#95B0D4"
+                    android:textSize="12sp"
+                    android:singleLine="true"
+                    android:ellipsize="middle"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
             <!-- ═══════ CHUNK SIZE ═══════ -->
             <LinearLayout
                 android:layout_width="match_parent"
