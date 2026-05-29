@@ -41,37 +41,59 @@ import java.util.Locale;
  * Settings Fragment - Location Report Setting
  *
  * ⭐ v6 patch (2026-05-03):
- * - Dirty state lock: 변경사항 미저장 시 Start 버튼 비활성화 (회색 + Toast)
- * - Save button highlight: 미저장 시 색상 강조 (주황색)
- * - Distance disable visualization: Enable 체크박스 OFF 시 chip 영역 비활성화
+ * - Dirty state lock + Save button highlight + Distance disable visualization
  *
  * ⭐ patch (2026-05-28): SET 응답 실시간 자동 갱신 — observeForever 방식
- * - 문제: ViewPager2(FragmentStateAdapter) 탭에서 getViewLifecycleOwner()로
- *         observe하면 lifecycle 타이밍 때문에 deviceSet LiveData 콜백을 놓쳐
- *         설정 변경 후 탭을 나갔다 와야만 화면에 반영됨.
- * - 1차 시도(BroadcastReceiver)는 SettingFragment에 도달하지 않아 실패.
- * - 최종 해결: deviceSet을 observeForever로 관찰 → ViewPager lifecycle과
- *         무관하게 deviceSet.postValue가 발생하면 무조건 콜백 수신.
- *         onDestroyView에서 removeObserver로 누수 방지.
+ *
+ * ⭐ patch (2026-05-29): SET 응답 캐시 + 진입 시 복원
+ * - 문제: 장비가 자발적으로 SET을 주기 송신하지만(예: 19초 간격),
+ *         화면 진입 직후엔 다음 SET이 올 때까지 빈 상태로 보임.
+ *         또한 ViewPager2가 SettingFragment 인스턴스를 여러 개 생성하면
+ *         observeForever 콜백을 받은 인스턴스와 화면에 보이는 인스턴스가
+ *         달라 화면 갱신이 안 되는 케이스 발생.
+ * - 해결: SET 응답을 SharedPreferences에 캐시 → 어느 인스턴스든
+ *         onCreateView에서 캐시값을 즉시 화면에 복원. 이후 새 SET 오면
+ *         observeForever가 자동 갱신하면서 캐시도 갱신.
+ *         → 인스턴스 문제 우회 + 재접속/재진입 시 즉시 표시.
+ *
+ * ⭐ patch (2026-05-29 #3): SET=? 주기 폴링 추가
+ * - 진단: 장비는 BROAD(위치)만 5초마다 자발 송신하고 SET(설정)은 절대 자발 송신하지 않음
+ *         (BLE Protocol Rev1.0 3.6 — TYTO2 responds only when requested by APP).
+ *         "장비가 19초마다 SET 자발 송신" 전제는 오류였음.
+ *         BROAD=5는 위치 주기 송신 설정 명령이지 SET 조회가 아님.
+ * - 해결: 화면이 보이는 동안(onResume~onPause) SET=? 를 주기 전송 →
+ *         장비가 SET=... 으로 회신 → observe가 받아 화면 자동 갱신.
+ *         (웹의 폴링과 동일 구조. 화면 벗어나면 폴링 중지로 BLE 트래픽 절약)
  *
  * 변경 감지 대상:
- *   - Unit Type (Spinner)
- *   - Time 체크박스 ON/OFF
- *   - Time 값 (preset 또는 수동입력)
- *   - Distance 체크박스 ON/OFF
- *   - Distance 값
- *   - Receiver (Web/Address Book/Manual)
+ *   - Unit Type (Spinner), Time 체크/값, Distance 체크/값, Receiver
  */
 public class SettingFragment extends Fragment {
     private static final String TAG = SettingFragment.class.getSimpleName();
+
+    // ★★★ 캐시 키 (SharedPreferences)
+    private static final String PREF_LAST_SET = "pref_last_device_set";
 
     private FragmentSettingBinding binding;
     private KeyViewModel mKeyViewModel;
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
 
-    // ★★★ observeForever용 Observer 참조 (onDestroyView에서 제거하기 위해 보관)
-    private Observer<String> mDeviceSetObserver;
+    // ★★★ SET=? 주기 폴링 (화면 떠 있는 동안 장비에 현재 설정 요청)
+    //     BLE Protocol 3.6: SET=? 요청 → 장비가 SET=Mode,Tcycle,Dist,TrackAddr,SosAddr 회신
+    private final android.os.Handler mSetPollHandler =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+    private static final long SET_POLL_INTERVAL_MS = 15000L;   // 15초 (BROAD 5초 트래픽 고려)
+    private final Runnable mSetPollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (binding == null) return;
+            BLE.INSTANCE.getWriteQueue().offer("SET=?");
+            Log.v(TAG, "⟳ SET=? 폴링 전송");
+            mSetPollHandler.postDelayed(this, SET_POLL_INTERVAL_MS);
+        }
+    };
+
 
     // 장비 전송용 코드 배열
     private static final String[] UNIT_TYPE_CODES = {"CAR", "UAV", "UAT"};
@@ -79,22 +101,22 @@ public class SettingFragment extends Fragment {
     // 다크 테마 색상
     private static final int COLOR_CYAN     = 0xFF00E5D1;
     private static final int COLOR_GRAY_BG  = 0xFF2A3A5A;
-    private static final int COLOR_DIRTY    = 0xFFFFB300;  // ⭐ 주황 (미저장 강조)
-    private static final int COLOR_SAVE_OK  = 0xFF00E5D1;  // 청록 (저장됨)
+    private static final int COLOR_DIRTY    = 0xFFFFB300;
+    private static final int COLOR_SAVE_OK  = 0xFF00E5D1;
 
-    // ⭐ 최소/최대값 상수
+    // 최소/최대값 상수
     private static final int MIN_TIME = 0;
     private static final int MAX_TIME = 9999;
     private static final int MIN_DIST = 0;
     private static final int MAX_DIST = 9999;
 
-    // ⭐ Disable 시각화 alpha
+    // Disable 시각화 alpha
     private static final float ALPHA_ENABLED  = 1.0f;
     private static final float ALPHA_DISABLED = 0.4f;
 
-    // ⭐ Dirty 상태 관리
+    // Dirty 상태 관리
     private boolean mIsDirty = false;
-    private boolean mIsInitializing = true;  // 초기 세팅 시 dirty 트리거 방지
+    private boolean mIsInitializing = true;
 
 
     @Override
@@ -111,6 +133,7 @@ public class SettingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        Log.v(TAG, "☆ onCreateView 시작 [inst=" + this.hashCode() + "]");
 
         binding = FragmentSettingBinding.inflate(inflater, container, false);
 
@@ -122,7 +145,7 @@ public class SettingFragment extends Fragment {
         displayAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
         binding.spinnerUnitType.setAdapter(displayAdapter);
 
-        // ⭐ Spinner 변경 감지
+        // Spinner 변경 감지
         binding.spinnerUnitType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -134,7 +157,7 @@ public class SettingFragment extends Fragment {
 
         binding.getRoot().setOnClickListener(v -> hideKeyboard());
 
-        // ⭐ Receiver 버튼 클릭 → 다이얼로그
+        // Receiver 버튼 클릭 → 다이얼로그
         binding.layoutReceiverDisplay.setOnClickListener(v -> showReceiverMenu());
 
         // 장비 상태 관찰
@@ -147,26 +170,49 @@ public class SettingFragment extends Fragment {
             }
         });
 
-        // ★★★ 장비 설정(SET) 수신 — observeForever 방식
-        // ViewPager2 lifecycle과 무관하게 deviceSet 변경을 무조건 수신.
-        // (기존 getViewLifecycleOwner observe는 탭 lifecycle 때문에 콜백을 놓쳐
-        //  설정 변경 후 탭 이동해야만 반영되던 문제 → observeForever로 해결)
-        mDeviceSetObserver = new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                applySetResponse(s);
-            }
-        };
-        BLE.INSTANCE.getDeviceSet().observeForever(mDeviceSetObserver);
+        // ⭐ patch (2026-05-29 #2): observeForever → lifecycle observe 전환
+        // 이유: ViewPager2가 SettingFragment를 여러 개 생성할 때 observeForever는
+        //       화면에 안 보이는(detached) 인스턴스까지 콜백을 받아, 보이는 인스턴스가
+        //       제때 갱신되지 않는 혼선이 발생했음.
+        //       getViewLifecycleOwner()로 observe하면 STARTED(화면에 보이는) 인스턴스만
+        //       콜백을 받고, 등록 즉시 현재값을 1회 전달받아 진입 시점 표시도 보장됨.
+        //       → 화면 보는 도중 새 SET이 와도 그 자리에서 자동 갱신. 탭 이동 불필요.
+        BLE.INSTANCE.getDeviceSet().observe(getViewLifecycleOwner(), s -> {
+            Log.v(TAG, "▶ Observer 콜백 [inst=" + SettingFragment.this.hashCode() + "] value=" + s);
+            applySetResponse(s);
+        });
 
         return binding.getRoot();
     }
 
 
-    // SET 응답을 화면에 반영 (observeForever 콜백에서 호출)
+    @Override
+    public void onResume() {
+        super.onResume();
+        // ★★★ 화면이 보이기 시작 → 즉시 1회 조회 + 주기 폴링 시작
+        BLE.INSTANCE.getWriteQueue().offer("SET=?");
+        Log.v(TAG, "⟳ onResume: SET=? 1회 + 폴링 시작");
+        mSetPollHandler.removeCallbacks(mSetPollRunnable);
+        mSetPollHandler.postDelayed(mSetPollRunnable, SET_POLL_INTERVAL_MS);
+    }
+
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // ★★★ 화면이 벗어남 → 폴링 중지 (불필요한 BLE 트래픽 방지)
+        mSetPollHandler.removeCallbacks(mSetPollRunnable);
+        Log.v(TAG, "⟳ onPause: SET=? 폴링 중지");
+    }
+
+
+    // ★★★ SET 응답을 화면에 반영 + 캐시 저장
     private void applySetResponse(String s) {
-        if (binding == null) return;
-        if (s == null || !s.startsWith("SET=")) return;
+        Log.v(TAG, "★1 진입 [inst=" + this.hashCode()
+                + " binding=" + (binding == null ? "null" : String.valueOf(binding.hashCode()))
+                + "]: " + s);
+        if (binding == null) { Log.v(TAG, "★X binding=null, 종료"); return; }
+        if (s == null || !s.startsWith("SET=")) { Log.v(TAG, "★X SET= 아님, 종료"); return; }
         String msg = s.substring(4);
         String[] vals = msg.split(",");
         if (vals.length == 0) return;
@@ -174,7 +220,11 @@ public class SettingFragment extends Fragment {
             Toast.makeText(getContext(), s, Toast.LENGTH_LONG).show();
             return;
         }
-        if (vals.length < 3) return;
+        if (vals.length < 3) { Log.v(TAG, "★X vals.length < 3, 종료"); return; }
+        Log.v(TAG, "★2 파싱: vals=" + java.util.Arrays.toString(vals));
+
+        // ★★★ 캐시 저장 — 다음 진입 시 즉시 복원할 수 있도록
+        saveLastSet(s);
 
         mIsInitializing = true;
         String type = vals[0];
@@ -183,10 +233,13 @@ public class SettingFragment extends Fragment {
         try {
             int timeVal = Integer.parseInt(time);
             int distVal = Integer.parseInt(dist);
+            Log.v(TAG, "★3 적용: type=" + type + " timeVal=" + timeVal + " distVal=" + distVal);
             binding.chkTime.setChecked(timeVal != 0);
             binding.chkDist.setChecked(distVal != 0);
             if (timeVal > 0) setTimeValue(timeVal, false);
             if (distVal > 0) setDistValue(distVal, false);
+            Log.v(TAG, "★4 setText 후 화면값: time=" + binding.textTime.getText()
+                    + " dist=" + binding.textDist.getText());
         } catch (NumberFormatException e) {
             Log.e(TAG, "parse error: " + e);
         }
@@ -208,11 +261,54 @@ public class SettingFragment extends Fragment {
         if (position >= 0) {
             binding.spinnerUnitType.setSelection(position);
         }
-        mIsInitializing = false;
-        clearDirty();
         applyDistanceEnableVisual(binding.chkDist.isChecked());
         applyTimeEnableVisual(binding.chkTime.isChecked());
+
+        // 리스너 비동기 markDirty() 방지 — 150ms 후 clearDirty
+        if (binding != null && binding.getRoot() != null) {
+            binding.getRoot().postDelayed(() -> {
+                if (binding == null) return;
+                mIsInitializing = false;
+                clearDirty();
+            }, 150);
+        } else {
+            mIsInitializing = false;
+            clearDirty();
+        }
     }
+
+
+    // ★★★ SharedPreferences에 마지막 SET 응답 저장
+    private void saveLastSet(String setStr) {
+        if (setStr == null) return;
+        try {
+            android.content.SharedPreferences prefs =
+                    android.preference.PreferenceManager
+                            .getDefaultSharedPreferences(requireContext());
+            prefs.edit().putString(PREF_LAST_SET, setStr).apply();
+        } catch (Exception e) {
+            Log.v(TAG, "saveLastSet 실패: " + e.getMessage());
+        }
+    }
+
+    // ★★★ 저장된 마지막 SET 응답 불러와 화면 복원
+    private void restoreLastSet() {
+        try {
+            android.content.SharedPreferences prefs =
+                    android.preference.PreferenceManager
+                            .getDefaultSharedPreferences(requireContext());
+            String last = prefs.getString(PREF_LAST_SET, null);
+            if (last != null && last.startsWith("SET=")) {
+                Log.v(TAG, "♻ 캐시에서 복원: " + last);
+                applySetResponse(last);
+            } else {
+                Log.v(TAG, "♻ 캐시 비어있음 (첫 진입)");
+            }
+        } catch (Exception e) {
+            Log.v(TAG, "restoreLastSet 실패: " + e.getMessage());
+        }
+    }
+
 
     private int findCodeIndex(String code) {
         for (int i = 0; i < UNIT_TYPE_CODES.length; i++) {
@@ -228,7 +324,6 @@ public class SettingFragment extends Fragment {
             binding.buttonSetStart.setBackgroundColor(COLOR_GRAY_BG);
             binding.buttonSetStop.setBackgroundColor(0x30FF5252);
         } else {
-            // ⭐ Start 버튼은 dirty 상태도 반영
             updateStartButtonByDirtyState();
             binding.buttonSetStop.setBackgroundColor(0x15FF5252);
         }
@@ -250,7 +345,7 @@ public class SettingFragment extends Fragment {
         setupCheckBoxes();
         setupTextListeners();
 
-        // ⭐ Start 버튼: dirty 체크 후 BLE 송신
+        // Start 버튼: dirty 체크 후 BLE 송신
         binding.buttonSetStart.setOnClickListener(v -> {
             if (mIsDirty) {
                 Toast.makeText(getContext(),
@@ -272,32 +367,30 @@ public class SettingFragment extends Fragment {
         setDistValue(10, false);
         mIsInitializing = false;
 
-        // ⭐ 초기 시각 상태 적용
+        // 초기 시각 상태 적용
         clearDirty();
         applyDistanceEnableVisual(binding.chkDist.isChecked());
         applyTimeEnableVisual(binding.chkTime.isChecked());
+
+        // ★★★ 캐시에서 마지막 SET 값 복원 (초기값 위에 덮어씀)
+        // 화면에 떴을 때 펌웨어 실제 값이 즉시 보이도록.
+        restoreLastSet();
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ DIRTY STATE MANAGEMENT
+    //   DIRTY STATE MANAGEMENT
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * 변경사항 발생 시 호출. Save 버튼 강조 + Start 버튼 잠금.
-     */
     private void markDirty() {
         if (mIsInitializing) return;
-        if (mIsDirty) return;  // 이미 dirty면 중복 처리 안 함
+        if (mIsDirty) return;
         mIsDirty = true;
         updateSaveButtonHighlight();
         updateStartButtonByDirtyState();
         Log.v(TAG, "-> DIRTY (변경사항 있음)");
     }
 
-    /**
-     * 저장 완료 또는 단말 동기화 완료 시 호출.
-     */
     private void clearDirty() {
         mIsDirty = false;
         updateSaveButtonHighlight();
@@ -305,39 +398,28 @@ public class SettingFragment extends Fragment {
         Log.v(TAG, "-> CLEAN (저장됨)");
     }
 
-    /**
-     * Save 버튼 색상 강조.
-     */
     private void updateSaveButtonHighlight() {
         if (binding == null || binding.buttonSetSave == null) return;
         if (mIsDirty) {
-            binding.buttonSetSave.setBackgroundColor(COLOR_DIRTY);  // 주황
+            binding.buttonSetSave.setBackgroundColor(COLOR_DIRTY);
         } else {
-            binding.buttonSetSave.setBackgroundColor(COLOR_SAVE_OK); // 청록
+            binding.buttonSetSave.setBackgroundColor(COLOR_SAVE_OK);
         }
     }
 
-    /**
-     * Start 버튼 dirty 상태 반영.
-     * 추적 중이 아닐 때만 dirty 시각화 적용 (추적 중일 때는 회색 그대로).
-     */
     private void updateStartButtonByDirtyState() {
         if (binding == null || binding.buttonSetStart == null) return;
 
-        // 추적 중인지 확인
         DeviceStatus status = mBleViewModel.getDeviceStatus().getValue();
         boolean isTracking = status != null && status.isTrackingMode();
 
         if (isTracking) {
-            // 추적 중 — 항상 회색
             binding.buttonSetStart.setBackgroundColor(COLOR_GRAY_BG);
             binding.buttonSetStart.setAlpha(ALPHA_ENABLED);
         } else if (mIsDirty) {
-            // 추적 안 함 + 미저장 → 잠금 (회색)
             binding.buttonSetStart.setBackgroundColor(COLOR_GRAY_BG);
             binding.buttonSetStart.setAlpha(ALPHA_DISABLED);
         } else {
-            // 추적 안 함 + 저장됨 → 활성화 (청록)
             binding.buttonSetStart.setBackgroundColor(COLOR_CYAN);
             binding.buttonSetStart.setAlpha(ALPHA_ENABLED);
         }
@@ -345,18 +427,14 @@ public class SettingFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ DISABLE VISUALIZATION (Time/Distance Enable 체크박스 OFF 시)
+    //   DISABLE VISUALIZATION
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Distance Enable 체크박스 상태에 따라 chip 영역 시각화.
-     */
     private void applyDistanceEnableVisual(boolean enabled) {
         if (binding == null) return;
 
         float alpha = enabled ? ALPHA_ENABLED : ALPHA_DISABLED;
 
-        // Preset 버튼들
         binding.presetDist2.setEnabled(enabled);
         binding.presetDist5.setEnabled(enabled);
         binding.presetDist10.setEnabled(enabled);
@@ -370,21 +448,16 @@ public class SettingFragment extends Fragment {
         binding.presetDist100.setAlpha(alpha);
         binding.presetDist200.setAlpha(alpha);
 
-        // 입력 필드 + 표시
         binding.textDist.setEnabled(enabled);
         binding.textDist.setAlpha(alpha);
         binding.textDistDisplay.setAlpha(alpha);
     }
 
-    /**
-     * Time Enable 체크박스 상태에 따라 chip 영역 시각화.
-     */
     private void applyTimeEnableVisual(boolean enabled) {
         if (binding == null) return;
 
         float alpha = enabled ? ALPHA_ENABLED : ALPHA_DISABLED;
 
-        // Preset 버튼들
         binding.presetTime3.setEnabled(enabled);
         binding.presetTime5.setEnabled(enabled);
         binding.presetTime10.setEnabled(enabled);
@@ -398,14 +471,13 @@ public class SettingFragment extends Fragment {
         binding.presetTime30.setAlpha(alpha);
         binding.presetTime60.setAlpha(alpha);
 
-        // 입력 필드
         binding.textTime.setEnabled(enabled);
         binding.textTime.setAlpha(alpha);
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ RECEIVER MENU
+    //   RECEIVER MENU
     // ═══════════════════════════════════════════════════════════════
 
     private void showReceiverMenu() {
@@ -473,7 +545,7 @@ public class SettingFragment extends Fragment {
                     String number = input.getText().toString().trim();
                     if (!number.isEmpty() && number.matches("\\d+")) {
                         setReceiverManual(number);
-                        markDirty();  // ⭐
+                        markDirty();
                     } else if (!number.isEmpty()) {
                         Toast.makeText(getContext(),
                                 "Receiver must be digits only (10 or 15)",
@@ -486,7 +558,7 @@ public class SettingFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ TIME PRESETS
+    //   TIME PRESETS
     // ═══════════════════════════════════════════════════════════════
 
     private void setupTimePresets() {
@@ -528,7 +600,7 @@ public class SettingFragment extends Fragment {
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ DISTANCE PRESETS
+    //   DISTANCE PRESETS
     // ═══════════════════════════════════════════════════════════════
 
     private void setupDistPresets() {
@@ -592,27 +664,22 @@ public class SettingFragment extends Fragment {
 
     private void setupCheckBoxes() {
         binding.chkDist.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // ⭐ Disable 시각화
             applyDistanceEnableVisual(isChecked);
-            // ⭐ 변경 감지
             if (!mIsInitializing) markDirty();
         });
 
         binding.chkTime.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // ⭐ Disable 시각화
             applyTimeEnableVisual(isChecked);
-            // ⭐ 변경 감지
             if (!mIsInitializing) markDirty();
         });
     }
 
 
     // ═══════════════════════════════════════════════════════════════
-    //   ⭐ TEXT LISTENERS (수동 입력 → 프리셋 동기화)
+    //   TEXT LISTENERS
     // ═══════════════════════════════════════════════════════════════
 
     private void setupTextListeners() {
-        // Time EditText
         binding.textTime.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -622,15 +689,12 @@ public class SettingFragment extends Fragment {
                 try {
                     int val = Integer.parseInt(s.toString());
                     updateTimePresetSelection(val);
-                    // ⭐ 0 = 꺼짐, 1 이상 = 켜짐
                     binding.chkTime.setChecked(val > 0);
-                    // ⭐ 변경 감지
                     if (!mIsInitializing) markDirty();
                 } catch (NumberFormatException ignored) {}
             }
         });
 
-        // Distance EditText
         binding.textDist.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -641,9 +705,7 @@ public class SettingFragment extends Fragment {
                     int val = Integer.parseInt(s.toString());
                     updateDistDisplay(val);
                     updateDistPresetSelection(val);
-                    // ⭐ 0 = 꺼짐, 1 이상 = 켜짐
                     binding.chkDist.setChecked(val > 0);
-                    // ⭐ 변경 감지
                     if (!mIsInitializing) markDirty();
                 } catch (NumberFormatException ignored) {}
             }
@@ -692,7 +754,6 @@ public class SettingFragment extends Fragment {
 
         setting.append(",");
 
-        // Time
         if (binding.chkTime.isChecked()) {
             String time = binding.textTime.getText().toString().trim();
             int timeValue = 0;
@@ -709,7 +770,6 @@ public class SettingFragment extends Fragment {
 
         setting.append(",");
 
-        // Distance
         if (binding.chkDist.isChecked()) {
             String dist = binding.textDist.getText().toString().trim();
             int distValue = 0;
@@ -732,7 +792,6 @@ public class SettingFragment extends Fragment {
 
         Toast.makeText(getContext(), "Settings sent to device", Toast.LENGTH_SHORT).show();
 
-        // ⭐ 저장 완료 → dirty 해제 (Start 버튼 활성화)
         clearDirty();
     }
 
@@ -759,7 +818,7 @@ public class SettingFragment extends Fragment {
         if (getContext() != null) {
             Toast.makeText(getContext(), "Selected: " + title, Toast.LENGTH_SHORT).show();
             setReceiverFromContact(code, title);
-            markDirty();  // ⭐
+            markDirty();
         }
     }
 
@@ -777,11 +836,8 @@ public class SettingFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        // ★★★ observeForever 해제 (메모리 누수 방지) — 반드시 필요
-        if (mDeviceSetObserver != null) {
-            BLE.INSTANCE.getDeviceSet().removeObserver(mDeviceSetObserver);
-            mDeviceSetObserver = null;
-        }
+        Log.v(TAG, "☆ onDestroyView [inst=" + this.hashCode() + "]");
+        mSetPollHandler.removeCallbacks(mSetPollRunnable);   // ★ SET=? 폴링 정리
         super.onDestroyView();
         binding = null;
     }
