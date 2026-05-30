@@ -239,20 +239,32 @@ public class TytoConnectService extends Service {
                         Boolean fwUpdating = com.ah.acr.messagebox.ble.BLE.INSTANCE
                                 .isFirmwareUdate().getValue();
                         boolean isFw = (fwUpdating != null && fwUpdating);
-                        // queue에서 모두 꺼내 처리 (offer가 여러 번 됐을 수 있음)
+
+                        // queue 내용을 먼저 스냅샷으로 빼낸다 (메인 스레드에서 빠르게)
+                        java.util.List<String> batch = new java.util.ArrayList<>();
                         while (!queue.isEmpty()) {
                             String request = queue.poll();
                             if (request == null || request.isEmpty()) continue;
-                            // 펌웨어 전송 중에는 주기 송신(BROAD)만 차단.
-                            // INFO/LOGIN/RECEIVED 등 필수 명령은 통과시킴.
-                            // 펌웨어 중에는 주기 송신(BROAD/INFO) 차단. 청크 충돌 방지.
-                            // (로그인용 INFO는 펌웨어 시작 전에 이미 완료되므로 영향 없음)
                             if (isFw && (request.startsWith("BROAD") || request.startsWith("INFO"))) {
                                 Log.v(TAG, "fw uploading, skip periodic: " + request);
                                 continue;
                             }
-                            bleSendMessageFromService(request);
+                            batch.add(request);
                         }
+                        if (batch.isEmpty()) return;
+
+                        // 별도 스레드에서 하나씩, 간격을 두고 전송 (BLE write 충돌 방지)
+                        new Thread(() -> {
+                            for (String request : batch) {
+                                bleSendMessageFromService(request);
+                                try {
+                                    Thread.sleep(300);   // 이전 write 완료 시간 확보
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    break;
+                                }
+                            }
+                        }).start();
                     }
             );
             Log.v(TAG, "✅ writeQueue observer 등록 (Service-bound, 백그라운드 안전)");
