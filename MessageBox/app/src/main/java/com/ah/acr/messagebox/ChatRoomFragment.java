@@ -579,6 +579,7 @@ public class ChatRoomFragment extends Fragment {
             String sms = String.format("SENDING=%d,%s",
                     msg.getId(), Base64.encodeToString(body, Base64.NO_WRAP));
             msgList.add(sms);
+            android.util.Log.d("ACK-PROBE", "송신 id=" + msg.getId() + " sms=" + sms);
         }
 
         if (msgList.isEmpty()) {

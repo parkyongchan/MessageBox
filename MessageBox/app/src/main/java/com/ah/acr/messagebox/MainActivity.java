@@ -109,6 +109,10 @@ public class MainActivity extends AppCompatActivity {
     private Runnable mInfoRetryRunnable;
     private long mLastBroadReceivedTime = 0;
     private long mLastInfoReceivedTime = 0;
+    // 대용량 메시지 조립 버퍼: chunkMsgId → (seq → memo조각)
+    private final java.util.Map<Integer, java.util.TreeMap<Integer, String>> mLargeMsgBuf = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Integer> mLargeMsgTotal = new java.util.HashMap<>();
+    private final java.util.Map<Integer, String> mLargeMsgSender = new java.util.HashMap<>();
     private static final long BROAD_TIMEOUT_MS = 15000;
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
@@ -1273,7 +1277,39 @@ public class MainActivity extends AppCompatActivity {
             || ver == 0x17;
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  대용량/단문 수신확인 ACK MO 송신
+    //  - 조립 완성 시 호출
+    //  - title="~A:<msgId>", memo=빈값, 0x07 FREE 프레임
+    //  - SENDING id는 일반 채팅(작은 수)과 안 겹치게 9000번대 사용
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    private void sendLargeMsgAck(String recipientImei, int msgId) {
+        try {
+            String ackTitle = "~A:" + msgId;
 
+            ByteBuf buffer = Unpooled.buffer();
+            buffer.writeByte(0x07);
+            buffer.writeByte(recipientImei.getBytes(StandardCharsets.US_ASCII).length);
+            buffer.writeCharSequence(recipientImei, StandardCharsets.US_ASCII);
+            buffer.writeByte(ackTitle.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(ackTitle, StandardCharsets.UTF_8);
+            buffer.writeByte(0);   // memo length 0 (빈 본문)
+
+            byte[] body = new byte[buffer.readableBytes()];
+            buffer.readBytes(body);
+
+            // 9000 + msgId(0~255) → 9000~9255, 일반 채팅 id와 안 겹침
+            int ackSendId = 9000 + (msgId & 0xFF);
+            String sms = String.format("SENDING=%d,%s",
+                    ackSendId, Base64.encodeToString(body, Base64.NO_WRAP));
+
+            android.util.Log.d("LARGE-MSG", "📤 ACK 송신 to=" + recipientImei
+                    + " title=" + ackTitle + " sendId=" + ackSendId + " sms=" + sms);
+            bleSendMessage(sms);   // 검증된 송신 경로 직접 호출 (offer+observer 우회)
+        } catch (Exception e) {
+            Log.e("LARGE-MSG", "ACK 송신 실패 msgId=" + msgId + " : " + e.getMessage());
+        }
+    }
     // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
     //   - 중복 수신 패킷 차단
@@ -1421,6 +1457,7 @@ public class MainActivity extends AppCompatActivity {
             if (vals[0].equals("4")) Toast.makeText(this, getString(R.string.toast_sos_started), Toast.LENGTH_LONG).show();
             if (vals[0].equals("5")) Toast.makeText(this, getString(R.string.toast_sos_stopped), Toast.LENGTH_LONG).show();
         } else if (packet.startsWith("SENDING=")) {
+            android.util.Log.d("ACK-PROBE", "수신 응답=" + packet);
             String msg = packet.substring(8);
             String[] vals = msg.split(",");
             if (vals[1].equals("OK")) {
@@ -1607,12 +1644,57 @@ public class MainActivity extends AppCompatActivity {
                     int memoSize = buffer.readUnsignedByte();
                     String message = buffer.readCharSequence(memoSize, StandardCharsets.UTF_8).toString().trim();
 
-                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
-                            new Date(),
-                            new Date(System.currentTimeMillis()),
-                            new Date(System.currentTimeMillis()),
-                            false, false, false);
-                    insertMsgWithDedupAndEcho(addMsg, codeNum, message);
+                    android.util.Log.d("LARGE-MSG", "RX title=[" + title + "] msgLen=" + message.length());
+
+                    if (title.startsWith("~L:")) {
+                        // ~L:T:msgId:seq:total  (memo = 조각 본문)
+                        try {
+                            String[] h = title.split(":");
+                            int msgId = Integer.parseInt(h[2]);
+                            int seq   = Integer.parseInt(h[3]);
+                            int total = Integer.parseInt(h[4]);
+
+                            mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
+                            mLargeMsgTotal.put(msgId, total);
+                            mLargeMsgSender.put(msgId, codeNum);
+
+                            java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
+                            android.util.Log.d("LARGE-MSG", "조각 수신 msgId=" + msgId
+                                    + " seq=" + seq + "/" + (total - 1)
+                                    + " 누적=" + parts.size() + "/" + total);
+
+                            if (parts.size() >= total) {
+                                StringBuilder sb = new StringBuilder();
+                                for (String part : parts.values()) sb.append(part);
+                                String full = sb.toString();
+                                android.util.Log.d("LARGE-MSG", "✅ 조립 완료 msgId=" + msgId
+                                        + " 총길이=" + full.length());
+
+                                MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", full,
+                                        new Date(),
+                                        new Date(System.currentTimeMillis()),
+                                        new Date(System.currentTimeMillis()),
+                                        false, false, false);
+                                insertMsgWithDedupAndEcho(addMsg, codeNum, full);
+
+                                mLargeMsgBuf.remove(msgId);
+                                mLargeMsgTotal.remove(msgId);
+                                mLargeMsgSender.remove(msgId);
+                                // 2단계: 조립 완성 → ACK MO 송신 (발신자에게 되돌림)
+                                sendLargeMsgAck(codeNum, msgId);
+                            }
+                        } catch (Exception ex) {
+                            Log.e("LARGE-MSG", "헤더 파싱 실패 title=" + title + " : " + ex.getMessage());
+                        }
+                    } else {
+                        // 기존 일반 채팅 그대로
+                        MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
+                                new Date(),
+                                new Date(System.currentTimeMillis()),
+                                new Date(System.currentTimeMillis()),
+                                false, false, false);
+                        insertMsgWithDedupAndEcho(addMsg, codeNum, message);
+                    }
                 }
 
                 // ★ ACK는 항상 송신 (중복이든 아니든 단말 큐에서 제거되어야 함)
