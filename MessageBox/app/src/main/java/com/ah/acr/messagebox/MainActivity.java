@@ -1298,8 +1298,8 @@ public class MainActivity extends AppCompatActivity {
             byte[] body = new byte[buffer.readableBytes()];
             buffer.readBytes(body);
 
-            // 9000 + msgId(0~255) → 9000~9255, 일반 채팅 id와 안 겹침
-            int ackSendId = 9000 + (msgId & 0xFF);
+            /// SENDING index는 1~999만 허용(BLE 프로토콜). 500+msgId → 500~755.
+            int ackSendId = 500 + (msgId & 0xFF);
             String sms = String.format("SENDING=%d,%s",
                     ackSendId, Base64.encodeToString(body, Base64.NO_WRAP));
 
