@@ -113,6 +113,12 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, java.util.TreeMap<Integer, String>> mLargeMsgBuf = new java.util.HashMap<>();
     private final java.util.Map<Integer, Integer> mLargeMsgTotal = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mLargeMsgSender = new java.util.HashMap<>();
+    // ⭐ 완성된 msgId의 완료 시각(중복 조각 재수신 차단용, 윈도우 지나면 새 메시지로 취급)
+    private final java.util.Map<Integer, Long> mLargeMsgDoneAt = new java.util.HashMap<>();
+    private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
+    // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
+    private static final long ACK_ECHO_TIMEOUT_MS = 10000;   // 1회 대기 10초
+    private static final int  ACK_MAX_ATTEMPTS = 3;          // 에코 없으면 재송신(최대 3회)
     private static final long BROAD_TIMEOUT_MS = 15000;
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
@@ -1287,13 +1293,20 @@ public class MainActivity extends AppCompatActivity {
         try {
             String ackTitle = "~A:" + msgId;
 
+            // ⭐ 주소 구성은 doSendPending(일반 채팅)과 동일 구조:
+            //   [0x07][addrLen][addr(US_ASCII)][titleLen][title(UTF-8)][memoLen][memo(UTF-8)]
+            //   채팅은 주소 필드에 수신자 IMEI 하나만 넣는다(송신자는 모뎀이 자동 부착).
+            //   서버행 ACK는 수신자를 비워서(addrLen=0) 보낸다 → codeNum="" 와 동일 로직.
             ByteBuf buffer = Unpooled.buffer();
-            buffer.writeByte(0x07);
-            buffer.writeByte(recipientImei.getBytes(StandardCharsets.US_ASCII).length);
-            buffer.writeCharSequence(recipientImei, StandardCharsets.US_ASCII);
+            buffer.writeByte(0x07);                                // FREE 모드 송신
+            String ackAddr = "";                                   // ★ 수신자 비움 = 서버행 (addrLen=0)
+            buffer.writeByte(ackAddr.getBytes(StandardCharsets.US_ASCII).length);   // = 0
+            buffer.writeCharSequence(ackAddr, StandardCharsets.US_ASCII);
             buffer.writeByte(ackTitle.getBytes(StandardCharsets.UTF_8).length);
             buffer.writeCharSequence(ackTitle, StandardCharsets.UTF_8);
-            buffer.writeByte(0);   // memo length 0 (빈 본문)
+            String ackMemo = "";                                   // ★ 메모 빈칸 (memoLen=0)
+            buffer.writeByte(ackMemo.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(ackMemo, StandardCharsets.UTF_8);
 
             byte[] body = new byte[buffer.readableBytes()];
             buffer.readBytes(body);
@@ -1305,10 +1318,73 @@ public class MainActivity extends AppCompatActivity {
 
             android.util.Log.d("LARGE-MSG", "📤 ACK 송신 to=" + recipientImei
                     + " title=" + ackTitle + " sendId=" + ackSendId + " sms=" + sms);
-            bleSendMessage(sms);   // 검증된 송신 경로 직접 호출 (offer+observer 우회)
+
+            // ⭐ doSendPending과 동일하게 모뎀 수락 에코(SENDING=<ackSendId>,OK)를 기다린다.
+            //   - 송신은 직렬 펌프(offer)로 유지(동시 write 충돌 방지),
+            //   - 대기는 백그라운드 스레드에서(메인 스레드는 블록 불가, 에코도 메인 스레드로 옴).
+            awaitAckEcho(sms, ackSendId, msgId);
         } catch (Exception e) {
             Log.e("LARGE-MSG", "ACK 송신 실패 msgId=" + msgId + " : " + e.getMessage());
         }
+    }
+
+    /**
+     * ACK SENDING을 직렬 펌프로 송신하고, 모뎀의 {@code SENDING=<ackSendId>,OK} 수락 에코를
+     * 백그라운드 스레드에서 기다린다. (doSendPending의 outboxMsgStatus + lock.wait 메커니즘 적용)
+     * 타임아웃 시 최대 {@link #ACK_MAX_ATTEMPTS}회까지 재송신한다.
+     */
+    private void awaitAckEcho(final String sms, final int ackSendId, final int msgId) {
+        new Thread(() -> {
+            final Object lock = new Object();
+            final boolean[] acked = {false};
+            // ★ sticky 가드: observeForever 등록 시 들어오는 이전 잔류값(같은 id)을 오인하지 않도록
+            //    "송신 후 도착분"만 인정한다.
+            final boolean[] armed = {false};
+
+            final androidx.lifecycle.Observer<String> obs = sReceive -> {
+                if (!armed[0] || sReceive == null || !sReceive.startsWith("SENDING=")) return;
+                String[] vals = sReceive.substring(8).split(",");
+                if (vals.length >= 2 && "OK".equals(vals[1])
+                        && String.valueOf(ackSendId).equals(vals[0])) {
+                    synchronized (lock) {
+                        acked[0] = true;
+                        lock.notifyAll();
+                    }
+                }
+            };
+
+            // observeForever 등록/해제·offer는 모두 메인 스레드에서 (offer는 @MainThread)
+            runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().observeForever(obs));
+            try {
+                for (int attempt = 1; attempt <= ACK_MAX_ATTEMPTS; attempt++) {
+                    final int a = attempt;
+                    runOnUiThread(() -> {
+                        BLE.INSTANCE.getWriteQueue().offer(sms);   // 직렬 펌프로 송신
+                        armed[0] = true;                            // 이후 도착하는 에코부터 인정
+                        android.util.Log.d("LARGE-MSG", "📤 ACK 송신 시도 " + a + "/"
+                                + ACK_MAX_ATTEMPTS + " sendId=" + ackSendId);
+                    });
+                    synchronized (lock) {
+                        if (acked[0]) break;
+                        lock.wait(ACK_ECHO_TIMEOUT_MS);
+                        if (acked[0]) break;
+                    }
+                    android.util.Log.d("LARGE-MSG", "⏳ ACK 에코 타임아웃(시도 " + attempt
+                            + ") sendId=" + ackSendId);
+                }
+                if (acked[0]) {
+                    android.util.Log.d("LARGE-MSG", "✅ ACK 모뎀 수락 확인 sendId="
+                            + ackSendId + " msgId=" + msgId);
+                } else {
+                    Log.e("LARGE-MSG", "⚠ ACK 모뎀 수락 실패(에코 없음) sendId="
+                            + ackSendId + " msgId=" + msgId);
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            } finally {
+                runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
+            }
+        }, "large-ack-" + msgId).start();
     }
     // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
@@ -1653,35 +1729,42 @@ public class MainActivity extends AppCompatActivity {
                             int msgId = Integer.parseInt(h[2]);
                             int seq   = Integer.parseInt(h[3]);
                             int total = Integer.parseInt(h[4]);
-
-                            mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
-                            mLargeMsgTotal.put(msgId, total);
-                            mLargeMsgSender.put(msgId, codeNum);
-
-                            java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
-                            android.util.Log.d("LARGE-MSG", "조각 수신 msgId=" + msgId
-                                    + " seq=" + seq + "/" + (total - 1)
-                                    + " 누적=" + parts.size() + "/" + total);
-
-                            if (parts.size() >= total) {
-                                StringBuilder sb = new StringBuilder();
-                                for (String part : parts.values()) sb.append(part);
-                                String full = sb.toString();
-                                android.util.Log.d("LARGE-MSG", "✅ 조립 완료 msgId=" + msgId
-                                        + " 총길이=" + full.length());
-
-                                MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", full,
-                                        new Date(),
-                                        new Date(System.currentTimeMillis()),
-                                        new Date(System.currentTimeMillis()),
-                                        false, false, false);
-                                insertMsgWithDedupAndEcho(addMsg, codeNum, full);
-
-                                mLargeMsgBuf.remove(msgId);
-                                mLargeMsgTotal.remove(msgId);
-                                mLargeMsgSender.remove(msgId);
-                                // 2단계: 조립 완성 → ACK MO 송신 (발신자에게 되돌림)
-                                sendLargeMsgAck(codeNum, msgId);
+                            // ⭐ 무한 재수신 차단: 최근 완성된 msgId의 조각이 또 오면 무시
+                            Long doneAt = mLargeMsgDoneAt.get(msgId);
+                            if (doneAt != null
+                                    && System.currentTimeMillis() - doneAt < LARGE_MSG_DONE_WINDOW_MS) {
+                                // 이미 완성된 msgId의 중복 조각 → 무시 (재조립/재송신 안 함)
+                                android.util.Log.d("LARGE-MSG", "이미 완성된 msgId=" + msgId
+                                        + " 중복 조각(seq=" + seq + ") 무시");
+                            } else {
+                                // 새 메시지(또는 윈도우 지난 것) → 조각 쌓고 조립
+                                mLargeMsgDoneAt.remove(msgId);
+                                mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
+                                mLargeMsgTotal.put(msgId, total);
+                                mLargeMsgSender.put(msgId, codeNum);
+                                java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
+                                android.util.Log.d("LARGE-MSG", "조각 수신 msgId=" + msgId
+                                        + " seq=" + seq + "/" + (total - 1)
+                                        + " 누적=" + parts.size() + "/" + total);
+                                if (parts.size() >= total) {
+                                    StringBuilder sb = new StringBuilder();
+                                    for (String part : parts.values()) sb.append(part);
+                                    String full = sb.toString();
+                                    android.util.Log.d("LARGE-MSG", "✅ 조립 완료 msgId=" + msgId
+                                            + " 총길이=" + full.length());
+                                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", full,
+                                            new Date(),
+                                            new Date(System.currentTimeMillis()),
+                                            new Date(System.currentTimeMillis()),
+                                            false, false, false);
+                                    insertMsgWithDedupAndEcho(addMsg, codeNum, full);
+                                    mLargeMsgBuf.remove(msgId);
+                                    mLargeMsgTotal.remove(msgId);
+                                    mLargeMsgSender.remove(msgId);
+                                    mLargeMsgDoneAt.put(msgId, System.currentTimeMillis());   // 완성 표시
+                                    // 최초 조립 완료 시 서버로 ACK 1회 송신 (수신확인)
+                                    sendLargeMsgAck(codeNum, msgId);
+                                }
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "헤더 파싱 실패 title=" + title + " : " + ex.getMessage());
@@ -1749,39 +1832,21 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    /**
+     * @deprecated 직접 GATT write는 분할 전송(SplitWriter) 중 다른 송신과 충돌해
+     *             "gatt writeCharacteristic fail"을 유발한다. 모든 송신은
+     *             {@code BLE.INSTANCE.getWriteQueue().offer(msg)} → TytoConnectService의
+     *             단일 직렬 펌프(enqueueWrite/pumpTxQueue/onWriteDone) 경로로만 보낸다.
+     *             이 메서드는 호환용으로 남기되 큐로 위임만 한다.
+     */
+    @Deprecated
     public void bleSendMessage(String msg) {
-        // null check (when Activity recreates, polling empty queue may return null)
         if (msg == null || msg.isEmpty()) {
             return;
         }
-
-        Log.v("BLE Write", msg);
-        String sendMsg = String.format("%s\n", Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP));
-        BleDevice bleDevice = BLE.INSTANCE.getSelectedDevice().getValue();
-        if (bleDevice == null) {
-            final Snackbar snackbar = Snackbar.make(binding.mainLayout, getString(R.string.ble_test_nul_device), Snackbar.LENGTH_LONG);
-            snackbar.setAction("OK", v -> snackbar.dismiss());
-            snackbar.show();
-            return;
-        }
-        BluetoothGattCharacteristic characteristic = getWriteCharacteristic(bleDevice);
-        if (characteristic == null) {
-            BleManager.getInstance().disconnect(bleDevice);
-            return;
-        }
-        BleManager.getInstance().write(
-                bleDevice,
-                BLE_SERVICE_UUID.toString(),
-                characteristic.getUuid().toString(),
-                sendMsg.getBytes(),
-                new BleWriteCallback() {
-                    @Override public void onWriteSuccess(final int current, final int total, final byte[] justWrite) {
-                        runOnUiThread(() -> { });
-                    }
-                    @Override public void onWriteFailure(final BleException exception) {
-                        runOnUiThread(() -> { });
-                    }
-                });
+        // ★ 직접 write 금지 → 직렬 큐로 위임 (Service가 base64 인코딩 후 송신)
+        Log.v("BLE Write", "(queued) " + msg);
+        BLE.INSTANCE.getWriteQueue().offer(msg);
     }
 
     public void setConnectBleDevice(@NonNull BleDevice bleDevice) {

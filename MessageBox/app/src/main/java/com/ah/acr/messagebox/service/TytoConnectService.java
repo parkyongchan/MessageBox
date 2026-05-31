@@ -109,6 +109,33 @@ public class TytoConnectService extends Service {
     // Service 실행 여부 (외부에서 쉽게 확인)
     public static volatile boolean isServiceRunning = false;
 
+    // ★ 직렬 송신 큐 (BLE 동시 write 충돌 방지)
+    private final java.util.Queue<String> mTxQueue =
+            new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private volatile boolean mIsSending = false;
+
+    /** 송신 단일 진입점: 큐에 넣고 펌프 시동 */
+    private synchronized void enqueueWrite(String msg) {
+        if (msg == null || msg.isEmpty()) return;
+        mTxQueue.offer(msg);
+        pumpTxQueue();
+    }
+
+    /** 송신 중이 아닐 때만 다음 한 개를 꺼내 write */
+    private synchronized void pumpTxQueue() {
+        if (mIsSending) return;               // 진행 중 → 완료콜백이 다음을 부른다
+        String next = mTxQueue.poll();
+        if (next == null) return;             // 비었으면 끝
+        mIsSending = true;
+        bleSendMessageFromService(next);
+    }
+
+    /** write 완료/실패 후 호출 → 다음 항목 진행 */
+    private synchronized void onWriteDone() {
+        mIsSending = false;
+        pumpTxQueue();                        // ★ 콜백에서만 다음 dequeue
+    }
+
     // 세션 상태 (Phase B-2에서 활용)
     private boolean mIsTracking = false;
     private boolean mIsSos = false;
@@ -240,31 +267,21 @@ public class TytoConnectService extends Service {
                                 .isFirmwareUdate().getValue();
                         boolean isFw = (fwUpdating != null && fwUpdating);
 
-                        // queue 내용을 먼저 스냅샷으로 빼낸다 (메인 스레드에서 빠르게)
-                        java.util.List<String> batch = new java.util.ArrayList<>();
+                        /// ★ 큐에 넣기만, 전송은 완료콜백 체인(pumpTxQueue)이 담당
                         while (!queue.isEmpty()) {
                             String request = queue.poll();
                             if (request == null || request.isEmpty()) continue;
-                            if (isFw && (request.startsWith("BROAD") || request.startsWith("INFO"))) {
-                                Log.v(TAG, "fw uploading, skip periodic: " + request);
+                            // FW 업로드 중에는 FirmwareFragment가 채널을 독점(UFILE 직접 write)하므로
+                            // 어떤 송신도 동시에 내보내면 GATT write fail이 난다.
+                            // 주기 명령(BROAD/INFO)뿐 아니라 RECEIVED/SENDING(ACK)도 스킵.
+                            // (FW 완료 후 주기 BROAD가 inbox를 다시 감지해 자동수신을 재트리거하므로 복구됨)
+                            if (isFw && (request.startsWith("BROAD") || request.startsWith("INFO")
+                                    || request.startsWith("RECEIVED") || request.startsWith("SENDING"))) {
+                                Log.v(TAG, "fw uploading, skip: " + request);
                                 continue;
                             }
-                            batch.add(request);
+                            enqueueWrite(request);
                         }
-                        if (batch.isEmpty()) return;
-
-                        // 별도 스레드에서 하나씩, 간격을 두고 전송 (BLE write 충돌 방지)
-                        new Thread(() -> {
-                            for (String request : batch) {
-                                bleSendMessageFromService(request);
-                                try {
-                                    Thread.sleep(300);   // 이전 write 완료 시간 확보
-                                } catch (InterruptedException ie) {
-                                    Thread.currentThread().interrupt();
-                                    break;
-                                }
-                            }
-                        }).start();
                     }
             );
             Log.v(TAG, "✅ writeQueue observer 등록 (Service-bound, 백그라운드 안전)");
@@ -309,6 +326,7 @@ public class TytoConnectService extends Service {
                 .getSelectedDevice().getValue();
         if (bleDevice == null) {
             Log.v(TAG, "⚠ BLE write 실패: device == null (msg=" + msg + ")");
+            onWriteDone();                  // ★ 추가
             return;
         }
 
@@ -317,8 +335,16 @@ public class TytoConnectService extends Service {
         if (characteristic == null) {
             Log.v(TAG, "⚠ BLE write 실패: characteristic == null");
             BleManager.getInstance().disconnect(bleDevice);
+            onWriteDone();                  // ★ 추가
             return;
         }
+
+        // ★ 분할 전송 1건당 onWriteDone()을 정확히 1회만 호출하기 위한 가드.
+        //   setSplitWriteNum(20) 때문에 20바이트 초과 메시지(SENDING 등)는
+        //   SplitWriter가 청크로 쪼개 "splitWriter" 스레드에서 전송하고,
+        //   청크마다 onWriteSuccess(current=1..total)가 호출된다.
+        final java.util.concurrent.atomic.AtomicBoolean sendDone =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
 
         BleManager.getInstance().write(
                 bleDevice,
@@ -328,12 +354,19 @@ public class TytoConnectService extends Service {
                 new BleWriteCallback() {
                     @Override
                     public void onWriteSuccess(int current, int total, byte[] justWrite) {
-                        Log.v(TAG, "✅ BLE write 성공: " + msg);
+                        // ★ 마지막 청크에서만 다음 메시지로 진행한다.
+                        //   첫 청크에서 advance하면 잔여 청크(SplitWriter 스레드)와
+                        //   다음 메시지가 같은 GATT에 동시 write되어 fail 난다.
+                        if (current < total) return;
+                        Log.v(TAG, "✅ BLE write 성공: " + msg + " (" + current + "/" + total + ")");
+                        if (sendDone.compareAndSet(false, true)) onWriteDone();
                     }
 
                     @Override
                     public void onWriteFailure(BleException exception) {
                         Log.v(TAG, "⚠ BLE write 실패: " + msg + " - " + exception.getDescription());
+                        // 분할 중 실패해도 큐가 멈추지 않도록 1회만 진행시킨다(데드락 방지).
+                        if (sendDone.compareAndSet(false, true)) onWriteDone();
                     }
                 });
     }
