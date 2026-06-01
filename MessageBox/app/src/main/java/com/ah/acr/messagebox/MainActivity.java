@@ -306,7 +306,11 @@ public class MainActivity extends AppCompatActivity {
         setupAutoReceiveToggle();
         setupHeaderButtons();
         setupBottomTabs();
+
+
     }
+
+    
 
 
     // ═════════════════════════════════════════════════════════════
@@ -1282,6 +1286,151 @@ public class MainActivity extends AppCompatActivity {
             || ver == 0x12 || ver == 0x13
             || ver == 0x17;
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 대용량 메시지 분할 (서버 MessageSplitter와 동일 규칙)
+    //   - UTF-8 기준 200바이트 이하
+    //   - 코드포인트 경계 보존 (한글/이모지 중간에서 안 자름)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    private static final int LARGE_CHUNK_BYTES = 200;
+
+    /** 본문을 UTF-8 200바이트 이하 조각들로 분할 (문자 경계 보존). */
+    private java.util.List<String> splitLargeMessage(String text) {
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty()) return chunks;
+
+        StringBuilder current = new StringBuilder();
+        int currentBytes = 0;
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            int cpCharCount = Character.charCount(cp);
+            String ch = text.substring(i, i + cpCharCount);
+            int chBytes = ch.getBytes(StandardCharsets.UTF_8).length;
+
+            // 현재 조각에 더 넣으면 200B 초과 → 조각 마감하고 새로 시작
+            if (currentBytes + chBytes > LARGE_CHUNK_BYTES) {
+                chunks.add(current.toString());
+                current.setLength(0);
+                currentBytes = 0;
+            }
+            current.append(ch);
+            currentBytes += chBytes;
+            i += cpCharCount;
+        }
+        if (current.length() > 0) {
+            chunks.add(current.toString());
+        }
+        return chunks;
+    }
+
+    /** 0~255 범위 msgId 생성 (서버 nextChunkMsgId와 동일 방식). */
+    private int nextLargeMsgId() {
+        return (int) (System.currentTimeMillis() % 256);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 대용량 메시지 송신 (MO) — 본문을 ~L:T 조각으로 쪼개 순차 전송
+    //   awaitAckEcho 패턴 재사용: 조각마다 모뎀 수락(SENDING=id,OK) 확인 후 다음 조각
+    //   BLE write 충돌 방지를 위해 반드시 순차(한 건씩 대기)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    /**
+     * 대용량 메시지 전송 진입점.
+     * @param recipientImei 수신처 IMEI (서버행이면 ""=빈주소)
+     * @param fullText      보낼 전체 본문
+     */
+    public void sendLargeMessage(final String recipientImei, final String fullText) {
+        final java.util.List<String> chunks = splitLargeMessage(fullText);
+        if (chunks.isEmpty()) return;
+        final int msgId = nextLargeMsgId();
+        final int total = chunks.size();
+
+        android.util.Log.d("LARGE-MSG", "📤 대용량 송신 시작 to=" + recipientImei
+                + " msgId=" + msgId + " 조각수=" + total + " 바이트="
+                + fullText.getBytes(StandardCharsets.UTF_8).length);
+
+        // 전체 송신을 별도 스레드 1개에서 순차 처리 (조각 간 충돌 방지)
+        new Thread(() -> {
+            for (int seq = 0; seq < total; seq++) {
+                String title = "~L:T:" + msgId + ":" + seq + ":" + total;
+                String body = chunks.get(seq);
+                // SENDING id: 700~ 대역 (단문/ACK와 안 겹치게). 700 + seq (조각당 구분)
+                int sendId = 700 + (seq & 0xFF);
+                boolean ok = sendOneChunkBlocking(recipientImei, title, body, sendId, msgId, seq, total);
+                if (!ok) {
+                    Log.e("LARGE-MSG", "❌ 조각 송신 실패 msgId=" + msgId + " seq=" + seq
+                            + " → 중단");
+                    return;   // 한 조각 실패하면 중단 (재전송 정책은 추후)
+                }
+            }
+            android.util.Log.d("LARGE-MSG", "✅ 대용량 전체 송신 완료 msgId=" + msgId
+                    + " 조각=" + total);
+        }, "large-send-" + msgId).start();
+    }
+
+    /**
+     * 조각 1개를 0x07 FREE 패킷으로 빌드해 BLE 전송하고, 모뎀 수락(SENDING=id,OK)을 기다린다.
+     * awaitAckEcho와 동일 메커니즘 (블로킹). 이미 워커 스레드 안에서 호출됨.
+     * @return 모뎀 수락 확인 시 true
+     */
+    private boolean sendOneChunkBlocking(final String recipientImei, final String title,
+                                         final String body, final int sendId,
+                                         final int msgId, final int seq, final int total) {
+        // 0x07 FREE 패킷 빌드: [0x07][addrLen][addr][titleLen][title][memoLen][memo]
+        ByteBuf buffer = Unpooled.buffer();
+        buffer.writeByte(0x07);
+        String addr = recipientImei == null ? "" : recipientImei;
+        buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+        buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+        buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+        buffer.writeCharSequence(title, StandardCharsets.UTF_8);
+        buffer.writeByte(body.getBytes(StandardCharsets.UTF_8).length);
+        buffer.writeCharSequence(body, StandardCharsets.UTF_8);
+
+        byte[] packet = new byte[buffer.readableBytes()];
+        buffer.readBytes(packet);
+        final String sms = String.format("SENDING=%d,%s",
+                sendId, Base64.encodeToString(packet, Base64.NO_WRAP));
+
+        final Object lock = new Object();
+        final boolean[] acked = {false};
+        final boolean[] armed = {false};
+        final androidx.lifecycle.Observer<String> obs = sReceive -> {
+            if (!armed[0] || sReceive == null || !sReceive.startsWith("SENDING=")) return;
+            String[] vals = sReceive.substring(8).split(",");
+            if (vals.length >= 2 && "OK".equals(vals[1])
+                    && String.valueOf(sendId).equals(vals[0])) {
+                synchronized (lock) {
+                    acked[0] = true;
+                    lock.notifyAll();
+                }
+            }
+        };
+        runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().observeForever(obs));
+        try {
+            for (int attempt = 1; attempt <= ACK_MAX_ATTEMPTS; attempt++) {
+                final int a = attempt;
+                runOnUiThread(() -> {
+                    BLE.INSTANCE.getWriteQueue().offer(sms);
+                    armed[0] = true;
+                    android.util.Log.d("LARGE-MSG", "📤 조각 송신 msgId=" + msgId
+                            + " seq=" + seq + "/" + (total - 1) + " 시도 " + a
+                            + " sendId=" + sendId);
+                });
+                synchronized (lock) {
+                    if (acked[0]) break;
+                    lock.wait(ACK_ECHO_TIMEOUT_MS);
+                    if (acked[0]) break;
+                }
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } finally {
+            runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
+        }
+        return acked[0];
+    }
+
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  대용량/단문 수신확인 ACK MO 송신

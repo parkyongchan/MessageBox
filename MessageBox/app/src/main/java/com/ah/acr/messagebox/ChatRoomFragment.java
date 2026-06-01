@@ -305,7 +305,17 @@ public class ChatRoomFragment extends Fragment {
                 new ByteLengthFilter(200, "UTF-8")
         });
     }
-
+    private void updateByteCount() {
+        if (binding == null) return;
+        String msg = binding.editChatMsg.getText().toString();
+        int bytes = msg.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        if (binding.checkChatLarge.isChecked()) {
+            int chunks = Math.max(1, (int) Math.ceil(bytes / 200.0));
+            binding.textByteCount.setText(bytes + " B · ~" + chunks + " msg");
+        } else {
+            binding.textByteCount.setText(bytes + " / 200 B");
+        }
+    }
     private void setupObserver() {
         msgViewModel.getMsgsByContact(mCodeNum).observe(getViewLifecycleOwner(), msgs -> {
             adapter.submitList(msgs);
@@ -417,6 +427,13 @@ public class ChatRoomFragment extends Fragment {
             }
         });
 
+        // 본문 입력 시마다 바이트 수 갱신
+        binding.editChatMsg.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            public void afterTextChanged(android.text.Editable s) { updateByteCount(); }
+        });
+
 
         // Refresh button (receive Inbox)
         binding.btnChatRefresh.setOnClickListener(v -> {
@@ -449,7 +466,6 @@ public class ChatRoomFragment extends Fragment {
         binding.btnChatSend.setOnClickListener(v -> {
             String title = binding.editChatTitle.getText().toString().trim();
             String msg   = binding.editChatMsg.getText().toString().trim();
-
             if (msg.isEmpty()) {
                 // Localized
                 Toast.makeText(getContext(),
@@ -457,7 +473,14 @@ public class ChatRoomFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
                 return;
             }
-
+            // 대용량 체크 시 → 즉시 분할 전송 (저장/FAB 안 거침, 제목 미사용)
+            if (binding.checkChatLarge.isChecked()) {
+                ((MainActivity) requireActivity()).sendLargeMessage(mCodeNum, msg);
+                binding.editChatMsg.setText("");
+                binding.checkChatLarge.setChecked(false);
+                Toast.makeText(getContext(), "대용량 전송을 시작합니다", Toast.LENGTH_SHORT).show();
+                return;
+            }
             MsgEntity newMsg = new MsgEntity(
                     0, true, mCodeNum,
                     title.isEmpty() ? null : title,
@@ -481,8 +504,25 @@ public class ChatRoomFragment extends Fragment {
                 return null;
             });
         });
-
-
+        // 대용량 체크 시 제목칸 숨김 (서버 웹과 동일 UX)
+        binding.checkChatLarge.setOnCheckedChangeListener((b, checked) -> {
+            android.util.Log.d("LARGE-UI", "체크박스 변경됨 checked=" + checked);
+            if (checked) {
+                binding.editChatTitle.setText("");
+                binding.editChatTitle.setVisibility(View.GONE);
+                // 대용량: 본문 길이 제한 해제 (10KB까지)
+                binding.editChatMsg.setFilters(new InputFilter[]{
+                        new ByteLengthFilter(10240, "UTF-8")
+                });
+            } else {
+                binding.editChatTitle.setVisibility(View.VISIBLE);
+                // 일반: 200바이트 제한 복원
+                binding.editChatMsg.setFilters(new InputFilter[]{
+                        new ByteLengthFilter(200, "UTF-8")
+                });
+            }
+            updateByteCount();   // 바이트 수 표시 갱신
+        });
         // Delete all
         binding.btnChatDeleteAll.setOnClickListener(v -> {
             // Localized
