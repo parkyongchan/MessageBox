@@ -608,7 +608,7 @@ public class ChatRoomFragment extends Fragment {
         // Build binary packets (same format as MsgBoxFragment)
         List<String> msgList = new ArrayList<>();
         for (MsgEntity msg : unsentSorted) {
-            String codeNum = msg.getCodeNum() != null ? msg.getCodeNum() : "";
+            String codeNum = MainActivity.addrForSend(msg.getCodeNum());
             String title   = msg.getTitle() != null ? msg.getTitle() : "";
             String message = msg.getMsg() != null ? msg.getMsg() : "";
 

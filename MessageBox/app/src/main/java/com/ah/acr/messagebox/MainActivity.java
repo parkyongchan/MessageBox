@@ -1291,6 +1291,14 @@ public class MainActivity extends AppCompatActivity {
      * @param ver 메시지 mode byte
      * @return true=수신(0x10/11/12/13/17), false=송신(0x00/01/02/03/07)
      */
+    // addr 정규화: SERVER/null/빈값 → "" (서버행, addr 길이 0). 그 외는 상대 IMEI 그대로.
+    //   단문/대용량/사진/파일 등 모든 0x07 송신부가 codeNum을 이 메서드에 통과시킨다.
+    public static String addrForSend(String codeNum) {
+        if (codeNum == null) return "";
+        if ("SERVER".equals(codeNum)) return "";
+        return codeNum;
+    }
+
     private static boolean isRecvMode(int ver) {
         return ver == 0x10 || ver == 0x11
             || ver == 0x12 || ver == 0x13

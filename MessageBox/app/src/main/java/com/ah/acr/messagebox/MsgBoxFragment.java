@@ -333,7 +333,7 @@ public class MsgBoxFragment extends Fragment {
 
             List<String> msgList = new ArrayList<>();
             for (MsgEntity msg : unsentMsgsSorted) {
-                String codeNum = msg.getCodeNum() != null ? msg.getCodeNum() : "";
+                String codeNum = MainActivity.addrForSend(msg.getCodeNum());
                 String title   = msg.getTitle() != null ? msg.getTitle() : "";
                 String message = msg.getMsg() != null ? msg.getMsg() : "";
 
