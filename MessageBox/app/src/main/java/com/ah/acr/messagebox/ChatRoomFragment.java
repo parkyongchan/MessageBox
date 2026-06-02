@@ -491,7 +491,8 @@ public class ChatRoomFragment extends Fragment {
                     Toast.makeText(getContext(), getString(R.string.chat_ble_not_connected), Toast.LENGTH_SHORT).show();
                     return;
                 }
-                ((MainActivity) requireActivity()).sendLargeMsg(mCodeNum, msg);
+                String largeTo = "SERVER".equals(mCodeNum) ? "" : mCodeNum;
+                ((MainActivity) requireActivity()).sendLargeMsg(largeTo, msg);
                 binding.editChatTitle.setText("");
                 binding.editChatMsg.setText("");
                 Toast.makeText(getContext(), "대용량 전송 시작", Toast.LENGTH_SHORT).show();

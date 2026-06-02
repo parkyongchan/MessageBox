@@ -322,8 +322,25 @@ public class AddrssBookFragment extends Fragment {
             @Override
             public void onChanged(List<AddressEntity> addrs) {
                 mAdapter.submitList(addrs);
+                ensureServerContact(addrs);
             }
         });
+    }
+
+    // 서버 전송 전용 디폴트 연락처(codeNum="SERVER") 자동 생성 (없을 때 1회)
+    private boolean mServerContactChecked = false;
+    private void ensureServerContact(java.util.List<AddressEntity> addrs) {
+        if (mServerContactChecked) return;
+        if (addrs == null) return;
+        boolean exists = false;
+        for (AddressEntity a : addrs) {
+            if (a.getNumbers() != null && a.getNumbers().equals("SERVER")) { exists = true; break; }
+        }
+        mServerContactChecked = true;
+        if (!exists) {
+            addressViewModel.insert(new AddressEntity(0, "SERVER", "Server", new Date(), null));
+            Log.v(TAG, "기본 Server 연락처 생성");
+        }
     }
 
     private void setupRecyclerView() {
