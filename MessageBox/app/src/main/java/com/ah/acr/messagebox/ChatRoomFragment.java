@@ -307,6 +307,7 @@ public class ChatRoomFragment extends Fragment {
 
         // 대용량 체크박스: 켜면 본문 200B 필터 해제, 끄면 복원
         binding.checkLargeMsg.setOnCheckedChangeListener((b, checked) -> {
+            binding.editChatTitle.setEnabled(!checked);
             if (checked) {
                 binding.editChatMsg.setFilters(new InputFilter[]{});
             } else {

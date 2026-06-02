@@ -237,7 +237,7 @@
                 android:id="@+id/check_large_msg"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LARGE"
+                android:text="Large message (split over 200B)"
                 android:textColor="#95B0D4"
                 android:textSize="11sp"
                 android:buttonTint="#00E5D1" />
