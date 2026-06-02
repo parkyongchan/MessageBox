@@ -2077,7 +2077,7 @@ public class MainActivity extends AppCompatActivity {
                                 sentTo   = mSentLargeMsgTo.remove(ackId);
                             }
                             if (sentText != null) {
-                                String to = (sentTo == null || sentTo.isEmpty()) ? codeNum : sentTo;
+                                String to = (sentTo == null || sentTo.isEmpty()) ? "SERVER" : sentTo;
                                 android.util.Log.d("LARGE-MSG", "✅ 내 대용량 발송확인 ~A:" + ackId
                                         + " to=" + to + " len=" + sentText.length());
                                 MsgEntity addMsg = new MsgEntity(0, true, to, "", sentText,
