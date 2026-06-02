@@ -173,12 +173,20 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
                 textTimeLeft.setText(time);
                 textTimeRight.setVisibility(View.GONE);
 
-                // 미전송 상태 표시
-                if (!item.getMsg().isSend()) {
+                // 전송 상태 3단계: 미전송 / 보냄 ✓ / 전달됨 ✓✓
+                boolean sent = item.getMsg().isSend();
+                boolean delivered = item.getMsg().isDeviceSend();
+                if (!sent) {
                     imgPendingLeft.setVisibility(View.VISIBLE);
-                    textTimeLeft.setTextColor(0xFFFFB300);  // 주황
+                    textTimeLeft.setText(time);
+                    textTimeLeft.setTextColor(0xFFFFB300);  // 주황 (미전송)
+                } else if (delivered) {
+                    imgPendingLeft.setVisibility(View.GONE);
+                    textTimeLeft.setText("\u2713\u2713 " + time);   // ✓✓ 전달됨
+                    textTimeLeft.setTextColor(0xFF00B8A0);  // 민트 (강조)
                 } else {
                     imgPendingLeft.setVisibility(View.GONE);
+                    textTimeLeft.setText("\u2713 " + time);         // ✓ 보냄
                     textTimeLeft.setTextColor(0xFF7A8FA8);  // 회색
                 }
 

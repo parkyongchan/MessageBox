@@ -41,6 +41,17 @@ interface MsgDao {
     @Query("Update messages SET is_device_send = 1 WHERE id = :msgId")
     suspend fun updateMsgDeviceSended(msgId: Int)
 
+    // [~D] 상대전달 확인: codeNum+msg 내용으로 가장 최근 "내가 보낸" 메시지의 is_device_send=1
+    @Query("""
+        UPDATE messages SET is_device_send = 1
+        WHERE id = (
+            SELECT id FROM messages
+            WHERE code_num = :codeNum AND msg = :message AND is_send_msg = 1
+            ORDER BY create_at DESC, id DESC LIMIT 1
+        )
+    """)
+    suspend fun markDeviceSentByContent(codeNum: String, message: String)
+
     @Query("Update messages SET is_read = 1 WHERE id = :msgId")
     suspend fun updateMsgReaded(msgId: Int)
 

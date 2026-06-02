@@ -58,6 +58,11 @@ class MsgRepository(private val msgDao: MsgDao) {
         msgDao.updateMsgDeviceSended(msgId)
     }
 
+    // [~D] 내용으로 찾아 상대전달 표시
+    suspend fun markDeviceSentByContent(codeNum: String, message: String) {
+        msgDao.markDeviceSentByContent(codeNum, message)
+    }
+
     suspend fun deleteById(msgId: Int) {
         msgDao.deleteMsgById(msgId)
     }

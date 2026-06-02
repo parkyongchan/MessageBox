@@ -2073,8 +2073,8 @@ public class MainActivity extends AppCompatActivity {
                             String sentText;
                             String sentTo;
                             synchronized (mSentLargeMsg) {
-                                sentText = mSentLargeMsg.remove(ackId);
-                                sentTo   = mSentLargeMsgTo.remove(ackId);
+                                sentText = mSentLargeMsg.get(ackId);
+                                sentTo   = mSentLargeMsgTo.get(ackId);
                             }
                             if (sentText != null) {
                                 String to = (sentTo == null || sentTo.isEmpty()) ? "SERVER" : sentTo;
@@ -2086,6 +2086,27 @@ public class MainActivity extends AppCompatActivity {
                                         new Date(System.currentTimeMillis()),
                                         true, true, false);
                                 insertMsgWithDedupAndEcho(addMsg, to, sentText);
+                    } else if (title.startsWith("~D:")) {
+                        // 서버가 보낸 "상대 전달 완료" → 내가 보낸 그 메시지를 "전달됨 ✓✓"로 표시
+                        try {
+                            int dId = Integer.parseInt(title.substring(3).trim());
+                            String dText;
+                            String dTo;
+                            synchronized (mSentLargeMsg) {
+                                dText = mSentLargeMsg.remove(dId);
+                                dTo   = mSentLargeMsgTo.remove(dId);
+                            }
+                            if (dText != null) {
+                                String to = (dTo == null || dTo.isEmpty()) ? "SERVER" : dTo;
+                                android.util.Log.d("LARGE-MSG", "✅✅ 상대 전달 확인 ~D:" + dId
+                                        + " to=" + to);
+                                msgViewModel.markDeviceSentByContent(to, dText);
+                            } else {
+                                android.util.Log.d("LARGE-MSG", "~D:" + dId + " 수신했으나 보관 원문 없음");
+                            }
+                        } catch (Exception ex) {
+                            Log.e("LARGE-MSG", "~D: 파싱 실패 title=" + title + " : " + ex.getMessage());
+                        }
                             } else {
                                 android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미 처리?)");
                             }
