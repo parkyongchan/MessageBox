@@ -141,7 +141,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                     codeNum = addressEntity.getNumbers();
                 }
 
-                if (!codeNum.matches("\\d+")) {
+                if (!codeNum.matches("\\d+") && !"SERVER".equals(codeNum)) {
                     // Localized
                     Toast.makeText(getContext(),
                             getString(R.string.outbox_new_toast_invalid_number),
