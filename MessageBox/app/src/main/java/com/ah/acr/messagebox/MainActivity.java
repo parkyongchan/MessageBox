@@ -117,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, Long> mLargeMsgDoneAt = new java.util.HashMap<>();
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
     private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
+    private final java.util.Map<Integer, String> mSentLargeMsgTo = new java.util.HashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(0);
     private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
@@ -1567,6 +1568,7 @@ public class MainActivity extends AppCompatActivity {
 
                 synchronized (mSentLargeMsg) {
                     mSentLargeMsg.put(msgId, fullText);
+                    mSentLargeMsgTo.put(msgId, recipientImei == null ? "" : recipientImei);
                 }
 
                 android.util.Log.d("LARGE-MSG", "TX large start msgId=" + msgId
@@ -2055,6 +2057,32 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "헤더 파싱 실패 title=" + title + " : " + ex.getMessage());
+                        }
+                    } else if (title.startsWith("~A:")) {
+                        // 서버가 보낸 내 대용량 도착확인 → 보냈던 원문을 내 말풍선으로 표시 (모델 B)
+                        try {
+                            int ackId = Integer.parseInt(title.substring(3).trim());
+                            String sentText;
+                            String sentTo;
+                            synchronized (mSentLargeMsg) {
+                                sentText = mSentLargeMsg.remove(ackId);
+                                sentTo   = mSentLargeMsgTo.remove(ackId);
+                            }
+                            if (sentText != null) {
+                                String to = (sentTo == null || sentTo.isEmpty()) ? codeNum : sentTo;
+                                android.util.Log.d("LARGE-MSG", "✅ 내 대용량 발송확인 ~A:" + ackId
+                                        + " to=" + to + " len=" + sentText.length());
+                                MsgEntity addMsg = new MsgEntity(0, true, to, "", sentText,
+                                        new Date(),
+                                        new Date(System.currentTimeMillis()),
+                                        new Date(System.currentTimeMillis()),
+                                        true, true, false);
+                                insertMsgWithDedupAndEcho(addMsg, to, sentText);
+                            } else {
+                                android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미 처리?)");
+                            }
+                        } catch (Exception ex) {
+                            Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
                     } else {
                         // 기존 일반 채팅 그대로
