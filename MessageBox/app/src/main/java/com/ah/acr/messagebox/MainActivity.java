@@ -2086,6 +2086,12 @@ public class MainActivity extends AppCompatActivity {
                                         new Date(System.currentTimeMillis()),
                                         true, true, false);
                                 insertMsgWithDedupAndEcho(addMsg, to, sentText);
+                            } else {
+                                android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미  처리?)");
+                            }
+                        } catch (Exception ex) {
+                            Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
+                        }
                     } else if (title.startsWith("~D:")) {
                         // 서버가 보낸 "상대 전달 완료" → 내가 보낸 그 메시지를 "전달됨 ✓✓"로 표시
                         try {
@@ -2106,12 +2112,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "~D: 파싱 실패 title=" + title + " : " + ex.getMessage());
-                        }
-                            } else {
-                                android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미 처리?)");
-                            }
-                        } catch (Exception ex) {
-                            Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
                     } else {
                         // 기존 일반 채팅 그대로
