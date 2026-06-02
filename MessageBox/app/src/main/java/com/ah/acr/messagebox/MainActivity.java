@@ -116,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
     // ⭐ 완성된 msgId의 완료 시각(중복 조각 재수신 차단용, 윈도우 지나면 새 메시지로 취급)
     private final java.util.Map<Integer, Long> mLargeMsgDoneAt = new java.util.HashMap<>();
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
+    private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
+    private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(0);
+    private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
     private static final long ACK_ECHO_TIMEOUT_MS = 10000;   // 1회 대기 10초
     private static final int  ACK_MAX_ATTEMPTS = 3;          // 에코 없으면 재송신(최대 3회)
@@ -878,6 +881,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        binding.headerArea.textHeaderTitle.setOnLongClickListener(v -> {
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < 30; k++) sb.append("대용량 테스트 ").append(k).append(" 한글ABC ");
+            sendLargeMsg(sb.toString());
+            return true;
+        });
         binding.headerArea.textHeaderTitle.setOnClickListener(v -> {
             mTestTapCount++;
             if (mTestTapCount >= 5) {
@@ -1534,6 +1543,133 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
             }
         }, "large-ack-" + msgId).start();
+    }
+
+    // ============================================================
+    //  대용량 MO 송신 (앱 -> 서버) : 원문을 ~L:T:msgId:seq:total 조각으로 분할 전송
+    // ============================================================
+    public void sendLargeMsg(final String fullText) {
+        if (fullText == null || fullText.isEmpty()) {
+            Log.e("LARGE-MSG", "sendLargeMsg: 본문 없음");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                java.util.List<String> parts = splitUtf8(fullText, 200);
+                final int total = parts.size();
+                if (total > 255) {
+                    Log.e("LARGE-MSG", "조각 너무 많음: " + total + " > 255");
+                    return;
+                }
+                final int msgId = mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
+
+                synchronized (mSentLargeMsg) {
+                    mSentLargeMsg.put(msgId, fullText);
+                }
+
+                android.util.Log.d("LARGE-MSG", "TX large start msgId=" + msgId
+                        + " total=" + total
+                        + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
+
+                for (int seq = 0; seq < total; seq++) {
+                    String body = parts.get(seq);
+                    String title = "~L:T:" + msgId + ":" + seq + ":" + total;
+
+                    ByteBuf buffer = Unpooled.buffer();
+                    buffer.writeByte(0x07);
+                    String addr = "";
+                    buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+                    buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+                    buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+                    buffer.writeCharSequence(title, StandardCharsets.UTF_8);
+                    buffer.writeByte(body.getBytes(StandardCharsets.UTF_8).length);
+                    buffer.writeCharSequence(body, StandardCharsets.UTF_8);
+
+                    byte[] frame = new byte[buffer.readableBytes()];
+                    buffer.readBytes(frame);
+
+                    int sendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
+                    String sms = String.format("SENDING=%d,%s",
+                            sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
+
+                    boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
+                    if (!ok) {
+                        Log.e("LARGE-MSG", "chunk modem reject msgId=" + msgId
+                                + " seq=" + seq + " - abort");
+                        return;
+                    }
+                }
+                android.util.Log.d("LARGE-MSG", "TX large all-accepted msgId=" + msgId
+                        + " - wait server ~A:");
+            } catch (Exception e) {
+                Log.e("LARGE-MSG", "sendLargeMsg fail: " + e.getMessage(), e);
+            }
+        }, "large-send").start();
+    }
+
+    private boolean sendChunkAwaitEcho(final String sms, final int sendId,
+                                       final int msgId, final int seq) {
+        final Object lock = new Object();
+        final boolean[] acked = {false};
+        final boolean[] armed = {false};
+
+        final androidx.lifecycle.Observer<String> obs = sReceive -> {
+            if (!armed[0] || sReceive == null || !sReceive.startsWith("SENDING=")) return;
+            String[] vals = sReceive.substring(8).split(",");
+            if (vals.length >= 2 && "OK".equals(vals[1])
+                    && String.valueOf(sendId).equals(vals[0])) {
+                synchronized (lock) {
+                    acked[0] = true;
+                    lock.notifyAll();
+                }
+            }
+        };
+
+        runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().observeForever(obs));
+        try {
+            for (int attempt = 1; attempt <= ACK_MAX_ATTEMPTS; attempt++) {
+                final int a = attempt;
+                runOnUiThread(() -> {
+                    BLE.INSTANCE.getWriteQueue().offer(sms);
+                    armed[0] = true;
+                    android.util.Log.d("LARGE-MSG", "TX chunk try " + a + "/"
+                            + ACK_MAX_ATTEMPTS + " sendId=" + sendId + " seq=" + seq);
+                });
+                synchronized (lock) {
+                    if (acked[0]) break;
+                    lock.wait(ACK_ECHO_TIMEOUT_MS);
+                    if (acked[0]) break;
+                }
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } finally {
+            runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
+        }
+        return acked[0];
+    }
+
+    private java.util.List<String> splitUtf8(String text, int maxBytes) {
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int curBytes = 0;
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            int cc = Character.charCount(cp);
+            String ch = text.substring(i, i + cc);
+            int chBytes = ch.getBytes(StandardCharsets.UTF_8).length;
+            if (curBytes + chBytes > maxBytes && cur.length() > 0) {
+                chunks.add(cur.toString());
+                cur.setLength(0);
+                curBytes = 0;
+            }
+            cur.append(ch);
+            curBytes += chBytes;
+            i += cc;
+        }
+        if (cur.length() > 0) chunks.add(cur.toString());
+        return chunks;
     }
     // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
