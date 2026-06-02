@@ -1548,7 +1548,9 @@ public class MainActivity extends AppCompatActivity {
     // ============================================================
     //  대용량 MO 송신 (앱 -> 서버) : 원문을 ~L:T:msgId:seq:total 조각으로 분할 전송
     // ============================================================
-    public void sendLargeMsg(final String fullText) {
+    public void sendLargeMsg(final String fullText) { sendLargeMsg("", fullText); }
+
+    public void sendLargeMsg(final String recipientImei, final String fullText) {
         if (fullText == null || fullText.isEmpty()) {
             Log.e("LARGE-MSG", "sendLargeMsg: 본문 없음");
             return;
@@ -1577,7 +1579,7 @@ public class MainActivity extends AppCompatActivity {
 
                     ByteBuf buffer = Unpooled.buffer();
                     buffer.writeByte(0x07);
-                    String addr = "";
+                    String addr = (recipientImei == null) ? "" : recipientImei;
                     buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
                     buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
                     buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
