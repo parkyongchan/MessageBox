@@ -614,6 +614,24 @@ public class ChatRoomFragment extends Fragment {
 
             Log.v(TAG, "Prep: id=" + msg.getId() + " to=" + codeNum + " msg=" + message);
 
+            // [방어] 0x07 프레임의 title/memo 길이 필드는 1바이트(최대 255).
+            //   초과하면 길이 필드가 깨져 단말 버퍼를 망가뜨림 → 전송 건너뜀.
+            byte[] titleBytesChk = title.getBytes(StandardCharsets.UTF_8);
+            byte[] msgBytesChk   = message.getBytes(StandardCharsets.UTF_8);
+            if (titleBytesChk.length > 20 || msgBytesChk.length > 200) {
+                android.util.Log.e("SEND", "길이 초과 - 전송 건너뜀 id=" + msg.getId()
+                        + " titleBytes=" + titleBytesChk.length
+                        + " msgBytes=" + msgBytesChk.length + " (제목≤20, 본문≤200)");
+                final int badLen = msgBytesChk.length;
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() ->
+                        Toast.makeText(getContext(),
+                            "200바이트 초과 메시지는 대용량으로 보내세요 (" + badLen + "B)",
+                            Toast.LENGTH_LONG).show());
+                }
+                continue;   // 이 메시지는 깨진 프레임 방지 위해 스킵
+            }
+
             ByteBuf buffer = Unpooled.buffer();
             buffer.writeByte(0x07);
             buffer.writeByte(codeNum.getBytes(StandardCharsets.US_ASCII).length);

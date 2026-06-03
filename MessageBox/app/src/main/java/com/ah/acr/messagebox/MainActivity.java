@@ -352,6 +352,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.v("AUTO-RECV", "User changed to OFF");
             }
         });
+
+        // 단말 메시지 전체 삭제 버튼 (MO 버퍼 클리어 - 깨진 프레임으로 막힌 송신 복구용)
+        binding.statusArea.btnMsgDelete.setOnClickListener(v -> sendMsgDelete());
     }
 
     private void updateAutoReceiveToggleUI(boolean enabled, boolean isReceiving) {
@@ -761,6 +764,25 @@ public class MainActivity extends AppCompatActivity {
             };
         }
         mSyncHandler.postDelayed(mInfoRetryRunnable, INFO_TIMEOUT_MS);
+    }
+
+    /** 단말 MO 버퍼(flash) 전체 삭제. MSGDEL=? -> 펌웨어가 fformat("F:") 실행.
+     *  주의: 단말의 모든 메시지(송신대기+수신함) 삭제됨. 깨진 프레임으로 막힌 버퍼 복구용. */
+    public void sendMsgDelete() {
+        if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+            Toast.makeText(this, "\ub2e8\ub9d0 \uc5f0\uacb0 \uc548 \ub428", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("\ub2e8\ub9d0 \uba54\uc2dc\uc9c0 \uc804\uccb4 \uc0ad\uc81c")
+            .setMessage("\ub2e8\ub9d0\uc5d0 \uc800\uc7a5\ub41c \ubaa8\ub4e0 \uba54\uc2dc\uc9c0(\uc1a1\uc2e0\ub300\uae30 + \uc218\uc2e0\ud568)\ub97c \uc0ad\uc81c\ud569\ub2c8\ub2e4.\n\ub9c9\ud78c \uc1a1\uc2e0 \ubc84\ud37c\ub97c \ube44\uc6b8 \ub54c \uc0ac\uc6a9\ud558\uc138\uc694. \uacc4\uc18d\ud560\uae4c\uc694?")
+            .setPositiveButton("\uc0ad\uc81c", (d, w) -> {
+                BLE.INSTANCE.getWriteQueue().offer("MSGDEL=?");
+                android.util.Log.w("MSGDEL", "\ub2e8\ub9d0 \ubc84\ud37c \uc804\uccb4 \uc0ad\uc81c \uba85\ub839 \uc804\uc1a1: MSGDEL=?");
+                Toast.makeText(this, "\ub2e8\ub9d0 \uba54\uc2dc\uc9c0 \uc0ad\uc81c \uc694\uccad \uc804\uc1a1", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("\ucde8\uc18c", null)
+            .show();
     }
 
     private final Runnable mPeriodicSyncRunnable = new Runnable() {
@@ -1588,7 +1610,7 @@ public class MainActivity extends AppCompatActivity {
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
-                            true, false, false);   // isRead=true, isSend=false(미전송), isDeviceSend=false
+                            true, true, false);   // isRead=true, isSend=true(대용량은 조각으로 직접 전송하므로 단문큐에 안 잡히게), isDeviceSend=false
                     msgViewModel.insert(sendingMsg);
                 });
 

@@ -89,6 +89,8 @@ public class AddrssBookFragment extends Fragment {
 
         binding.buttonEdit.setOnClickListener(view -> showMeAddressDialog());
 
+        binding.btnAckSettings.setOnClickListener(view -> showAckSettingsDialog());
+
         binding.frameMyAvatar.setOnClickListener(view -> {
             if (myImei == null || myImei.isEmpty()) {
                 Toast.makeText(getContext(),
@@ -437,6 +439,49 @@ public class AddrssBookFragment extends Fragment {
         dialog.show();
     }
 
+
+    /** ACK 설정 다이얼로그. 메시지 종류별 ACK on/off를 PreferenceManager에 저장.
+     *  ACK ON: 송신 시 식별자(msgId) 부착 + ~A:/~D: 수신 시 V/VV 표시. OFF: 식별자 미부착, ACK 무시. */
+    public static final String PREF_ACK_SHORT = "pref_ack_short";
+    public static final String PREF_ACK_LARGE = "pref_ack_large";
+    public static final String PREF_ACK_PHOTO = "pref_ack_photo";
+    public static final String PREF_ACK_FILE  = "pref_ack_file";
+
+    private void showAckSettingsDialog() {
+        android.content.SharedPreferences prefs =
+                android.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
+
+        android.view.View v = getLayoutInflater().inflate(R.layout.dialog_ack_settings, null);
+        androidx.appcompat.widget.SwitchCompat swShort = v.findViewById(R.id.switch_ack_short);
+        androidx.appcompat.widget.SwitchCompat swLarge = v.findViewById(R.id.switch_ack_large);
+        androidx.appcompat.widget.SwitchCompat swPhoto = v.findViewById(R.id.switch_ack_photo);
+        androidx.appcompat.widget.SwitchCompat swFile  = v.findViewById(R.id.switch_ack_file);
+
+        swShort.setChecked(prefs.getBoolean(PREF_ACK_SHORT, false));
+        swLarge.setChecked(prefs.getBoolean(PREF_ACK_LARGE, false));
+        swPhoto.setChecked(prefs.getBoolean(PREF_ACK_PHOTO, false));
+        swFile.setChecked(prefs.getBoolean(PREF_ACK_FILE, false));
+
+        androidx.appcompat.app.AlertDialog dlg =
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setView(v).create();
+
+        v.findViewById(R.id.btn_ack_close).setOnClickListener(x -> dlg.dismiss());
+        v.findViewById(R.id.btn_ack_cancel).setOnClickListener(x -> dlg.dismiss());
+        v.findViewById(R.id.btn_ack_save).setOnClickListener(x -> {
+            prefs.edit()
+                    .putBoolean(PREF_ACK_SHORT, swShort.isChecked())
+                    .putBoolean(PREF_ACK_LARGE, swLarge.isChecked())
+                    .putBoolean(PREF_ACK_PHOTO, swPhoto.isChecked())
+                    .putBoolean(PREF_ACK_FILE, swFile.isChecked())
+                    .apply();
+            android.util.Log.w("ACK-CFG", "ACK \uc124\uc815 \uc800\uc7a5: short=" + swShort.isChecked()
+                    + " large=" + swLarge.isChecked());
+            Toast.makeText(requireContext(), "ACK \uc124\uc815 \uc800\uc7a5\ub428", Toast.LENGTH_SHORT).show();
+            dlg.dismiss();
+        });
+        dlg.show();
+    }
 
     private void showMeAddressDialog() {
         Dialog dialog = new Dialog(getContext());

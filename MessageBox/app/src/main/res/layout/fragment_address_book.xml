@@ -46,6 +46,30 @@
                 android:textAllCaps="true"
                 android:letterSpacing="0.08" />
 
+            <!-- 스페이서: ACK 버튼을 우측으로 밀기 -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- ACK 설정 버튼 -->
+            <TextView
+                android:id="@+id/btn_ack_settings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ACK \uc124\uc815"
+                android:textColor="#00E5D1"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:drawableStart="@android:drawable/ic_menu_manage"
+                android:drawablePadding="4dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:contentDescription="ACK \uc124\uc815" />
+
         </LinearLayout>
 
         <!-- My Profile Card -->
