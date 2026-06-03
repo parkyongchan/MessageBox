@@ -67,6 +67,18 @@ class MsgRepository(private val msgDao: MsgDao) {
         msgDao.markSendByContent(codeNum, message)
     }
 
+    suspend fun markAckByTitle(titleTag: String, state: Int) {
+        msgDao.markAckByTitle(titleTag, state)
+    }
+
+    suspend fun markAckServerByContent(codeNum: String, message: String) {
+        msgDao.markAckServerByContent(codeNum, message)
+    }
+
+    suspend fun markAckRelayByContent(codeNum: String, message: String) {
+        msgDao.markAckRelayByContent(codeNum, message)
+    }
+
     suspend fun deleteById(msgId: Int) {
         msgDao.deleteMsgById(msgId)
     }

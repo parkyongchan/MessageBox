@@ -785,6 +785,12 @@ public class MainActivity extends AppCompatActivity {
             .show();
     }
 
+    /** ACK 식별자(msgId) 발급. 단문/장문 공유 (0~255 순환).
+     *  ~M:msgId(단문), ~L:T:msgId:...(장문)의 msgId, ~A:/~D: 응답 매칭에 사용. */
+    public int nextAckMsgId() {
+        return mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
+    }
+
     private final Runnable mPeriodicSyncRunnable = new Runnable() {
         @Override
         public void run() {
@@ -2116,9 +2122,10 @@ public class MainActivity extends AppCompatActivity {
                                 android.util.Log.d("LARGE-MSG", "✅ 내 대용량 발송확인 ~A:" + ackId
                                         + " to=" + to + " len=" + sentText.length());
                                 // 말풍선은 보낼 때 이미 생성됨 → 여기선 ✓(보냄)로 상태 업데이트만
-                                msgViewModel.markSendByContent(to, sentText);
+                                msgViewModel.markAckServerByContent(to, sentText);   // 대용량 ackState=1(V)
                             } else {
-                                android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미  처리?)");
+                                msgViewModel.markAckByTitle("~M:" + ackId, 1);   // 단문 ackState=1(V)
+                                android.util.Log.d("ACK", "단문 ~A:" + ackId + " → ackState=1");
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
@@ -2137,15 +2144,33 @@ public class MainActivity extends AppCompatActivity {
                                 String to = (dTo == null || dTo.isEmpty()) ? "SERVER" : dTo;
                                 android.util.Log.d("LARGE-MSG", "✅✅ 상대 전달 확인 ~D:" + dId
                                         + " to=" + to);
-                                msgViewModel.markDeviceSentByContent(to, dText);
+                                msgViewModel.markAckRelayByContent(to, dText);   // 대용량 ackState=2(VV)
                             } else {
-                                android.util.Log.d("LARGE-MSG", "~D:" + dId + " 수신했으나 보관 원문 없음");
+                                msgViewModel.markAckByTitle("~M:" + dId, 2);   // 단문 ackState=2(VV)
+                                android.util.Log.d("ACK", "단문 ~D:" + dId + " → ackState=2");
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "~D: 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
                     } else {
                         // 기존 일반 채팅 그대로
+                        // ⭐ 단문 ACK: 받은 제목이 ~M:msgId 이고 단문 ACK ON이면 서버에 "받았다" ACK 송신.
+                        //   서버가 릴레이 판단 → 원송신자에게 ~D:(VV) 전달. 제목은 화면표시용으로 정리.
+                        if (title != null && title.startsWith("~M:")) {
+                            try {
+                                int recvMsgId = Integer.parseInt(title.substring(3).trim());
+                                boolean ackShortOn = android.preference.PreferenceManager
+                                        .getDefaultSharedPreferences(MainActivity.this)
+                                        .getBoolean("pref_ack_short", false);
+                                if (ackShortOn) {
+                                    sendLargeMsgAck(codeNum, recvMsgId);   // 서버행 ~A: 송신 (범용 메서드 재사용)
+                                    android.util.Log.d("ACK", "단문 MT 수신 → 서버 ACK 송신 msgId=" + recvMsgId);
+                                }
+                            } catch (Exception ex) {
+                                Log.e("ACK", "단문 ~M: 파싱 실패 title=" + title);
+                            }
+                            title = "";   // ~M: 식별자는 사용자 화면에 안 보이게
+                        }
                         MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
                                 new Date(),
                                 new Date(System.currentTimeMillis()),

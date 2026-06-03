@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SatTrackEntity::class,
         SatTrackPointEntity::class
     ],
-    version = 6,   // ⭐ v5 → v6: dedup_hash + received_at_ms columns (중복 수신 차단)
+    version = 7,   // v6 -> v7: ack_state column (ACK V/VV state, isSend와 분리)
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -57,6 +57,17 @@ abstract class MsgRoomDatabase : RoomDatabase() {
             }
         }
 
+        // ═══════════════════════════════════════════════════════
+        // ⭐ v6 → v7 마이그레이션: ack_state 컬럼 추가
+        // 0=없음, 1=서버도착(V), 2=상대도착(VV). isSend(큐관리)와 분리하여
+        // ACK 활성화 시에만 서버 ~A:/~D: 수신으로 V/VV 표시.
+        // ═══════════════════════════════════════════════════════
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN ack_state INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): MsgRoomDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -64,7 +75,7 @@ abstract class MsgRoomDatabase : RoomDatabase() {
                     MsgRoomDatabase::class.java,
                     "msgbox.db"
                 )
-                    .addMigrations(MIGRATION_5_6)        // ⭐ 정식 마이그레이션 등록
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)        // ⭐ 정식 마이그레이션 등록
                     .fallbackToDestructiveMigration()    // 보험용 (마이그레이션 실패 시에만 작동)
                     .build()
                 INSTANCE = instance

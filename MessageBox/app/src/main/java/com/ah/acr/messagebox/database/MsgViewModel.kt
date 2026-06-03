@@ -124,6 +124,30 @@ class MsgViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun markAckByTitle(titleTag: String, state: Int) = viewModelScope.launch {
+        try {
+            repository.markAckByTitle(titleTag, state)
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "markAckByTitle 실패", e)
+        }
+    }
+
+    fun markAckServerByContent(codeNum: String, message: String) = viewModelScope.launch {
+        try {
+            repository.markAckServerByContent(codeNum, message)
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "markAckServerByContent 실패", e)
+        }
+    }
+
+    fun markAckRelayByContent(codeNum: String, message: String) = viewModelScope.launch {
+        try {
+            repository.markAckRelayByContent(codeNum, message)
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "markAckRelayByContent 실패", e)
+        }
+    }
+
     fun deleteById(id: Int) = viewModelScope.launch {
         try {
             repository.deleteById(id)

@@ -63,6 +63,51 @@ interface MsgDao {
     """)
     suspend fun markSendByContent(codeNum: String, message: String)
 
+    // ═════════════════════════════════════════════════════════
+    //   ⭐ v7 ACK 상태 업데이트 (ackState: 0=없음, 1=서버도착V, 2=상대도착VV)
+    //   isSend(큐관리)와 분리. ACK 활성 시에만 서버 ~A:/~D: 수신으로 호출.
+    // ═════════════════════════════════════════════════════════
+
+    // [~A] 서버 도착 → ack_state=1 (V). 내용 매칭으로 가장 최근 "내가 보낸" 메시지.
+    @Query("""
+        UPDATE messages SET ack_state = 1
+        WHERE id = (
+            SELECT id FROM messages
+            WHERE code_num = :codeNum AND msg = :message AND is_send_msg = 1
+            ORDER BY create_at DESC, id DESC LIMIT 1
+        )
+        AND ack_state < 1
+    """)
+    suspend fun markAckServerByContent(codeNum: String, message: String)
+
+    // [~D] 상대 도착 → ack_state=2 (VV). 내용 매칭.
+    @Query("""
+        UPDATE messages SET ack_state = 2
+        WHERE id = (
+            SELECT id FROM messages
+            WHERE code_num = :codeNum AND msg = :message AND is_send_msg = 1
+            ORDER BY create_at DESC, id DESC LIMIT 1
+        )
+    """)
+    suspend fun markAckRelayByContent(codeNum: String, message: String)
+
+    // msgId(DB id)로 직접 ack_state 설정 (식별자 매칭 방식용 - 추후 ACK on 정밀화)
+    @Query("UPDATE messages SET ack_state = :state WHERE id = :msgId")
+    suspend fun updateAckState(msgId: Int, state: Int)
+
+    // [단문 ~A:/~D:] 제목(~M:msgId)으로 내가 보낸 메시지의 ack_state 업데이트
+    // ~A: → state=1(V), ~D: → state=2(VV). ack_state가 낮을 때만 올림(역행 방지).
+    @Query("""
+        UPDATE messages SET ack_state = :state
+        WHERE id = (
+            SELECT id FROM messages
+            WHERE title = :titleTag AND is_send_msg = 1
+            ORDER BY create_at DESC, id DESC LIMIT 1
+        )
+        AND ack_state < :state
+    """)
+    suspend fun markAckByTitle(titleTag: String, state: Int)
+
     @Query("Update messages SET is_read = 1 WHERE id = :msgId")
     suspend fun updateMsgReaded(msgId: Int)
 

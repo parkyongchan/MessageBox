@@ -45,7 +45,10 @@ data class MsgEntity @JvmOverloads constructor(
     @ColumnInfo(name = "dedup_hash")
     var dedupHash: String? = null,
     @ColumnInfo(name = "received_at_ms")
-    var receivedAtMs: Long = 0L
+    var receivedAtMs: Long = 0L,
+    // ⭐ v7: ACK 상태 (0=없음, 1=서버도착 V, 2=상대도착 VV). isSend와 분리.
+    @ColumnInfo(name = "ack_state")
+    var ackState: Int = 0
 ) {
     @Ignore
     var nicName: String? = null

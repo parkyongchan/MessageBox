@@ -122,6 +122,14 @@ public class ChatRoomFragment extends Fragment {
         observeAddressForAvatar();
         observeUnsentMessages();  // FAB update
         registerEchoReceiver();   // ECHO 수신 → 자동 새로고침
+        updateTitleVisibility();   // 초기 제목칸 상태 (ACK ON이면 숨김)
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // ACK 설정이 다른 화면에서 바뀌었을 수 있으므로 제목칸 상태 재반영
+        updateTitleVisibility();
     }
 
 
@@ -307,7 +315,7 @@ public class ChatRoomFragment extends Fragment {
 
         // 대용량 체크박스: 켜면 본문 200B 필터 해제, 끄면 복원
         binding.checkLargeMsg.setOnCheckedChangeListener((b, checked) -> {
-            binding.editChatTitle.setEnabled(!checked);
+            updateTitleVisibility();   // 대용량 체크 또는 ACK ON이면 제목칸 숨김
             if (checked) {
                 binding.editChatMsg.setFilters(new InputFilter[]{});
             } else {
@@ -322,6 +330,17 @@ public class ChatRoomFragment extends Fragment {
             public void afterTextChanged(android.text.Editable e) { updateByteCount(); }
         });
         updateByteCount();
+    }
+
+    /** 제목칸 표시 제어: 대용량 체크 OR 단문 ACK ON이면 숨김 (식별자 전용이라 입력 불필요). */
+    private void updateTitleVisibility() {
+        if (binding == null) return;
+        boolean large = binding.checkLargeMsg.isChecked();
+        boolean ackShortOn = android.preference.PreferenceManager
+                .getDefaultSharedPreferences(requireContext())
+                .getBoolean("pref_ack_short", false);
+        boolean hide = large || ackShortOn;
+        binding.editChatTitle.setVisibility(hide ? View.GONE : View.VISIBLE);
     }
 
     private void updateByteCount() {
@@ -507,9 +526,20 @@ public class ChatRoomFragment extends Fragment {
                 return;
             }
 
+            // ⭐ 단문 ACK 설정 확인: ON이면 제목=식별자(~M:msgId), 사용자 제목 무시 (대용량처럼)
+            boolean ackShortOn = android.preference.PreferenceManager
+                    .getDefaultSharedPreferences(requireContext())
+                    .getBoolean("pref_ack_short", false);
+            String titleToSave;
+            if (ackShortOn) {
+                int ackMsgId = ((MainActivity) requireActivity()).nextAckMsgId();
+                titleToSave = "~M:" + ackMsgId;
+            } else {
+                titleToSave = title.isEmpty() ? null : title;
+            }
             MsgEntity newMsg = new MsgEntity(
                     0, true, mCodeNum,
-                    title.isEmpty() ? null : title,
+                    titleToSave,
                     msg,
                     new Date(),
                     null, null,

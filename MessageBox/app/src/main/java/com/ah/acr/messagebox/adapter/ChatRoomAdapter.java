@@ -174,19 +174,21 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
                 textTimeRight.setVisibility(View.GONE);
 
                 // 전송 상태 3단계: 미전송 / 보냄 ✓ / 전달됨 ✓✓
-                boolean sent = item.getMsg().isSend();
-                boolean delivered = item.getMsg().isDeviceSend();
-                if (!sent) {
-                    imgPendingLeft.setVisibility(View.VISIBLE);
-                    textTimeLeft.setText(time);
-                    textTimeLeft.setTextColor(0xFFFFB300);  // 주황 (미전송)
-                } else if (delivered) {
+                // ⭐ v7: ACK 상태 기반 (ackState 0=없음/1=서버도착V/2=상대도착VV)
+                //   ACK off면 ackState가 0으로 유지되어 V 안 뜸. isSend와 분리.
+                int ackState = item.getMsg().getAckState();
+                if (ackState >= 2) {
                     imgPendingLeft.setVisibility(View.GONE);
-                    textTimeLeft.setText("\u2713\u2713 " + time);   // ✓✓ 전달됨
-                    textTimeLeft.setTextColor(0xFF00B8A0);  // 민트 (강조)
+                    textTimeLeft.setText("\u2713\u2713 " + time);   // ✓✓ 상대도착
+                    textTimeLeft.setTextColor(0xFF00B8A0);  // 민트
+                } else if (ackState == 1) {
+                    imgPendingLeft.setVisibility(View.GONE);
+                    textTimeLeft.setText("\u2713 " + time);         // ✓ 서버도착
+                    textTimeLeft.setTextColor(0xFF7A8FA8);  // 회색
                 } else {
+                    // ackState==0: V 없음 (ACK off거나 아직 서버확인 전) → 시간만
                     imgPendingLeft.setVisibility(View.GONE);
-                    textTimeLeft.setText("\u2713 " + time);         // ✓ 보냄
+                    textTimeLeft.setText(time);
                     textTimeLeft.setTextColor(0xFF7A8FA8);  // 회색
                 }
 
