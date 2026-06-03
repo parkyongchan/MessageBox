@@ -63,6 +63,10 @@ class MsgRepository(private val msgDao: MsgDao) {
         msgDao.markDeviceSentByContent(codeNum, message)
     }
 
+    suspend fun markSendByContent(codeNum: String, message: String) {
+        msgDao.markSendByContent(codeNum, message)
+    }
+
     suspend fun deleteById(msgId: Int) {
         msgDao.deleteMsgById(msgId)
     }

@@ -116,6 +116,14 @@ class MsgViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun markSendByContent(codeNum: String, message: String) = viewModelScope.launch {
+        try {
+            repository.markSendByContent(codeNum, message)
+        } catch (e: Exception) {
+            Log.e("MsgViewModel", "markSendByContent 실패", e)
+        }
+    }
+
     fun deleteById(id: Int) = viewModelScope.launch {
         try {
             repository.deleteById(id)

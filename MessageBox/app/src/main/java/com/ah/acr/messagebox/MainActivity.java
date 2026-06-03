@@ -1579,6 +1579,19 @@ public class MainActivity extends AppCompatActivity {
                     mSentLargeMsgTo.put(msgId, recipientImei == null ? "" : recipientImei);
                 }
 
+                // ★ 보내는 즉시 말풍선 DB 생성 (미전송 상태). 원문 DB 영구저장 → RAM소실 무관.
+                //   ~A: 오면 is_send=1(✓), ~D: 오면 is_device_send=1(✓✓)로 업데이트만.
+                final String bubbleTo = (recipientImei == null || recipientImei.isEmpty())
+                        ? "SERVER" : recipientImei;
+                runOnUiThread(() -> {
+                    MsgEntity sendingMsg = new MsgEntity(0, true, bubbleTo, "", fullText,
+                            new Date(),
+                            new Date(System.currentTimeMillis()),
+                            new Date(System.currentTimeMillis()),
+                            true, false, false);   // isRead=true, isSend=false(미전송), isDeviceSend=false
+                    msgViewModel.insert(sendingMsg);
+                });
+
                 android.util.Log.d("LARGE-MSG", "TX large start msgId=" + msgId
                         + " total=" + total
                         + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
@@ -2080,12 +2093,8 @@ public class MainActivity extends AppCompatActivity {
                                 String to = (sentTo == null || sentTo.isEmpty()) ? "SERVER" : sentTo;
                                 android.util.Log.d("LARGE-MSG", "✅ 내 대용량 발송확인 ~A:" + ackId
                                         + " to=" + to + " len=" + sentText.length());
-                                MsgEntity addMsg = new MsgEntity(0, true, to, "", sentText,
-                                        new Date(),
-                                        new Date(System.currentTimeMillis()),
-                                        new Date(System.currentTimeMillis()),
-                                        true, true, false);
-                                insertMsgWithDedupAndEcho(addMsg, to, sentText);
+                                // 말풍선은 보낼 때 이미 생성됨 → 여기선 ✓(보냄)로 상태 업데이트만
+                                msgViewModel.markSendByContent(to, sentText);
                             } else {
                                 android.util.Log.d("LARGE-MSG", "~A:" + ackId + " 수신했으나 보관 원문 없음(이미  처리?)");
                             }
