@@ -1723,9 +1723,19 @@ public class MainActivity extends AppCompatActivity {
                         + " total=" + total
                         + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
 
+                // [2-B] 전체 본문 CRC32 (서버 LargeMessageService.crc32()와 동일: CRC32 + UTF-8 bytes)
+                long fullCrc;
+                {
+                    java.util.zip.CRC32 _crc = new java.util.zip.CRC32();
+                    _crc.update(fullText.getBytes(StandardCharsets.UTF_8));
+                    fullCrc = _crc.getValue();
+                }
+                android.util.Log.d("LARGE-MSG", "TX crc=" + fullCrc + " msgId=" + msgId);
                 for (int seq = 0; seq < total; seq++) {
                     String body = parts.get(seq);
-                    String title = "~L:T:" + msgId + ":" + seq + ":" + total;
+                    // [2-B] 첫 조각(seq=0)에만 CRC 부착: ~L:T:msgId:0:total:crc (나머지는 그대로)
+                    String title = "~L:T:" + msgId + ":" + seq + ":" + total
+                            + (seq == 0 ? (":" + fullCrc) : "");
 
                     ByteBuf buffer = Unpooled.buffer();
                     buffer.writeByte(0x07);
