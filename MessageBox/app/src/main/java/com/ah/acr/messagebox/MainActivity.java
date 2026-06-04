@@ -1544,9 +1544,9 @@ public class MainActivity extends AppCompatActivity {
             android.util.Log.d("GAP-FILL", "~R: 송신 title=" + reqTitle + " sendId=" + sendId);
             // 상한/쿨다운 기록 (실제 송신하는 시점)
             String key = msgId + ":" + seq;
-            mGapReqCount.merge(key, 1, Integer::sum);
+            // [2-A] 카운트는 에코 OK 시에만 증가(awaitAckEcho). 쿨다운은 시도 시점에 기록(연타 방지).
             mGapReqLastAt.put(key, System.currentTimeMillis());
-            awaitAckEcho(sms, sendId, msgId);   // 검증된 에코 대기 재사용
+            awaitAckEcho(sms, sendId, msgId, key);   // gapKey=key → 에코 OK 시 카운트 증가
         } catch (Exception e) {
             Log.e("GAP-FILL", "~R: 송신 실패 msgId=" + msgId + " seq=" + seq + " : " + e.getMessage());
         }
@@ -1628,6 +1628,11 @@ public class MainActivity extends AppCompatActivity {
      * 타임아웃 시 최대 {@link #ACK_MAX_ATTEMPTS}회까지 재송신한다.
      */
     private void awaitAckEcho(final String sms, final int ackSendId, final int msgId) {
+        awaitAckEcho(sms, ackSendId, msgId, null);   // gapKey 없음 = 카운트 안 함 (ACK/대용량용)
+    }
+
+    // gapKey != null 이면 모뎀 에코 OK 확인 시 mGapReqCount 증가 (gap-fill ~R:/~Q: 전용)
+    private void awaitAckEcho(final String sms, final int ackSendId, final int msgId, final String gapKey) {
         new Thread(() -> {
             final Object lock = new Object();
             final boolean[] acked = {false};
@@ -1669,6 +1674,10 @@ public class MainActivity extends AppCompatActivity {
                 if (acked[0]) {
                     android.util.Log.d("LARGE-MSG", "✅ ACK 모뎀 수락 확인 sendId="
                             + ackSendId + " msgId=" + msgId);
+                    if (gapKey != null) {
+                        mGapReqCount.merge(gapKey, 1, Integer::sum);   // [2-A] 실제 모뎀 수락 시에만 카운트
+                        android.util.Log.d("GAP-FILL", "에코 OK → 카운트 " + gapKey + "=" + mGapReqCount.get(gapKey));
+                    }
                 } else {
                     Log.e("LARGE-MSG", "⚠ ACK 모뎀 수락 실패(에코 없음) sendId="
                             + ackSendId + " msgId=" + msgId);
