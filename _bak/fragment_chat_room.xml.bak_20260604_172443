@@ -135,49 +135,6 @@
     <!-- ─────────────────────────────────────────────── -->
     <!-- Bubble list                                      -->
     <!-- ─────────────────────────────────────────────── -->
-    <!-- ─────────────────────────────────────────────── -->
-    <!-- [gap-fill] 미완 대용량 배너 (기본 숨김)            -->
-    <!-- ─────────────────────────────────────────────── -->
-    <LinearLayout
-        android:id="@+id/banner_gapfill"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="#3A2A0D"
-        android:paddingStart="12dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
-        android:gravity="center_vertical"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/chat_header"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <TextView
-            android:id="@+id/text_gapfill_info"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="#FFD37A"
-            android:textSize="13sp"
-            android:text="" />
-
-        <TextView
-            android:id="@+id/btn_gapfill_resend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="다시 받기"
-            android:textColor="#0A1628"
-            android:textStyle="bold"
-            android:textSize="13sp"
-            android:background="#FFD37A"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp" />
-    </LinearLayout>
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_chat_room"
         android:layout_width="match_parent"
@@ -187,7 +144,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/banner_gapfill"
+        app:layout_constraintTop_toBottomOf="@id/chat_header"
         app:layout_constraintBottom_toTopOf="@id/chat_divider"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

@@ -66,46 +66,6 @@ public class ChatRoomFragment extends Fragment {
     private AddressViewModel addressViewModel;
     private ChatRoomAdapter adapter;
     private String mCodeNum;
-    // [gap-fill] 미완 대용량 배너 주기 갱신 (5초). 송신 없음 — 표시 전용.
-    private final android.os.Handler mGapfillHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private int mGapfillMsgId = -1;   // 현재 배너가 가리키는 미완 msgId (1-C 재요청용)
-    private static final long GAPFILL_STALE_MS = 60000;   // 마지막 조각 후 60초 지나면 "누락 의심"
-    private final Runnable mGapfillTick = new Runnable() {
-        @Override public void run() {
-            updateGapfillBanner();
-            mGapfillHandler.postDelayed(this, 5000);
-        }
-    };
-
-    private void updateGapfillBanner() {
-        if (binding == null || mCodeNum == null || mCodeNum.isEmpty()) return;
-        long[] info = null;
-        try {
-            if (getActivity() instanceof MainActivity) {
-                info = ((MainActivity) getActivity()).getIncompleteLargeMsg(mCodeNum);
-            }
-        } catch (Exception e) { /* ignore */ }
-        if (info == null) {
-            mGapfillMsgId = -1;
-            binding.bannerGapfill.setVisibility(View.GONE);
-            return;
-        }
-        int msgId = (int) info[0]; int received = (int) info[1];
-        int total = (int) info[2]; long elapsed = info[3];
-        mGapfillMsgId = msgId;
-        if (elapsed < GAPFILL_STALE_MS) {
-            // 아직 받는 중 — 진행 표시만
-            binding.textGapfillInfo.setText("받는 중 " + received + "/" + total + " ...");
-            binding.btnGapfillResend.setVisibility(View.GONE);
-            binding.bannerGapfill.setVisibility(View.VISIBLE);
-        } else {
-            int missing = total - received;
-            binding.textGapfillInfo.setText("일부 조각 누락: " + received + "/" + total + " (빠진 " + missing + "개)");
-            binding.btnGapfillResend.setVisibility(View.VISIBLE);
-            binding.bannerGapfill.setVisibility(View.VISIBLE);
-        }
-    }
-
     private String mContactName;
 
     // Avatar edit state
@@ -168,15 +128,6 @@ public class ChatRoomFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // [gap-fill] 배너 갱신 시작 + 버튼(1-C 전까지 Toast만)
-        mGapfillHandler.removeCallbacks(mGapfillTick);
-        mGapfillHandler.post(mGapfillTick);
-        if (binding != null) {
-            binding.btnGapfillResend.setOnClickListener(v -> {
-                android.widget.Toast.makeText(getContext(),
-                        "재요청 기능 준비 중 (msgId=" + mGapfillMsgId + ")", android.widget.Toast.LENGTH_SHORT).show();
-            });
-        }
         // ACK 설정이 다른 화면에서 바뀌었을 수 있으므로 제목칸 상태 재반영
         updateTitleVisibility();
     }
@@ -852,7 +803,6 @@ public class ChatRoomFragment extends Fragment {
             }
             mEchoReceiver = null;
         }
-        mGapfillHandler.removeCallbacks(mGapfillTick);
         binding = null;
     }
 }

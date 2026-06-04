@@ -2095,7 +2095,6 @@ public class MainActivity extends AppCompatActivity {
                                 mLargeMsgDoneAt.remove(msgId);
                                 mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
                                 mLargeMsgTotal.put(msgId, total);
-                                mLargeMsgLastAt.put(msgId, System.currentTimeMillis());   // [gap-fill] 마지막 조각 시각
                                 mLargeMsgSender.put(msgId, codeNum);
                                 java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
                                 android.util.Log.d("LARGE-MSG", "조각 수신 msgId=" + msgId
@@ -2350,47 +2349,4 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
-
-    // ============================================================
-    //  [gap-fill] 미완 대용량: 필드 + 조회 (배너/재요청용)
-    // ============================================================
-    private final java.util.Map<Integer, Long> mLargeMsgLastAt = new java.util.HashMap<>();   // msgId별 마지막 조각 수신 시각
-
-    /** 이 codeNum 방에 미완 대용량이 있으면 [msgId, received, total, 경과ms] 반환, 없으면 null. 가장 최근 1건. */
-    public long[] getIncompleteLargeMsg(String codeNum) {
-        long now = System.currentTimeMillis();
-        Integer bestId = null; long bestAt = -1;
-        synchronized (mLargeMsgBuf) {
-            for (java.util.Map.Entry<Integer, java.util.TreeMap<Integer, String>> e : mLargeMsgBuf.entrySet()) {
-                int id = e.getKey();
-                String sender = mLargeMsgSender.get(id);
-                if (codeNum != null && !codeNum.equals(sender)) continue;
-                Integer total = mLargeMsgTotal.get(id);
-                if (total == null) continue;
-                int received = e.getValue().size();
-                if (received >= total) continue;
-                Long at = mLargeMsgLastAt.get(id);
-                long atv = (at == null) ? 0 : at;
-                if (atv > bestAt) { bestAt = atv; bestId = id; }
-            }
-            if (bestId == null) return null;
-            int total = mLargeMsgTotal.get(bestId);
-            int received = mLargeMsgBuf.get(bestId).size();
-            long elapsed = (bestAt > 0) ? (now - bestAt) : 0;
-            return new long[]{ bestId, received, total, elapsed };
-        }
-    }
-
-    /** msgId의 빠진 seq 목록 (오름차순). 미완 아니면 빈 배열. */
-    public java.util.List<Integer> getMissingSeqs(int msgId) {
-        java.util.List<Integer> missing = new java.util.ArrayList<>();
-        synchronized (mLargeMsgBuf) {
-            java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
-            Integer total = mLargeMsgTotal.get(msgId);
-            if (parts == null || total == null) return missing;
-            for (int s = 0; s < total; s++) if (!parts.containsKey(s)) missing.add(s);
-        }
-        return missing;
-    }
-
 }
