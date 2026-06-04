@@ -2116,14 +2116,8 @@ public class MainActivity extends AppCompatActivity {
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);
                                     mLargeMsgDoneAt.put(msgId, System.currentTimeMillis());   // 완성 표시
-                                    // 최초 조립 완료 시 서버로 ACK 송신 (수신확인) — ACK ON일 때만, 지연 큐로
-                                    boolean ackLargeOn = android.preference.PreferenceManager
-                                            .getDefaultSharedPreferences(MainActivity.this)
-                                            .getBoolean("pref_ack_large", false);
-                                    if (ackLargeOn && !mPendingServerAckIds.contains(msgId)) {
-                                        mPendingServerAckIds.add(msgId);   // 즉시 송신 금지: 인박스 배수 후 flush
-                                        android.util.Log.d("ACK", "대용량 완성 -> 서버 ACK 지연 큐 적재 msgId=" + msgId);
-                                    }
+                                    // 최초 조립 완료 시 서버로 ACK 1회 송신 (수신확인)
+                                    sendLargeMsgAck(codeNum, msgId);
                                 }
                             }
                         } catch (Exception ex) {
