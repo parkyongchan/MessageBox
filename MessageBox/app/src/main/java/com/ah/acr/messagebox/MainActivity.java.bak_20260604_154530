@@ -129,10 +129,6 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean mIsAutoReceiving = false;
     private int mLastInboxCount = 0;
-    // 단문 서버-ACK 지연 송신 큐 (인박스 배수 중 SENDING <-> RECEIVED=? BLE 경쟁 방지)
-    private final java.util.ArrayList<Integer> mPendingServerAckIds = new java.util.ArrayList<>();
-    // 최근 저장한 (msgId+본문) -> 시각: 같은 단문 본문 재수신(인박스 재독) 차단
-    private final java.util.HashMap<String, Long> mRecvShortAckDoneAt = new java.util.HashMap<>();
     private long mLastAutoReceiveTime = 0;
     private Runnable mAutoReceiveTimeoutRunnable;
     private Animation mAutoReceiveRotation;
@@ -1488,17 +1484,6 @@ public class MainActivity extends AppCompatActivity {
     //  - title="~A:<msgId>", memo=빈값, 0x07 FREE 프레임
     //  - SENDING id는 일반 채팅(작은 수)과 안 겹치게 9000번대 사용
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    /** 인박스 배수 완료(RECEIVED=0,0) 후 호출. 대기 서버-ACK 송신해 SENDING/RECEIVED=? 경쟁 방지. */
-    private void flushPendingServerAcks() {
-        if (mPendingServerAckIds.isEmpty()) return;
-        java.util.ArrayList<Integer> ids = new java.util.ArrayList<>(mPendingServerAckIds);
-        mPendingServerAckIds.clear();
-        for (int id : ids) {
-            android.util.Log.d("ACK", "지연 서버 ACK flush msgId=" + id);
-            sendLargeMsgAck("", id);
-        }
-    }
-
     private void sendLargeMsgAck(String recipientImei, int msgId) {
         try {
             String ackTitle = "~A:" + msgId;
@@ -1903,7 +1888,6 @@ public class MainActivity extends AppCompatActivity {
             String[] vals = sms.split(",");
             try {
                 if (vals[1].equals("0")) {
-                    flushPendingServerAcks();   // 인박스 배수 완료 -> 대기 ACK 송신 (BLE 경쟁 방지)
                     Toast.makeText(this, getString(R.string.inbox_receive_complite), Toast.LENGTH_LONG).show();
                     completeAutoReceive();
                     return;
@@ -2172,39 +2156,27 @@ public class MainActivity extends AppCompatActivity {
                         // 기존 일반 채팅 그대로
                         // ⭐ 단문 ACK: 받은 제목이 ~M:msgId 이고 단문 ACK ON이면 서버에 "받았다" ACK 송신.
                         //   서버가 릴레이 판단 → 원송신자에게 ~D:(VV) 전달. 제목은 화면표시용으로 정리.
-                        boolean dupShortAck = false;
                         if (title != null && title.startsWith("~M:")) {
                             try {
                                 int recvMsgId = Integer.parseInt(title.substring(3).trim());
-                                String dupKey = recvMsgId + "\u0001" + message;
-                                long now = System.currentTimeMillis();
-                                Long lastAt = mRecvShortAckDoneAt.get(dupKey);
-                                if (lastAt != null && (now - lastAt) < 600000L) {
-                                    dupShortAck = true;   // 같은 단문 본문 재수신(인박스 재독) -> 저장/ACK 스킵
-                                    android.util.Log.d("ACK", "중복 ~M: 무시 msgId=" + recvMsgId);
-                                } else {
-                                    mRecvShortAckDoneAt.put(dupKey, now);
-                                    boolean ackShortOn = android.preference.PreferenceManager
-                                            .getDefaultSharedPreferences(MainActivity.this)
-                                            .getBoolean("pref_ack_short", false);
-                                    if (ackShortOn && !mPendingServerAckIds.contains(recvMsgId)) {
-                                        mPendingServerAckIds.add(recvMsgId);   // 즉시 송신 금지: 배수 후 flush
-                                        android.util.Log.d("ACK", "단문 MT 수신 -> 서버 ACK 지연 큐 적재 msgId=" + recvMsgId);
-                                    }
+                                boolean ackShortOn = android.preference.PreferenceManager
+                                        .getDefaultSharedPreferences(MainActivity.this)
+                                        .getBoolean("pref_ack_short", false);
+                                if (ackShortOn) {
+                                    sendLargeMsgAck(codeNum, recvMsgId);   // 서버행 ~A: 송신 (범용 메서드 재사용)
+                                    android.util.Log.d("ACK", "단문 MT 수신 → 서버 ACK 송신 msgId=" + recvMsgId);
                                 }
                             } catch (Exception ex) {
                                 Log.e("ACK", "단문 ~M: 파싱 실패 title=" + title);
                             }
-                            title = "";
+                            title = "";   // ~M: 식별자는 사용자 화면에 안 보이게
                         }
-                        if (!dupShortAck) {
-                            MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
-                                    new Date(),
-                                    new Date(System.currentTimeMillis()),
-                                    new Date(System.currentTimeMillis()),
-                                    false, false, false);
-                            insertMsgWithDedupAndEcho(addMsg, codeNum, message);
-                        }
+                        MsgEntity addMsg = new MsgEntity(0, false, codeNum, title, message,
+                                new Date(),
+                                new Date(System.currentTimeMillis()),
+                                new Date(System.currentTimeMillis()),
+                                false, false, false);
+                        insertMsgWithDedupAndEcho(addMsg, codeNum, message);
                     }
                 }
 
