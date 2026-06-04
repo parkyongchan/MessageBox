@@ -131,6 +131,12 @@ public class MainActivity extends AppCompatActivity {
     private int mLastInboxCount = 0;
     // 단문 서버-ACK 지연 송신 큐 (인박스 배수 중 SENDING <-> RECEIVED=? BLE 경쟁 방지)
     private final java.util.ArrayList<Integer> mPendingServerAckIds = new java.util.ArrayList<>();
+    // [gap-fill 1-C] ~R: 재요청 지연 큐("msgId:seq") + 상한/쿨다운
+    private final java.util.ArrayList<String> mPendingGapReqs = new java.util.ArrayList<>();
+    private final java.util.HashMap<String, Integer> mGapReqCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
+    private final java.util.HashMap<String, Long> mGapReqLastAt = new java.util.HashMap<>();     // "msgId:seq" -> 마지막 시도 시각
+    private static final int  GAP_REQ_MAX_ATTEMPTS = 3;
+    private static final long GAP_REQ_COOLDOWN_MS = 30000;   // 같은 seq 30초 내 재요청 차단
     // 최근 저장한 (msgId+본문) -> 시각: 같은 단문 본문 재수신(인박스 재독) 차단
     private final java.util.HashMap<String, Long> mRecvShortAckDoneAt = new java.util.HashMap<>();
     private long mLastAutoReceiveTime = 0;
@@ -1497,6 +1503,84 @@ public class MainActivity extends AppCompatActivity {
             android.util.Log.d("ACK", "지연 서버 ACK flush msgId=" + id);
             sendLargeMsgAck("", id);
         }
+        // [gap-fill 1-C] 대기 중인 ~R: 재요청도 함께 flush (인박스 배수 후, ACK와 동일 타이밍)
+        if (!mPendingGapReqs.isEmpty()) {
+            java.util.ArrayList<String> reqs = new java.util.ArrayList<>(mPendingGapReqs);
+            mPendingGapReqs.clear();
+            for (String key : reqs) {
+                try {
+                    String[] kv = key.split(":");
+                    int rId = Integer.parseInt(kv[0]); int rSeq = Integer.parseInt(kv[1]);
+                    android.util.Log.d("GAP-FILL", "지연 ~R: flush " + key);
+                    sendGapFillRequest(rId, rSeq);
+                } catch (Exception ex) { Log.e("GAP-FILL", "flush 파싱 실패 key=" + key); }
+            }
+        }
+    }
+
+    // ============================================================
+    //  [gap-fill 1-C] ~R: 빠진 조각 재요청 송신 (서버행). sendLargeMsgAck 패턴 복제.
+    //    프레임: [0x07][addr=빈(서버행)][title="~R:msgId:seq"][memo=빈] + SENDING + 모뎀에코
+    //    상한/쿨다운은 호출 전(enqueueGapFillRequests)에서 거른다. 여기선 순수 송신.
+    // ============================================================
+    private void sendGapFillRequest(int msgId, int seq) {
+        try {
+            String reqTitle = "~R:" + msgId + ":" + seq;
+            ByteBuf buffer = Unpooled.buffer();
+            buffer.writeByte(0x07);
+            String addr = "";   // 서버행 (addrLen=0)
+            buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+            buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+            buffer.writeByte(reqTitle.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(reqTitle, StandardCharsets.UTF_8);
+            String memo = "";
+            buffer.writeByte(memo.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(memo, StandardCharsets.UTF_8);
+            byte[] body = new byte[buffer.readableBytes()];
+            buffer.readBytes(body);
+            // SENDING id: 600~ 대역 (ACK 500, 대용량송신 700~ 와 안 겹치게). 600 + seq.
+            int sendId = 600 + (seq & 0xFF);
+            String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(body, Base64.NO_WRAP));
+            android.util.Log.d("GAP-FILL", "~R: 송신 title=" + reqTitle + " sendId=" + sendId);
+            // 상한/쿨다운 기록 (실제 송신하는 시점)
+            String key = msgId + ":" + seq;
+            mGapReqCount.merge(key, 1, Integer::sum);
+            mGapReqLastAt.put(key, System.currentTimeMillis());
+            awaitAckEcho(sms, sendId, msgId);   // 검증된 에코 대기 재사용
+        } catch (Exception e) {
+            Log.e("GAP-FILL", "~R: 송신 실패 msgId=" + msgId + " seq=" + seq + " : " + e.getMessage());
+        }
+    }
+
+    /**
+     * [gap-fill 1-C] 버튼에서 호출. 빠진 seq들을 상한/쿨다운 거쳐 지연 큐에 적재.
+     * 자동 아님(수동 버튼만). 인박스 배수 후 flush 에서 실제 송신.
+     * @return 큐에 새로 적재된 개수 (0이면 상한/쿨다운으로 다 막힘)
+     */
+    public int enqueueGapFillRequests(int msgId) {
+        java.util.List<Integer> missing = getMissingSeqs(msgId);
+        if (missing.isEmpty()) return 0;
+        long now = System.currentTimeMillis();
+        int queued = 0;
+        for (int seq : missing) {
+            String key = msgId + ":" + seq;
+            int attempts = mGapReqCount.getOrDefault(key, 0);
+            if (attempts >= GAP_REQ_MAX_ATTEMPTS) {
+                android.util.Log.d("GAP-FILL", "상한 초과 skip " + key + " (" + attempts + ")");
+                continue;
+            }
+            Long last = mGapReqLastAt.get(key);
+            if (last != null && (now - last) < GAP_REQ_COOLDOWN_MS) {
+                android.util.Log.d("GAP-FILL", "쿨다운 skip " + key);
+                continue;
+            }
+            if (!mPendingGapReqs.contains(key)) {
+                mPendingGapReqs.add(key);   // 즉시 송신 금지: 인박스 배수 후 flush
+                queued++;
+                android.util.Log.d("GAP-FILL", "~R: 지연 큐 적재 " + key);
+            }
+        }
+        return queued;
     }
 
     private void sendLargeMsgAck(String recipientImei, int msgId) {

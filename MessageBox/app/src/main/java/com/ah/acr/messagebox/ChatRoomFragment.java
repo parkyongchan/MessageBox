@@ -173,8 +173,21 @@ public class ChatRoomFragment extends Fragment {
         mGapfillHandler.post(mGapfillTick);
         if (binding != null) {
             binding.btnGapfillResend.setOnClickListener(v -> {
-                android.widget.Toast.makeText(getContext(),
-                        "재요청 기능 준비 중 (msgId=" + mGapfillMsgId + ")", android.widget.Toast.LENGTH_SHORT).show();
+                if (mGapfillMsgId < 0 || !(getActivity() instanceof MainActivity)) return;
+                int queued = ((MainActivity) getActivity()).enqueueGapFillRequests(mGapfillMsgId);
+                if (queued > 0) {
+                    android.widget.Toast.makeText(getContext(),
+                            "빠진 조각 " + queued + "개 재요청 (수신함 비운 뒤 전송)",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                    if (binding != null) {
+                        binding.textGapfillInfo.setText("재요청 보냄 · 응답 대기 중");
+                        binding.btnGapfillResend.setVisibility(View.GONE);
+                    }
+                } else {
+                    android.widget.Toast.makeText(getContext(),
+                            "재요청 한도 도달 또는 쿨다운 중 — 잠시 후 다시 시도",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                }
             });
         }
         // ACK 설정이 다른 화면에서 바뀌었을 수 있으므로 제목칸 상태 재반영
