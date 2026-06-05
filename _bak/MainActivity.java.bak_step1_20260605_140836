@@ -1733,10 +1733,6 @@ public class MainActivity extends AppCompatActivity {
                         + " total=" + total
                         + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
 
-                // [Step1] 무결성(large) 설정 — ON일 때만 CRC 부착 (OFF면 기존 형식, 하위호환)
-                boolean _integrityOn = android.preference.PreferenceManager
-                        .getDefaultSharedPreferences(getApplicationContext())
-                        .getBoolean(AddrssBookFragment.PREF_INTEGRITY_LARGE, true);
                 // [2-B] 전체 본문 CRC32 (서버 LargeMessageService.crc32()와 동일: CRC32 + UTF-8 bytes)
                 long fullCrc;
                 {
@@ -1748,24 +1744,8 @@ public class MainActivity extends AppCompatActivity {
                 for (int seq = 0; seq < total; seq++) {
                     String body = parts.get(seq);
                     // [2-B] 첫 조각(seq=0)에만 CRC 부착: ~L:T:msgId:0:total:crc (나머지는 그대로)
-                    // [Step1] 조각 CRC(chunkCrc) 계산 + 제목 부착
-                    //   무결성 ON: seq0=~L:T:m:0:total:fullCrc:chunkCrc / seq>0=~L:T:m:seq:total::chunkCrc
-                    //   무결성 OFF: ~L:T:m:seq:total (기존, CRC 없음)
-                    String title;
-                    if (_integrityOn) {
-                        long chunkCrc;
-                        {
-                            java.util.zip.CRC32 _cc = new java.util.zip.CRC32();
-                            _cc.update(body.getBytes(StandardCharsets.UTF_8));
-                            chunkCrc = _cc.getValue();
-                        }
-                        title = "~L:T:" + msgId + ":" + seq + ":" + total
-                                + ":" + (seq == 0 ? String.valueOf(fullCrc) : "")
-                                + ":" + chunkCrc;
-                        android.util.Log.d("LARGE-MSG", "TX chunkCrc seq=" + seq + " crc=" + chunkCrc);
-                    } else {
-                        title = "~L:T:" + msgId + ":" + seq + ":" + total;
-                    }
+                    String title = "~L:T:" + msgId + ":" + seq + ":" + total
+                            + (seq == 0 ? (":" + fullCrc) : "");
 
                     ByteBuf buffer = Unpooled.buffer();
                     buffer.writeByte(0x07);
