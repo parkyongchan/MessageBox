@@ -1558,7 +1558,6 @@ public class MainActivity extends AppCompatActivity {
      * @return 큐에 새로 적재된 개수 (0이면 상한/쿨다운으로 다 막힘)
      */
     public int enqueueGapFillRequests(int msgId) {
-        android.util.Log.d("GAP-FILL", "enqueue 진입 msgId=" + msgId + " missing=" + getMissingSeqs(msgId) + " buf키=" + mLargeMsgBuf.keySet() + " total=" + mLargeMsgTotal + " done=" + mLargeMsgDoneAt.keySet());
         java.util.List<Integer> missing = getMissingSeqs(msgId);
         if (missing.isEmpty()) return 0;
         long now = System.currentTimeMillis();
@@ -1576,9 +1575,9 @@ public class MainActivity extends AppCompatActivity {
                 continue;
             }
             if (!mPendingGapReqs.contains(key)) {
-                sendGapFillRequest(msgId, seq);   // [A'] 즉시 송신 (지연큐 안 거침 — 버튼은 능동 액션, flush 트리거 불필요)
+                mPendingGapReqs.add(key);   // 즉시 송신 금지: 인박스 배수 후 flush
                 queued++;
-                android.util.Log.d("GAP-FILL", "~R: 즉시 송신 " + key);
+                android.util.Log.d("GAP-FILL", "~R: 지연 큐 적재 " + key);
             }
         }
         return queued;

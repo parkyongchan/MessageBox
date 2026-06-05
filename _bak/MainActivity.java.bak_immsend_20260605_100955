@@ -135,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.ArrayList<String> mPendingGapReqs = new java.util.ArrayList<>();
     private final java.util.HashMap<String, Integer> mGapReqCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
     private final java.util.HashMap<String, Long> mGapReqLastAt = new java.util.HashMap<>();     // "msgId:seq" -> 마지막 시도 시각
+    private boolean mDebugDropped = false;   // [임시 디버그] 인위적 누락 1회용 (테스트 후 제거)
     private static final int  GAP_REQ_MAX_ATTEMPTS = 3;
     private static final long GAP_REQ_COOLDOWN_MS = 30000;   // 같은 seq 30초 내 재요청 차단
     // 최근 저장한 (msgId+본문) -> 시각: 같은 단문 본문 재수신(인박스 재독) 차단
@@ -1576,9 +1577,9 @@ public class MainActivity extends AppCompatActivity {
                 continue;
             }
             if (!mPendingGapReqs.contains(key)) {
-                sendGapFillRequest(msgId, seq);   // [A'] 즉시 송신 (지연큐 안 거침 — 버튼은 능동 액션, flush 트리거 불필요)
+                mPendingGapReqs.add(key);   // 즉시 송신 금지: 인박스 배수 후 flush
                 queued++;
-                android.util.Log.d("GAP-FILL", "~R: 즉시 송신 " + key);
+                android.util.Log.d("GAP-FILL", "~R: 지연 큐 적재 " + key);
             }
         }
         return queued;
@@ -2197,6 +2198,13 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 // 새 메시지(또는 윈도우 지난 것) → 조각 쌓고 조립
                                 mLargeMsgDoneAt.remove(msgId);
+                                // [임시 디버그] seq==1 첫 수신 1회 무시 → 인위적 누락 (테스트 후 반드시 제거!)
+                                if (seq == 1 && !mDebugDropped) {
+                                    mDebugDropped = true;
+                                    android.util.Log.d("GAP-FILL", "[DEBUG] seq=1 인위적 누락 (1회) msgId=" + msgId);
+                                    BLE.INSTANCE.getWriteQueue().offer(String.format("RECEIVED=%s,OK", vals[0]));
+                                    return;
+                                }
                                 mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
                                 mLargeMsgTotal.put(msgId, total);
                                 mLargeMsgLastAt.put(msgId, System.currentTimeMillis());   // [gap-fill] 마지막 조각 시각
