@@ -446,9 +446,6 @@ public class AddrssBookFragment extends Fragment {
     public static final String PREF_ACK_LARGE = "pref_ack_large";
     public static final String PREF_ACK_PHOTO = "pref_ack_photo";
     public static final String PREF_ACK_FILE  = "pref_ack_file";
-    // Integrity (CRC) settings: short=optional, large=default ON, photo/file=forced ON
-    public static final String PREF_INTEGRITY_SHORT = "pref_integrity_short";
-    public static final String PREF_INTEGRITY_LARGE = "pref_integrity_large";
 
     private void showAckSettingsDialog() {
         android.content.SharedPreferences prefs =
@@ -459,19 +456,11 @@ public class AddrssBookFragment extends Fragment {
         androidx.appcompat.widget.SwitchCompat swLarge = v.findViewById(R.id.switch_ack_large);
         androidx.appcompat.widget.SwitchCompat swPhoto = v.findViewById(R.id.switch_ack_photo);
         androidx.appcompat.widget.SwitchCompat swFile  = v.findViewById(R.id.switch_ack_file);
-        androidx.appcompat.widget.SwitchCompat swIntShort = v.findViewById(R.id.switch_integrity_short);
-        androidx.appcompat.widget.SwitchCompat swIntLarge = v.findViewById(R.id.switch_integrity_large);
-        androidx.appcompat.widget.SwitchCompat swIntPhoto = v.findViewById(R.id.switch_integrity_photo);
-        androidx.appcompat.widget.SwitchCompat swIntFile  = v.findViewById(R.id.switch_integrity_file);
 
         swShort.setChecked(prefs.getBoolean(PREF_ACK_SHORT, false));
         swLarge.setChecked(prefs.getBoolean(PREF_ACK_LARGE, false));
         swPhoto.setChecked(prefs.getBoolean(PREF_ACK_PHOTO, false));
         swFile.setChecked(prefs.getBoolean(PREF_ACK_FILE, false));
-        swIntShort.setChecked(prefs.getBoolean(PREF_INTEGRITY_SHORT, false));   // short: optional, default OFF
-        swIntLarge.setChecked(prefs.getBoolean(PREF_INTEGRITY_LARGE, true));    // large: default ON
-        swIntPhoto.setChecked(true);   // photo: forced ON (disabled)
-        swIntFile.setChecked(true);    // file: forced ON (disabled)
 
         androidx.appcompat.app.AlertDialog dlg =
                 new androidx.appcompat.app.AlertDialog.Builder(requireContext())
@@ -485,8 +474,6 @@ public class AddrssBookFragment extends Fragment {
                     .putBoolean(PREF_ACK_LARGE, swLarge.isChecked())
                     .putBoolean(PREF_ACK_PHOTO, swPhoto.isChecked())
                     .putBoolean(PREF_ACK_FILE, swFile.isChecked())
-                    .putBoolean(PREF_INTEGRITY_SHORT, swIntShort.isChecked())
-                    .putBoolean(PREF_INTEGRITY_LARGE, swIntLarge.isChecked())
                     .apply();
             android.util.Log.w("ACK-CFG", "ACK \uc124\uc815 \uc800\uc7a5: short=" + swShort.isChecked()
                     + " large=" + swLarge.isChecked());
