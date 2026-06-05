@@ -69,7 +69,7 @@ public class ChatRoomFragment extends Fragment {
     // [gap-fill] 미완 대용량 배너 주기 갱신 (5초). 송신 없음 — 표시 전용.
     private final android.os.Handler mGapfillHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private int mGapfillMsgId = -1;   // 현재 배너가 가리키는 미완 msgId (1-C 재요청용)
-    private static final long GAPFILL_STALE_MS = 300000   /* 5분: 위성 감도지연 흡수 */;   // 마지막 조각 후 60초 지나면 "누락 의심"
+    private static final long GAPFILL_STALE_MS = 420000;   /* 7분: 위성 감도지연 흡수 */   // 마지막 조각 후 60초 지나면 "누락 의심"
     private final Runnable mGapfillTick = new Runnable() {
         @Override public void run() {
             updateGapfillBanner();
