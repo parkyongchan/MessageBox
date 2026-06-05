@@ -69,7 +69,7 @@ public class ChatRoomFragment extends Fragment {
     // [gap-fill] 미완 대용량 배너 주기 갱신 (5초). 송신 없음 — 표시 전용.
     private final android.os.Handler mGapfillHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private int mGapfillMsgId = -1;   // 현재 배너가 가리키는 미완 msgId (1-C 재요청용)
-    private static final long GAPFILL_STALE_MS = 60000;   // 마지막 조각 후 60초 지나면 "누락 의심"
+    private static final long GAPFILL_STALE_MS = 300000   /* 5분: 위성 감도지연 흡수 */;   // 마지막 조각 후 60초 지나면 "누락 의심"
     private final Runnable mGapfillTick = new Runnable() {
         @Override public void run() {
             updateGapfillBanner();
@@ -106,6 +106,10 @@ public class ChatRoomFragment extends Fragment {
 
     private void updateGapfillBanner() {
         if (binding == null || mCodeNum == null || mCodeNum.isEmpty()) return;
+        // [STALE] 내 대용량 송신 중이면 배너 억제 (위치정보는 무관, 자동 제외)
+        if (getActivity() instanceof MainActivity && ((MainActivity) getActivity()).isLargeSending()) {
+            binding.bannerGapfill.setVisibility(View.GONE); return;
+        }
         long[] info = null;
         try {
             if (getActivity() instanceof MainActivity) {
@@ -124,12 +128,12 @@ public class ChatRoomFragment extends Fragment {
         if (_mtLock != null && _mtLock > System.currentTimeMillis()) { binding.bannerGapfill.setVisibility(View.GONE); return; }   // [Step5] MT 잠금 중 숨김
         if (elapsed < GAPFILL_STALE_MS) {
             // 아직 받는 중 — 진행 표시만
-            binding.textGapfillInfo.setText("받는 중 " + received + "/" + total + " ...");
+            binding.textGapfillInfo.setText("Receiving: " + received + "/" + total + " ...");
             binding.btnGapfillResend.setVisibility(View.GONE);
             binding.bannerGapfill.setVisibility(View.VISIBLE);
         } else {
             int missing = total - received;
-            binding.textGapfillInfo.setText("일부 조각 누락: " + received + "/" + total + " (빠진 " + missing + "개)");
+            binding.textGapfillInfo.setText("Incomplete: " + received + "/" + total + " (" + missing + " missing)");
             binding.btnGapfillResend.setVisibility(View.VISIBLE);
             binding.bannerGapfill.setVisibility(View.VISIBLE);
         }

@@ -1588,6 +1588,7 @@ public class MainActivity extends AppCompatActivity {
     //   gap-fill(~R:)의 발신측 대칭. 수동 트리거(감도 보고)로 호출. 3회 상한.
     private final java.util.Map<String,Integer> mMoResendCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
     private final java.util.Map<Integer,java.util.List<Integer>> mPendingMoResend = new java.util.HashMap<>();   // [Step5] msgId -> 재송신 대기 seq들 (수동 트리거용)
+    private volatile int mLargeSendingCount = 0;   // [STALE] 대용량 송신 진행 중 카운트 (배너 억제용)
     private static final int MO_RESEND_MAX = 3;
 
     /** ~Q: 로 받은 seq들을 원본(mSentLargeMsg)에서 꺼내 재송신. 반환=실제 보낸 개수. */
@@ -1677,7 +1678,10 @@ public class MainActivity extends AppCompatActivity {
         if (seqs == null || seqs.isEmpty()) return 0;
         // [Step5] 수동 재송신은 상한 무시 (사용자 의지 우선). 자동 모드 때만 상한 적용 예정.
         for (int s : seqs) mMoResendCount.remove(msgId + ":" + s);
-        return sendMoResend(msgId, new java.util.ArrayList<>(seqs));
+        int sent = sendMoResend(msgId, new java.util.ArrayList<>(seqs));
+        // [fix] 재송신했으면 대기 해제. 재송신분이 또 깨지면 서버가 ~Q: 다시 보냄 → 그때 재기록.
+        if (sent > 0) { synchronized (mPendingMoResend) { mPendingMoResend.remove(msgId); } }
+        return sent;
     }
 
     /** MO 포기 (배너 [Discard]). 대기/원본 제거 → 재송신 안 함. */
@@ -1695,6 +1699,9 @@ public class MainActivity extends AppCompatActivity {
         mLargeMsgDoneAt.put(msgId, System.currentTimeMillis());   // 완료 표시로 재등장 차단
         android.util.Log.d("GAP-FILL", "포기(Discard) msgId=" + msgId);
     }
+
+    /** [STALE] 대용량 송신 진행 중? (배너 억제용 — 위치정보는 sendLargeMsg 무관하니 자동 제외) */
+    public boolean isLargeSending() { return mLargeSendingCount > 0; }
 
     private void sendLargeMsgAck(String recipientImei, int msgId) {
         try {
@@ -1841,6 +1848,7 @@ public class MainActivity extends AppCompatActivity {
                     msgViewModel.insert(sendingMsg);
                 });
 
+                mLargeSendingCount++;   // [STALE] 송신 시작
                 android.util.Log.d("LARGE-MSG", "TX large start msgId=" + msgId
                         + " total=" + total
                         + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
@@ -1908,6 +1916,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e("LARGE-MSG", "sendLargeMsg fail: " + e.getMessage(), e);
             }
+            finally { mLargeSendingCount--; }   // [STALE] 송신 종료(성공/실패/중단 모두)
         }, "large-send").start();
     }
 
@@ -2382,6 +2391,7 @@ public class MainActivity extends AppCompatActivity {
                                         + " to=" + to + " len=" + sentText.length());
                                 // 말풍선은 보낼 때 이미 생성됨 → 여기선 ✓(보냄)로 상태 업데이트만
                                 msgViewModel.markAckServerByContent(to, sentText);   // 대용량 ackState=1(V)
+                                synchronized (mPendingMoResend) { mPendingMoResend.remove(ackId); }   // [fix] 완성 → MO 재전송 대기 해제(배너 끔)
                             } else {
                                 msgViewModel.markAckByTitle("~M:" + ackId, 1);   // 단문 ackState=1(V)
                                 android.util.Log.d("ACK", "단문 ~A:" + ackId + " → ackState=1");
