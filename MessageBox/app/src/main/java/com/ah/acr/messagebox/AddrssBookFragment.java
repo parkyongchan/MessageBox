@@ -449,6 +449,15 @@ public class AddrssBookFragment extends Fragment {
     // Integrity (CRC) settings: short=optional, large=default ON, photo/file=forced ON
     public static final String PREF_INTEGRITY_SHORT = "pref_integrity_short";
     public static final String PREF_INTEGRITY_LARGE = "pref_integrity_large";
+    // Resend mode: auto(자동 재시도)/manual(배너 수동), 자동 주기(분)
+    public static final String PREF_RESEND_AUTO = "pref_resend_auto";
+    public static final String PREF_RESEND_INTERVAL = "pref_resend_interval";
+
+    /** 자동 주기 입력 파싱 — 빈값/오류/범위밖이면 10분 기본. */
+    private static int parseIntervalOr10(String s) {
+        try { int v = Integer.parseInt(s.trim()); return (v >= 1 && v <= 120) ? v : 10; }
+        catch (Exception e) { return 10; }
+    }
 
     private void showAckSettingsDialog() {
         android.content.SharedPreferences prefs =
@@ -463,6 +472,8 @@ public class AddrssBookFragment extends Fragment {
         androidx.appcompat.widget.SwitchCompat swIntLarge = v.findViewById(R.id.switch_integrity_large);
         androidx.appcompat.widget.SwitchCompat swIntPhoto = v.findViewById(R.id.switch_integrity_photo);
         androidx.appcompat.widget.SwitchCompat swIntFile  = v.findViewById(R.id.switch_integrity_file);
+        androidx.appcompat.widget.SwitchCompat swResendAuto = v.findViewById(R.id.switch_resend_auto);
+        android.widget.EditText editResendInterval = v.findViewById(R.id.edit_resend_interval);
 
         swShort.setChecked(prefs.getBoolean(PREF_ACK_SHORT, false));
         swLarge.setChecked(prefs.getBoolean(PREF_ACK_LARGE, false));
@@ -472,6 +483,8 @@ public class AddrssBookFragment extends Fragment {
         swIntLarge.setChecked(prefs.getBoolean(PREF_INTEGRITY_LARGE, true));    // large: default ON
         swIntPhoto.setChecked(true);   // photo: forced ON (disabled)
         swIntFile.setChecked(true);    // file: forced ON (disabled)
+        swResendAuto.setChecked(prefs.getBoolean(PREF_RESEND_AUTO, false));   // 기본 OFF=수동
+        editResendInterval.setText(String.valueOf(prefs.getInt(PREF_RESEND_INTERVAL, 10)));
 
         androidx.appcompat.app.AlertDialog dlg =
                 new androidx.appcompat.app.AlertDialog.Builder(requireContext())
@@ -487,6 +500,8 @@ public class AddrssBookFragment extends Fragment {
                     .putBoolean(PREF_ACK_FILE, swFile.isChecked())
                     .putBoolean(PREF_INTEGRITY_SHORT, swIntShort.isChecked())
                     .putBoolean(PREF_INTEGRITY_LARGE, swIntLarge.isChecked())
+                    .putBoolean(PREF_RESEND_AUTO, swResendAuto.isChecked())
+                    .putInt(PREF_RESEND_INTERVAL, parseIntervalOr10(editResendInterval.getText().toString()))
                     .apply();
             android.util.Log.w("ACK-CFG", "ACK \uc124\uc815 \uc800\uc7a5: short=" + swShort.isChecked()
                     + " large=" + swLarge.isChecked());
