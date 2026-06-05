@@ -1584,69 +1584,6 @@ public class MainActivity extends AppCompatActivity {
         return queued;
     }
 
-    // ═══ [Step4] MO 재송신: 서버 ~Q:msgId:seq들 받으면 원본에서 그 조각만 다시 보냄 ═══
-    //   gap-fill(~R:)의 발신측 대칭. 수동 트리거(감도 보고)로 호출. 3회 상한.
-    private final java.util.Map<String,Integer> mMoResendCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
-    private static final int MO_RESEND_MAX = 3;
-
-    /** ~Q: 로 받은 seq들을 원본(mSentLargeMsg)에서 꺼내 재송신. 반환=실제 보낸 개수. */
-    private int sendMoResend(final int msgId, final java.util.List<Integer> seqs) {
-        final String fullText;
-        final String recipientImei;
-        synchronized (mSentLargeMsg) {
-            fullText = mSentLargeMsg.get(msgId);
-            recipientImei = mSentLargeMsgTo.get(msgId);
-        }
-        if (fullText == null) {
-            android.util.Log.w("MO-RESEND", "원본 없음 msgId=" + msgId + " (이미 완료/만료?)");
-            return 0;
-        }
-        final java.util.List<String> parts = splitUtf8(fullText, 200);
-        final int total = parts.size();
-        final java.util.List<Integer> todo = new java.util.ArrayList<>();
-        for (int seq : seqs) {
-            if (seq < 0 || seq >= total) continue;
-            String key = msgId + ":" + seq;
-            int cnt = mMoResendCount.getOrDefault(key, 0);
-            if (cnt >= MO_RESEND_MAX) { android.util.Log.d("MO-RESEND", "상한 초과 skip " + key); continue; }
-            todo.add(seq);
-        }
-        if (todo.isEmpty()) return 0;
-        // 전체 CRC (seq0 재송신 시 필요)
-        final long fullCrc;
-        { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(fullText.getBytes(StandardCharsets.UTF_8)); fullCrc = c.getValue(); }
-        new Thread(() -> {
-            for (int seq : todo) {
-                String body = parts.get(seq);
-                long chunkCrc;
-                { java.util.zip.CRC32 cc = new java.util.zip.CRC32(); cc.update(body.getBytes(StandardCharsets.UTF_8)); chunkCrc = cc.getValue(); }
-                String title = "~L:T:" + msgId + ":" + seq + ":" + total
-                        + ":" + (seq == 0 ? String.valueOf(fullCrc) : "") + ":" + chunkCrc;
-                io.netty.buffer.ByteBuf buf = io.netty.buffer.Unpooled.buffer();
-                buf.writeByte(0x07);
-                String addr = (recipientImei == null) ? "" : recipientImei;
-                buf.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
-                buf.writeCharSequence(addr, StandardCharsets.US_ASCII);
-                buf.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
-                buf.writeCharSequence(title, StandardCharsets.UTF_8);
-                buf.writeByte(body.getBytes(StandardCharsets.UTF_8).length);
-                buf.writeCharSequence(body, StandardCharsets.UTF_8);
-                byte[] frame = new byte[buf.readableBytes()]; buf.readBytes(frame);
-                int sendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
-                String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
-                boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
-                if (ok) {
-                    String key = msgId + ":" + seq;
-                    mMoResendCount.merge(key, 1, Integer::sum);
-                    android.util.Log.d("MO-RESEND", "재송신 OK seq=" + seq + " (시도 " + mMoResendCount.get(key) + ")");
-                } else {
-                    android.util.Log.e("MO-RESEND", "재송신 모뎀거부 seq=" + seq);
-                }
-            }
-        }, "mo-resend").start();
-        return todo.size();
-    }
-
     private void sendLargeMsgAck(String recipientImei, int msgId) {
         try {
             String ackTitle = "~A:" + msgId;
@@ -2339,30 +2276,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
-                        }
-                    } else if (title.startsWith("~Q:")) {
-                        // [Step4] 서버가 "이 조각 깨졌/빠졌으니 다시 보내" → 원본에서 그 seq 재송신
-                        try {
-                            String rest = title.substring(3);          // "msgId:seq들" or "msgId:OK"
-                            int colon = rest.indexOf(':');
-                            int qMsgId = Integer.parseInt(rest.substring(0, colon).trim());
-                            String seqPart = rest.substring(colon + 1).trim();
-                            if ("OK".equalsIgnoreCase(seqPart)) {
-                                android.util.Log.d("MO-RESEND", "~Q:OK msgId=" + qMsgId + " -> 전송 완료(보낼 것 없음)");
-                                // TODO Step5: 배너 끄고 완료 표시
-                            } else {
-                                java.util.List<Integer> seqs = new java.util.ArrayList<>();
-                                for (String s : seqPart.split(",")) {
-                                    s = s.trim();
-                                    if (!s.isEmpty()) seqs.add(Integer.parseInt(s));
-                                }
-                                android.util.Log.d("MO-RESEND", "~Q: 수신 msgId=" + qMsgId + " seqs=" + seqs);
-                                // [임시 테스트] 수신 즉시 재송신 (Step5에서 수동 버튼으로 교체 예정)
-                                int n = sendMoResend(qMsgId, seqs);
-                                android.util.Log.d("MO-RESEND", "~Q: -> 재송신 시작 " + n + "개");
-                            }
-                        } catch (Exception ex) {
-                            Log.e("MO-RESEND", "~Q: 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
                     } else if (title.startsWith("~D:")) {
                         // 서버가 보낸 "상대 전달 완료" → 내가 보낸 그 메시지를 "전달됨 ✓✓"로 표시

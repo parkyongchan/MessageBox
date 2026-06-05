@@ -2340,30 +2340,6 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "~A: 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
-                    } else if (title.startsWith("~Q:")) {
-                        // [Step4] 서버가 "이 조각 깨졌/빠졌으니 다시 보내" → 원본에서 그 seq 재송신
-                        try {
-                            String rest = title.substring(3);          // "msgId:seq들" or "msgId:OK"
-                            int colon = rest.indexOf(':');
-                            int qMsgId = Integer.parseInt(rest.substring(0, colon).trim());
-                            String seqPart = rest.substring(colon + 1).trim();
-                            if ("OK".equalsIgnoreCase(seqPart)) {
-                                android.util.Log.d("MO-RESEND", "~Q:OK msgId=" + qMsgId + " -> 전송 완료(보낼 것 없음)");
-                                // TODO Step5: 배너 끄고 완료 표시
-                            } else {
-                                java.util.List<Integer> seqs = new java.util.ArrayList<>();
-                                for (String s : seqPart.split(",")) {
-                                    s = s.trim();
-                                    if (!s.isEmpty()) seqs.add(Integer.parseInt(s));
-                                }
-                                android.util.Log.d("MO-RESEND", "~Q: 수신 msgId=" + qMsgId + " seqs=" + seqs);
-                                // [임시 테스트] 수신 즉시 재송신 (Step5에서 수동 버튼으로 교체 예정)
-                                int n = sendMoResend(qMsgId, seqs);
-                                android.util.Log.d("MO-RESEND", "~Q: -> 재송신 시작 " + n + "개");
-                            }
-                        } catch (Exception ex) {
-                            Log.e("MO-RESEND", "~Q: 파싱 실패 title=" + title + " : " + ex.getMessage());
-                        }
                     } else if (title.startsWith("~D:")) {
                         // 서버가 보낸 "상대 전달 완료" → 내가 보낸 그 메시지를 "전달됨 ✓✓"로 표시
                         try {
