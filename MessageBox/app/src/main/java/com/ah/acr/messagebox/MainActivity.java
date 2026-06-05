@@ -1587,6 +1587,7 @@ public class MainActivity extends AppCompatActivity {
     // ═══ [Step4] MO 재송신: 서버 ~Q:msgId:seq들 받으면 원본에서 그 조각만 다시 보냄 ═══
     //   gap-fill(~R:)의 발신측 대칭. 수동 트리거(감도 보고)로 호출. 3회 상한.
     private final java.util.Map<String,Integer> mMoResendCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
+    private final java.util.Map<Integer,java.util.List<Integer>> mPendingMoResend = new java.util.HashMap<>();   // [Step5] msgId -> 재송신 대기 seq들 (수동 트리거용)
     private static final int MO_RESEND_MAX = 3;
 
     /** ~Q: 로 받은 seq들을 원본(mSentLargeMsg)에서 꺼내 재송신. 반환=실제 보낸 개수. */
@@ -1645,6 +1646,54 @@ public class MainActivity extends AppCompatActivity {
             }
         }, "mo-resend").start();
         return todo.size();
+    }
+
+    // ═══ [Step5] MO/MT 배너용 헬퍼 (Fragment 호출) ═══
+    /** MO 재송신 대기 상태 조회 → [msgId, 빠진개수, total] or null. */
+    public int[] getPendingMoResend(String recipientImei) {
+        synchronized (mPendingMoResend) {
+            for (java.util.Map.Entry<Integer,java.util.List<Integer>> e : mPendingMoResend.entrySet()) {
+                int msgId = e.getKey();
+                String to;
+                synchronized (mSentLargeMsg) { to = mSentLargeMsgTo.get(msgId); }
+                String toNorm = (to == null || to.isEmpty()) ? "" : to;
+                String reqNorm = (recipientImei == null) ? "" : recipientImei;
+                if (!toNorm.equals(reqNorm)) continue;   // 이 채팅방 대상만
+                String full;
+                synchronized (mSentLargeMsg) { full = mSentLargeMsg.get(msgId); }
+                if (full == null) continue;
+                int total = splitUtf8(full, 200).size();
+                int missing = e.getValue().size();
+                return new int[]{ msgId, missing, total };
+            }
+        }
+        return null;
+    }
+
+    /** MO 재송신 수동 트리거 (배너 [Resend]). 대기 seq들 재송신. */
+    public int triggerMoResend(int msgId) {
+        java.util.List<Integer> seqs;
+        synchronized (mPendingMoResend) { seqs = mPendingMoResend.get(msgId); }
+        if (seqs == null || seqs.isEmpty()) return 0;
+        // [Step5] 수동 재송신은 상한 무시 (사용자 의지 우선). 자동 모드 때만 상한 적용 예정.
+        for (int s : seqs) mMoResendCount.remove(msgId + ":" + s);
+        return sendMoResend(msgId, new java.util.ArrayList<>(seqs));
+    }
+
+    /** MO 포기 (배너 [Discard]). 대기/원본 제거 → 재송신 안 함. */
+    public void discardMoResend(int msgId) {
+        synchronized (mPendingMoResend) { mPendingMoResend.remove(msgId); }
+        synchronized (mSentLargeMsg) { mSentLargeMsg.remove(msgId); mSentLargeMsgTo.remove(msgId); }
+        android.util.Log.d("MO-RESEND", "포기(Discard) msgId=" + msgId);
+    }
+
+    /** MT gap-fill 포기 (배너 [Discard]). 미완 버퍼 비움 → 재요청 안 함. */
+    public void discardGapfill(int msgId) {
+        mLargeMsgBuf.remove(msgId);
+        mLargeMsgTotal.remove(msgId);
+        mLargeMsgLastAt.remove(msgId);
+        mLargeMsgDoneAt.put(msgId, System.currentTimeMillis());   // 완료 표시로 재등장 차단
+        android.util.Log.d("GAP-FILL", "포기(Discard) msgId=" + msgId);
     }
 
     private void sendLargeMsgAck(String recipientImei, int msgId) {
@@ -2358,8 +2407,8 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 android.util.Log.d("MO-RESEND", "~Q: 수신 msgId=" + qMsgId + " seqs=" + seqs);
                                 // [임시 테스트] 수신 즉시 재송신 (Step5에서 수동 버튼으로 교체 예정)
-                                int n = sendMoResend(qMsgId, seqs);
-                                android.util.Log.d("MO-RESEND", "~Q: -> 재송신 시작 " + n + "개");
+                                // [Step5] 자동 X → 대기 기록만. 사용자가 배너 [다시 보내기] 눌러야 실제 재송신 (수동, 감도 보고)
+                                synchronized (mPendingMoResend) { mPendingMoResend.put(qMsgId, seqs); }
                             }
                         } catch (Exception ex) {
                             Log.e("MO-RESEND", "~Q: 파싱 실패 title=" + title + " : " + ex.getMessage());

@@ -73,9 +73,36 @@ public class ChatRoomFragment extends Fragment {
     private final Runnable mGapfillTick = new Runnable() {
         @Override public void run() {
             updateGapfillBanner();
+            updateMoresendBanner();
             mGapfillHandler.postDelayed(this, 5000);
         }
     };
+
+    private int mMoresendMsgId = -1;
+    private final java.util.Map<Integer,Long> mBannerLockUntil = new java.util.HashMap<>();   // msgId -> 잠금 해제시각
+    private static final long BANNER_LOCK_MS = 60000;   // [Step5] 재송신/재요청 클릭 후 60초 배너 잠금
+
+    /** [Step5] MO 재송신 대기 배너 갱신. 잠금 중이면 숨김. */
+    private void updateMoresendBanner() {
+        if (binding == null || !(getActivity() instanceof MainActivity)) return;
+        int[] info = null;
+        try { info = ((MainActivity) getActivity()).getPendingMoResend(mCodeNum); } catch (Exception e) { /* ignore */ }
+        if (info == null) {
+            mMoresendMsgId = -1;
+            binding.bannerMoresend.setVisibility(View.GONE);
+            return;
+        }
+        int msgId = info[0], missing = info[1], total = info[2];
+        // 잠금 체크
+        Long lock = mBannerLockUntil.get(msgId);
+        if (lock != null && lock > System.currentTimeMillis()) {
+            binding.bannerMoresend.setVisibility(View.GONE);   // 잠금 중 — 숨김
+            return;
+        }
+        mMoresendMsgId = msgId;
+        binding.textMoresendInfo.setText("Send incomplete: " + (total - missing) + "/" + total + " (" + missing + " need resend)");
+        binding.bannerMoresend.setVisibility(View.VISIBLE);
+    }
 
     private void updateGapfillBanner() {
         if (binding == null || mCodeNum == null || mCodeNum.isEmpty()) return;
@@ -93,6 +120,8 @@ public class ChatRoomFragment extends Fragment {
         int msgId = (int) info[0]; int received = (int) info[1];
         int total = (int) info[2]; long elapsed = info[3];
         mGapfillMsgId = msgId;
+        Long _mtLock = mBannerLockUntil.get(msgId);
+        if (_mtLock != null && _mtLock > System.currentTimeMillis()) { binding.bannerGapfill.setVisibility(View.GONE); return; }   // [Step5] MT 잠금 중 숨김
         if (elapsed < GAPFILL_STALE_MS) {
             // 아직 받는 중 — 진행 표시만
             binding.textGapfillInfo.setText("받는 중 " + received + "/" + total + " ...");
@@ -172,22 +201,41 @@ public class ChatRoomFragment extends Fragment {
         mGapfillHandler.removeCallbacks(mGapfillTick);
         mGapfillHandler.post(mGapfillTick);
         if (binding != null) {
+            // ─── MT gap-fill: Resend (60초 잠금) ───
             binding.btnGapfillResend.setOnClickListener(v -> {
                 if (mGapfillMsgId < 0 || !(getActivity() instanceof MainActivity)) return;
                 int queued = ((MainActivity) getActivity()).enqueueGapFillRequests(mGapfillMsgId);
                 if (queued > 0) {
-                    android.widget.Toast.makeText(getContext(),
-                            "빠진 조각 " + queued + "개 재요청 (수신함 비운 뒤 전송)",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                    if (binding != null) {
-                        binding.textGapfillInfo.setText("재요청 보냄 · 응답 대기 중");
-                        binding.btnGapfillResend.setVisibility(View.GONE);
-                    }
+                    mBannerLockUntil.put(mGapfillMsgId, System.currentTimeMillis() + BANNER_LOCK_MS);
+                    binding.bannerGapfill.setVisibility(View.GONE);
+                    android.widget.Toast.makeText(getContext(), "Re-requesting " + queued + " chunk(s)", android.widget.Toast.LENGTH_SHORT).show();
                 } else {
-                    android.widget.Toast.makeText(getContext(),
-                            "재요청 한도 도달 또는 쿨다운 중 — 잠시 후 다시 시도",
-                            android.widget.Toast.LENGTH_SHORT).show();
+                    android.widget.Toast.makeText(getContext(), "Nothing to re-request", android.widget.Toast.LENGTH_SHORT).show();
                 }
+            });
+            // ─── MT gap-fill: Discard (포기) ───
+            binding.btnGapfillDiscard.setOnClickListener(v -> {
+                if (mGapfillMsgId >= 0 && getActivity() instanceof MainActivity)
+                    ((MainActivity) getActivity()).discardGapfill(mGapfillMsgId);
+                binding.bannerGapfill.setVisibility(View.GONE);
+            });
+            // ─── MO resend: Resend (60초 잠금) ───
+            binding.btnMoresendResend.setOnClickListener(v -> {
+                if (mMoresendMsgId < 0 || !(getActivity() instanceof MainActivity)) return;
+                int n = ((MainActivity) getActivity()).triggerMoResend(mMoresendMsgId);
+                if (n > 0) {
+                    mBannerLockUntil.put(mMoresendMsgId, System.currentTimeMillis() + BANNER_LOCK_MS);
+                    binding.bannerMoresend.setVisibility(View.GONE);
+                    android.widget.Toast.makeText(getContext(), "Resending " + n + " chunk(s)", android.widget.Toast.LENGTH_SHORT).show();
+                } else {
+                    android.widget.Toast.makeText(getContext(), "Nothing to resend", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+            // ─── MO resend: Discard (포기) ───
+            binding.btnMoresendDiscard.setOnClickListener(v -> {
+                if (mMoresendMsgId >= 0 && getActivity() instanceof MainActivity)
+                    ((MainActivity) getActivity()).discardMoResend(mMoresendMsgId);
+                binding.bannerMoresend.setVisibility(View.GONE);
             });
         }
         // ACK 설정이 다른 화면에서 바뀌었을 수 있으므로 제목칸 상태 재반영

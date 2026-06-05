@@ -176,6 +176,77 @@
             android:paddingEnd="14dp"
             android:paddingTop="6dp"
             android:paddingBottom="6dp" />
+
+        <TextView
+            android:id="@+id/btn_gapfill_discard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Discard"
+            android:textColor="#FFD37A"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="@android:color/transparent"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+    </LinearLayout>
+
+    <!-- MO resend banner (보내기 실패 재송신) -->
+    <LinearLayout
+        android:id="@+id/banner_moresend"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D2A3A"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/banner_gapfill"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/text_moresend_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#7AC8FF"
+            android:textSize="13sp"
+            android:text="" />
+
+        <TextView
+            android:id="@+id/btn_moresend_resend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Resend"
+            android:textColor="#0A1628"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="#7AC8FF"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+        <TextView
+            android:id="@+id/btn_moresend_discard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Discard"
+            android:textColor="#7AC8FF"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="@android:color/transparent"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -187,7 +258,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/banner_gapfill"
+        app:layout_constraintTop_toBottomOf="@id/banner_moresend"
         app:layout_constraintBottom_toTopOf="@id/chat_divider"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
