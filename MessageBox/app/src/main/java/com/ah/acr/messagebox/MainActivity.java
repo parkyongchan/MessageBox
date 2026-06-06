@@ -127,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
     private static final long BROAD_TIMEOUT_MS = 15000;
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
-    private static final long INBOX_FAST_SYNC_MS = 3000;   // [inboxFastSync] inbox>0이면 빠른 BROAD 폴링 (BLE 로컬, 위성비용 0)
 
     private boolean mIsAutoReceiving = false;
     private int mLastInboxCount = 0;
@@ -820,8 +819,7 @@ public class MainActivity extends AppCompatActivity {
                 BLE.INSTANCE.getWriteQueue().offer("BROAD=5");
             }
 
-            // [inboxFastSync] inbox 남았으면 3초, 비면 30초
-            mSyncHandler.postDelayed(this, mLastInboxCount > 0 ? INBOX_FAST_SYNC_MS : PERIODIC_SYNC_MS);
+            mSyncHandler.postDelayed(this, PERIODIC_SYNC_MS);
         }
     };
 
