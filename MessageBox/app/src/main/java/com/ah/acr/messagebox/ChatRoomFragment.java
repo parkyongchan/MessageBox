@@ -877,22 +877,9 @@ public class ChatRoomFragment extends Fragment {
                     break;
                 }
 
-                BleManager.getInstance().write(
-                        bleDevice,
-                        SERVICE_UUID.toString(),
-                        characteristic.getUuid().toString(),
-                        sendMsg.getBytes(),
-                        new BleWriteCallback() {
-                            @Override
-                            public void onWriteSuccess(int current, int total, byte[] justWrite) {
-                                handler.post(() ->
-                                        Log.v("WRITE", "success curr=" + current + " total=" + total));
-                            }
-                            @Override
-                            public void onWriteFailure(BleException exception) {
-                                handler.post(() -> Log.e("WRITE", "failure: " + exception));
-                            }
-                        });
+                // [bleFix-serialQueue] 직접 GATT write 제거 → Service 직렬 큐로 통일 (SENDING/RECV 동시쓰기 충돌 방지)
+                //   완료 동기화는 기존 SENDING=id,OK 에코(lock.notifyAll)로 유지. Service가 Base64 인코딩하므로 원문(msg) 전달.
+                BLE.INSTANCE.getWriteQueue().offer(msg);
 
                 synchronized (lock) {
                     try {
