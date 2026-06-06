@@ -1976,6 +1976,8 @@ public class MainActivity extends AppCompatActivity {
                     fullCrc = _crc.getValue();
                 }
                 android.util.Log.d("LARGE-MSG", "TX crc=" + fullCrc + " msgId=" + msgId);
+                // [txGapFix2] 첫 조각 전 큐 배수 여유 (seq0이 직전 BROAD/상태 송신과 겹쳐 echo 타임아웃 나는 것 방지)
+                try { Thread.sleep(1500); } catch (InterruptedException _ie2) { Thread.currentThread().interrupt(); }
                 for (int seq = 0; seq < total; seq++) {
                     String body = parts.get(seq);
                     // [2-B] 첫 조각(seq=0)에만 CRC 부착: ~L:T:msgId:0:total:crc (나머지는 그대로)
@@ -2442,7 +2444,7 @@ public class MainActivity extends AppCompatActivity {
                             // ⭐ 무한 재수신 차단: 최근 완성된 msgId의 조각이 또 오면 무시
                             Long doneAt = mLargeMsgDoneAt.get(msgId);
                             if (doneAt != null
-                                    && System.currentTimeMillis() - doneAt < LARGE_MSG_DONE_WINDOW_MS) {
+                                    ) {   // [doneFix5] 완성된 msgId는 윈도우 무관 영구 무시 (위성 지연으로 10분 후 중복조각 와도 부활 안 함)
                                 // 이미 완성된 msgId의 중복 조각 → 무시 (재조립/재송신 안 함)
                                 android.util.Log.d("LARGE-MSG", "이미 완성된 msgId=" + msgId
                                         + " 중복 조각(seq=" + seq + ") 무시");
