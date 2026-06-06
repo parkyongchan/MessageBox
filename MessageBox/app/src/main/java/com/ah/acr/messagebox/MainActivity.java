@@ -2014,6 +2014,13 @@ public class MainActivity extends AppCompatActivity {
                         android.util.Log.d("GAP-FILL", "[batch] 보낼 seq 없음(상한/쿨다운) - 종료 msgId=" + msgId);
                         break;
                     }
+                    // [outboxGuard] 이전 ~R:이 아직 위성에 못 나갔으면(outbox>0) 새로 안 보냄(쌓임 방지). 모뎀 outbox에 ~R: 1개만 유지 → 감도 회복 시 최신 1개만 발신.
+                    com.ah.acr.messagebox.data.DeviceStatus _st = mBleViewModel.getDeviceStatus().getValue();
+                    int _outbox = (_st != null) ? _st.getOutBox() : 0;
+                    if (_outbox > 0) {
+                        android.util.Log.d("GAP-FILL", "[batch] outbox \uC801\uCCB4(" + _outbox + ") - \uC774\uC804 \uC1A1\uC2E0\uBB3C \uBBF8\uBC1C\uC2E0, \uC774\uBC88 \uC8FC\uAE30 skip(\uC30C\uC784\uBC29\uC9C0). \uB2E4\uC74C \uD2F1\uC5D0 \uCD5C\uC2E0 \uB204\uB77D \uC7AC\uACC4\uC0B0.");
+                        break;
+                    }
                     boolean ok = sendGapFillBatchRequest(msgId, sb.toString(), toSend);
                     if (!ok) {
                         android.util.Log.d("GAP-FILL", "[batch] 에코 실패 - 중단(다음 틱 재시도) msgId=" + msgId + " seqs=" + toSend);
@@ -2232,6 +2239,11 @@ public class MainActivity extends AppCompatActivity {
                     if (!ok) {
                         Log.e("LARGE-MSG", "chunk modem reject msgId=" + msgId
                                 + " seq=" + seq + " - abort");
+                        // [abortNotify] MO는 수동 일괄송신 — 감도 불량으로 조각 송신 실패 시 자동복구 경로 없음(~Q:는 서버 도착분 한정). 깨끗이 취소하고 사용자에게 재전송 안내. 원본(mSentLargeMsg)은 유지(서버 도착분 ~Q: 대응 가능).
+                        final int _abSeq = seq; final int _abMsgId = msgId;
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                            "\u26A0 \uC804\uC1A1 \uC2E4\uD328(\uC2E0\uD638 \uBD88\uB7C9, \uC870\uAC01 " + _abSeq + "). \uC2E0\uD638 \uC591\uD638 \uC2DC \uB2E4\uC2DC \uC804\uC1A1\uD558\uC138\uC694.",
+                            Toast.LENGTH_LONG).show());
                         return;
                     }
                 }
