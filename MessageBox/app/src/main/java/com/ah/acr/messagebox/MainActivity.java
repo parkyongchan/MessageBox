@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
     // 대용량 메시지 조립 버퍼: chunkMsgId → (seq → memo조각)
     private final java.util.Map<Integer, java.util.TreeMap<Integer, String>> mLargeMsgBuf = new java.util.HashMap<>();
     private final java.util.Map<Integer, Integer> mLargeMsgTotal = new java.util.HashMap<>();
+    private final java.util.Map<Integer,Long> mLargeMsgCrc = new java.util.HashMap<>();   // [MT-idFix] msgId -> seq0 fullCrc (옛 버퍼 구분용)
     private final java.util.Map<Integer, String> mLargeMsgSender = new java.util.HashMap<>();
     // ⭐ 완성된 msgId의 완료 시각(중복 조각 재수신 차단용, 윈도우 지나면 새 메시지로 취급)
     private final java.util.Map<Integer, Long> mLargeMsgDoneAt = new java.util.HashMap<>();
@@ -1588,6 +1589,8 @@ public class MainActivity extends AppCompatActivity {
     //   gap-fill(~R:)의 발신측 대칭. 수동 트리거(감도 보고)로 호출. 3회 상한.
     private final java.util.Map<String,Integer> mMoResendCount = new java.util.HashMap<>();   // "msgId:seq" -> 시도횟수
     private final java.util.Map<Integer,java.util.List<Integer>> mPendingMoResend = new java.util.HashMap<>();   // [Step5] msgId -> 재송신 대기 seq들 (수동 트리거용)
+    private final java.util.Map<Integer,Long> mMoResendAt = new java.util.HashMap<>();   // [MO7min] ~Q: 받은 시각 (7분 지연용)
+    public static final long MO_STALE_MS = 420000;   // [MO7min] ~Q: 후 7분 지나야 배너 (상행 감도 회복 대기)
     private volatile int mLargeSendingCount = 0;   // [STALE] 대용량 송신 진행 중 카운트 (배너 억제용)
     private static final int MO_RESEND_MAX = 3;
 
@@ -1665,7 +1668,11 @@ public class MainActivity extends AppCompatActivity {
                 if (full == null) continue;
                 int total = splitUtf8(full, 200).size();
                 int missing = e.getValue().size();
-                return new int[]{ msgId, missing, total };
+                Long atL = mMoResendAt.get(msgId);
+                long at = (atL == null) ? 0L : atL;
+                long elapsed = System.currentTimeMillis() - at;
+                if (elapsed < MO_STALE_MS) continue;   // [MO7min] 7분 안 — 아직 배너 X (상행 감도 회복 대기)
+                return new int[]{ msgId, missing, total, (int) elapsed };
             }
         }
         return null;
@@ -1702,6 +1709,100 @@ public class MainActivity extends AppCompatActivity {
 
     /** [STALE] 대용량 송신 진행 중? (배너 억제용 — 위치정보는 sendLargeMsg 무관하니 자동 제외) */
     public boolean isLargeSending() { return mLargeSendingCount > 0; }
+
+    // ═══ [Step2-auto] 자동 재시도 인프라 ═══
+    private final android.os.Handler mAutoHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final java.util.Map<Integer,Integer> mAutoMoCount = new java.util.HashMap<>();   // msgId -> 자동 재송신 횟수
+    public static final int AUTO_RESEND_MAX = 3;            // 자동 3회 상한
+    public static final long AUTO_INTERVAL_DEFAULT_MS = 600000;   // 기본 10분
+
+    /** 설정된 자동 주기(ms). pref 분 단위 → ms. */
+    public long getAutoIntervalMs() {
+        int min = android.preference.PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .getInt(AddrssBookFragment.PREF_RESEND_INTERVAL, 10);
+        if (min < 1 || min > 120) min = 10;
+        return (long) min * 60000L;
+    }
+
+    /** 자동 모드 ON? */
+    public boolean isAutoResend() {
+        return android.preference.PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .getBoolean(AddrssBookFragment.PREF_RESEND_AUTO, false);
+    }
+
+    /** MO 자동 재시도 횟수 조회 (배너 "Auto-resending N/3" 표시용). */
+    public int getAutoMoCount(int msgId) {
+        synchronized (mAutoMoCount) { Integer c = mAutoMoCount.get(msgId); return c == null ? 0 : c; }
+    }
+
+    /** [Step2-auto] MO 자동 재시도 스케줄 — 10분 후 1회 → 10분마다 → 3회 → 포기. */
+    public void scheduleAutoMoResend(final int msgId) {
+        synchronized (mAutoMoCount) { if (mAutoMoCount.containsKey(msgId)) return; mAutoMoCount.put(msgId, 0); }   // 이미 스케줄됨
+        final long interval = getAutoIntervalMs();
+        Runnable task = new Runnable() {
+            @Override public void run() {
+                int cnt;
+                synchronized (mAutoMoCount) { Integer c = mAutoMoCount.get(msgId); if (c == null) return; cnt = c; }
+                java.util.List<Integer> seqs;
+                synchronized (mPendingMoResend) { seqs = mPendingMoResend.get(msgId); }
+                if (seqs == null || seqs.isEmpty()) {   // 이미 완성/해제됨 → 중단
+                    synchronized (mAutoMoCount) { mAutoMoCount.remove(msgId); }
+                    android.util.Log.d("MO-RESEND", "[auto] msgId=" + msgId + " 완료/해제 → 중단");
+                    return;
+                }
+                if (cnt >= AUTO_RESEND_MAX) {   // 3회 다 씀 → 포기
+                    synchronized (mAutoMoCount) { mAutoMoCount.remove(msgId); }
+                    synchronized (mPendingMoResend) { mPendingMoResend.remove(msgId); mMoResendAt.remove(msgId); }   // [Step2-auto] 완전 포기 → 수동 배너도 안 뜨게
+                    android.util.Log.d("MO-RESEND", "[auto] msgId=" + msgId + " 3회 소진 → 포기");
+                    return;
+                }
+                cnt++;
+                synchronized (mAutoMoCount) { mAutoMoCount.put(msgId, cnt); }
+                for (int s : seqs) mMoResendCount.remove(msgId + ":" + s);   // 상한 우회
+                int sent = sendMoResend(msgId, new java.util.ArrayList<>(seqs));
+                android.util.Log.d("MO-RESEND", "[auto] msgId=" + msgId + " " + cnt + "/" + AUTO_RESEND_MAX + " sent=" + sent);
+                mAutoHandler.postDelayed(this, interval);   // 다음 회차 예약
+            }
+        };
+        mAutoHandler.postDelayed(task, interval);   // 첫 회도 10분 후 (즉시 X)
+        android.util.Log.d("MO-RESEND", "[auto] msgId=" + msgId + " 스케줄 시작 (" + (interval/60000) + "분 주기, 최대 " + AUTO_RESEND_MAX + "회)");
+    }
+
+    private final java.util.Map<Integer,Integer> mAutoMtCount = new java.util.HashMap<>();   // MT msgId -> 자동 재요청 횟수
+
+    public int getAutoMtCount(int msgId) {
+        synchronized (mAutoMtCount) { Integer c = mAutoMtCount.get(msgId); return c == null ? 0 : c; }
+    }
+
+    /** [Step2-auto] MT gap-fill 자동 재요청 — 10분 후 1회 → 10분마다 → 3회 → 포기. */
+    public void scheduleAutoMtGapfill(final int msgId) {
+        synchronized (mAutoMtCount) { if (mAutoMtCount.containsKey(msgId)) return; mAutoMtCount.put(msgId, 0); }
+        final long interval = getAutoIntervalMs();
+        Runnable task = new Runnable() {
+            @Override public void run() {
+                int cnt;
+                synchronized (mAutoMtCount) { Integer c = mAutoMtCount.get(msgId); if (c == null) return; cnt = c; }
+                java.util.List<Integer> missing = getMissingSeqs(msgId);
+                if (missing == null || missing.isEmpty()) {   // 완성됨 → 중단
+                    synchronized (mAutoMtCount) { mAutoMtCount.remove(msgId); }
+                    android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 완성 → 중단");
+                    return;
+                }
+                if (cnt >= AUTO_RESEND_MAX) {   // 3회 → 포기
+                    synchronized (mAutoMtCount) { mAutoMtCount.remove(msgId); }
+                    android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 3회 소진 → 포기");
+                    return;
+                }
+                cnt++;
+                synchronized (mAutoMtCount) { mAutoMtCount.put(msgId, cnt); }
+                int q = enqueueGapFillRequests(msgId);
+                android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " " + cnt + "/" + AUTO_RESEND_MAX + " queued=" + q);
+                mAutoHandler.postDelayed(this, interval);
+            }
+        };
+        mAutoHandler.postDelayed(task, interval);   // 첫 회 10분 후
+        android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 스케줄 시작 (" + (interval/60000) + "분 주기, 최대 " + AUTO_RESEND_MAX + "회)");
+    }
 
     private void sendLargeMsgAck(String recipientImei, int msgId) {
         try {
@@ -2338,6 +2439,17 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 // 새 메시지(또는 윈도우 지난 것) → 조각 쌓고 조립
                                 mLargeMsgDoneAt.remove(msgId);
+                                // [MT-idFix] seq0(fullCrc 보유) 도착 시, 같은 msgId 옛 버퍼의 crc와 다르면 → 다른 메시지 → 옛 버퍼 폐기 (유령 누락 방지)
+                                if (seq == 0 && h.length >= 6 && !h[5].isEmpty()) {
+                                    Long oldCrc = mLargeMsgCrc.get(msgId);
+                                    long newCrc;
+                                    try { newCrc = Long.parseLong(h[5]); } catch (Exception e) { newCrc = -1; }
+                                    if (oldCrc != null && oldCrc != newCrc) {
+                                        mLargeMsgBuf.remove(msgId); mLargeMsgTotal.remove(msgId); mLargeMsgLastAt.remove(msgId);
+                                        android.util.Log.d("LARGE-MSG", "[MT-idFix] 옛 수신버퍼 폐기 msgId=" + msgId + " (crc 다름 " + oldCrc + "!=" + newCrc + ")");
+                                    }
+                                    if (newCrc != -1) mLargeMsgCrc.put(msgId, newCrc);
+                                }
                                 mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
                                 mLargeMsgTotal.put(msgId, total);
                                 mLargeMsgLastAt.put(msgId, System.currentTimeMillis());   // [gap-fill] 마지막 조각 시각
@@ -2361,6 +2473,7 @@ public class MainActivity extends AppCompatActivity {
                                     mLargeMsgBuf.remove(msgId);
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);
+                                    mLargeMsgLastAt.remove(msgId); mLargeMsgCrc.remove(msgId);   // [MT-idFix] 완성 시 정리
                                     mLargeMsgDoneAt.put(msgId, System.currentTimeMillis());   // 완성 표시
                                     // 최초 조립 완료 시 서버로 ACK 송신 (수신확인) — ACK ON일 때만, 지연 큐로
                                     boolean ackLargeOn = android.preference.PreferenceManager
@@ -2418,7 +2531,9 @@ public class MainActivity extends AppCompatActivity {
                                 android.util.Log.d("MO-RESEND", "~Q: 수신 msgId=" + qMsgId + " seqs=" + seqs);
                                 // [임시 테스트] 수신 즉시 재송신 (Step5에서 수동 버튼으로 교체 예정)
                                 // [Step5] 자동 X → 대기 기록만. 사용자가 배너 [다시 보내기] 눌러야 실제 재송신 (수동, 감도 보고)
-                                synchronized (mPendingMoResend) { mPendingMoResend.put(qMsgId, seqs); }
+                                synchronized (mPendingMoResend) { mPendingMoResend.put(qMsgId, seqs); mMoResendAt.put(qMsgId, System.currentTimeMillis()); }
+                                // [Step2-auto] 자동 모드면 재시도 스케줄 시작 (10분 후 1회 → 10분마다 → 3회). 수동이면 배너가 7분 후 띄움.
+                                if (isAutoResend()) { scheduleAutoMoResend(qMsgId); }
                             }
                         } catch (Exception ex) {
                             Log.e("MO-RESEND", "~Q: 파싱 실패 title=" + title + " : " + ex.getMessage());

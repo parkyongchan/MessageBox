@@ -100,7 +100,17 @@ public class ChatRoomFragment extends Fragment {
             return;
         }
         mMoresendMsgId = msgId;
-        binding.textMoresendInfo.setText("Send incomplete: " + (total - missing) + "/" + total + " (" + missing + " need resend)");
+        MainActivity _act = (MainActivity) getActivity();
+        if (_act.isAutoResend() && _act.getAutoMoCount(msgId) > 0) {
+            // [Step2-auto] 자동 진행 중 — 진행 표시, 버튼 숨김
+            binding.textMoresendInfo.setText("\uD83D\uDCE4 SEND  Auto-resending " + _act.getAutoMoCount(msgId) + "/" + MainActivity.AUTO_RESEND_MAX + " ...");
+            binding.btnMoresendResend.setVisibility(View.GONE);
+            binding.btnMoresendDiscard.setVisibility(View.GONE);
+        } else {
+            binding.textMoresendInfo.setText("\uD83D\uDCE4 SEND  Send incomplete: " + (total - missing) + "/" + total + " (" + missing + " need resend) \u00B7 " + (info[3]/60000) + " min ago");
+            binding.btnMoresendResend.setVisibility(View.VISIBLE);
+            binding.btnMoresendDiscard.setVisibility(View.VISIBLE);
+        }
         binding.bannerMoresend.setVisibility(View.VISIBLE);
     }
 
@@ -128,13 +138,24 @@ public class ChatRoomFragment extends Fragment {
         if (_mtLock != null && _mtLock > System.currentTimeMillis()) { binding.bannerGapfill.setVisibility(View.GONE); return; }   // [Step5] MT 잠금 중 숨김
         if (elapsed < GAPFILL_STALE_MS) {
             // 아직 받는 중 — 진행 표시만
-            binding.textGapfillInfo.setText("Receiving: " + received + "/" + total + " ...");
+            binding.textGapfillInfo.setText("\uD83D\uDCE5 RECV  Receiving: " + received + "/" + total + " ...");
             binding.btnGapfillResend.setVisibility(View.GONE);
             binding.bannerGapfill.setVisibility(View.VISIBLE);
         } else {
             int missing = total - received;
-            binding.textGapfillInfo.setText("Incomplete: " + received + "/" + total + " (" + missing + " missing)");
-            binding.btnGapfillResend.setVisibility(View.VISIBLE);
+            MainActivity _act = (MainActivity) getActivity();
+            if (_act.isAutoResend()) {
+                // [Step2-auto] 자동 모드 — 스케줄 등록(중복 방지됨) + 진행 표시, 버튼 숨김
+                _act.scheduleAutoMtGapfill(msgId);
+                int ac = _act.getAutoMtCount(msgId);
+                binding.textGapfillInfo.setText("\uD83D\uDCE5 RECV  Auto-resending " + ac + "/" + MainActivity.AUTO_RESEND_MAX + " ...");
+                binding.btnGapfillResend.setVisibility(View.GONE);
+                binding.btnGapfillDiscard.setVisibility(View.GONE);
+            } else {
+                binding.textGapfillInfo.setText("\uD83D\uDCE5 RECV  Incomplete: " + received + "/" + total + " (" + missing + " missing) \u00B7 " + (elapsed/60000) + " min ago");
+                binding.btnGapfillResend.setVisibility(View.VISIBLE);
+                binding.btnGapfillDiscard.setVisibility(View.VISIBLE);
+            }
             binding.bannerGapfill.setVisibility(View.VISIBLE);
         }
     }
