@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
     private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeMsgTo = new java.util.HashMap<>();
-    private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(0);
+    private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
     private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
     private static final long ACK_ECHO_TIMEOUT_MS = 10000;   // 1회 대기 10초
@@ -1770,12 +1770,20 @@ public class MainActivity extends AppCompatActivity {
 
     private final java.util.Map<Integer,Integer> mAutoMtCount = new java.util.HashMap<>();   // MT msgId -> 자동 재요청 횟수
 
+    private final java.util.Set<Integer> mAutoMtGaveUp = new java.util.HashSet<>();   // [fix①] MT 자동 3회 포기 확정 → 폴링 재스케줄 차단
+
+    /** [fix①] MT 자동 재요청 포기 확정? (배너 수동 폴백 판단용) */
+    public boolean isAutoMtGaveUp(int msgId) {
+        synchronized (mAutoMtGaveUp) { return mAutoMtGaveUp.contains(msgId); }
+    }
+
     public int getAutoMtCount(int msgId) {
         synchronized (mAutoMtCount) { Integer c = mAutoMtCount.get(msgId); return c == null ? 0 : c; }
     }
 
     /** [Step2-auto] MT gap-fill 자동 재요청 — 10분 후 1회 → 10분마다 → 3회 → 포기. */
     public void scheduleAutoMtGapfill(final int msgId) {
+        synchronized (mAutoMtGaveUp) { if (mAutoMtGaveUp.contains(msgId)) return; }   // [fix①] 포기 확정 → 재스케줄 금지
         synchronized (mAutoMtCount) { if (mAutoMtCount.containsKey(msgId)) return; mAutoMtCount.put(msgId, 0); }
         final long interval = getAutoIntervalMs();
         Runnable task = new Runnable() {
@@ -1785,11 +1793,13 @@ public class MainActivity extends AppCompatActivity {
                 java.util.List<Integer> missing = getMissingSeqs(msgId);
                 if (missing == null || missing.isEmpty()) {   // 완성됨 → 중단
                     synchronized (mAutoMtCount) { mAutoMtCount.remove(msgId); }
+                    synchronized (mAutoMtGaveUp) { mAutoMtGaveUp.remove(msgId); }   // [fix①] Set 정리(메모리 누수 방지)
                     android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 완성 → 중단");
                     return;
                 }
                 if (cnt >= AUTO_RESEND_MAX) {   // 3회 → 포기
                     synchronized (mAutoMtCount) { mAutoMtCount.remove(msgId); }
+                    synchronized (mAutoMtGaveUp) { mAutoMtGaveUp.add(msgId); }   // [fix①] 폴링이 못 살리게 박음
                     android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 3회 소진 → 포기");
                     return;
                 }

@@ -144,7 +144,7 @@ public class ChatRoomFragment extends Fragment {
         } else {
             int missing = total - received;
             MainActivity _act = (MainActivity) getActivity();
-            if (_act.isAutoResend()) {
+            if (_act.isAutoResend() && !_act.isAutoMtGaveUp(msgId)) {
                 // [Step2-auto] 자동 모드 — 스케줄 등록(중복 방지됨) + 진행 표시, 버튼 숨김
                 _act.scheduleAutoMtGapfill(msgId);
                 int ac = _act.getAutoMtCount(msgId);
