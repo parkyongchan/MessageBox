@@ -2756,7 +2756,16 @@ public class MainActivity extends AppCompatActivity {
                     String title = buffer.readCharSequence(titleSize, StandardCharsets.UTF_8).toString().trim();
 
                     int memoSize = buffer.readUnsignedByte();
-                    String message = buffer.readCharSequence(memoSize, StandardCharsets.UTF_8).toString().trim();
+                    // [fileMsg 2-a] ~L:F:/~L:I:(파일/사진)면 body를 byte[]로 읽기(바이너리 보존, trim 안 함). 그 외(텍스트/단문)는 기존 String.
+                    String message;
+                    byte[] fileBody = null;
+                    if (title.startsWith("~L:F:") || title.startsWith("~L:I:")) {
+                        fileBody = new byte[memoSize];
+                        buffer.readBytes(fileBody);
+                        message = "";   // 파일 body는 fileBody(byte[])에. message는 파싱 진행용 빈값.
+                    } else {
+                        message = buffer.readCharSequence(memoSize, StandardCharsets.UTF_8).toString().trim();
+                    }
 
                     android.util.Log.d("LARGE-MSG", "RX title=[" + title + "] msgLen=" + message.length());
 
