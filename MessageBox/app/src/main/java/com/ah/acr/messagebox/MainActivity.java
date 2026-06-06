@@ -1713,7 +1713,7 @@ public class MainActivity extends AppCompatActivity {
     // ═══ [Step2-auto] 자동 재시도 인프라 ═══
     private final android.os.Handler mAutoHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final java.util.Map<Integer,Integer> mAutoMoCount = new java.util.HashMap<>();   // msgId -> 자동 재송신 횟수
-    public static final int AUTO_RESEND_MAX = 3;            // 자동 3회 상한
+    public static final int AUTO_RESEND_MAX = 10;            // 자동 3회 상한
     public static final long AUTO_INTERVAL_DEFAULT_MS = 600000;   // 기본 10분
 
     /** 설정된 자동 주기(ms). pref 분 단위 → ms. */
@@ -1805,8 +1805,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 cnt++;
                 synchronized (mAutoMtCount) { mAutoMtCount.put(msgId, cnt); }
-                int q = enqueueGapFillRequests(msgId);
-                android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " " + cnt + "/" + AUTO_RESEND_MAX + " queued=" + q);
+                // [gapSeqFix] auto는 순차송신(B)으로 — 누락 전부 하나씩, 매번 최신 재계산
+                sendGapFillSequential(msgId);
+                android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " " + cnt + "/" + AUTO_RESEND_MAX + " (순차송신 시작)");
                 mAutoHandler.postDelayed(this, interval);
             }
         };
@@ -1919,6 +1920,128 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
             }
         }, "large-ack-" + msgId).start();
+    }
+
+    // ============================================================
+    //  [gapSeqFix] gap-fill ~R: 순차 송신 (B방식) — 단일 스레드에서 누락 조각을 하나씩
+    //  매 송신 직전 getMissingSeqs 재계산 = "최신 교체"(그새 받은 건 자동 제외, 서버 중복 방지)
+    //  에코 OK→다음 / 에코 실패→중단(다음 틱 재시도). 동시송신 충돌 원천 차단.
+    //  ※ MT gap-fill 전용. BROAD/위치정보 경로는 안 건드림.
+    // ============================================================
+    private volatile boolean mGapSeqRunning = false;
+
+    private void sendGapFillSequential(final int msgId) {
+        if (mGapSeqRunning) {
+            android.util.Log.d("GAP-FILL", "[seq] 이미 실행 중 - skip msgId=" + msgId);
+            return;
+        }
+        new Thread(() -> {
+            mGapSeqRunning = true;
+            try {
+                while (true) {
+                    // ★ 매번 최신 누락 재계산 (그새 받은 조각은 자동 제외 = 최신 교체)
+                    java.util.List<Integer> missing = getMissingSeqs(msgId);
+                    if (missing == null || missing.isEmpty()) {
+                        android.util.Log.d("GAP-FILL", "[seq] 완성/없음 - 종료 msgId=" + msgId);
+                        break;
+                    }
+                    long now = System.currentTimeMillis();
+                    int target = -1;
+                    for (int seq : missing) {
+                        String key = msgId + ":" + seq;
+                        if (mGapReqCount.getOrDefault(key, 0) >= GAP_REQ_MAX_ATTEMPTS) continue;
+                        Long last = mGapReqLastAt.get(key);
+                        if (last != null && (now - last) < GAP_REQ_COOLDOWN_MS) continue;
+                        target = seq;
+                        break;
+                    }
+                    if (target < 0) {
+                        android.util.Log.d("GAP-FILL", "[seq] 보낼 seq 없음(상한/쿨다운) - 종료 msgId=" + msgId);
+                        break;
+                    }
+                    boolean ok = sendGapFillRequestBlocking(msgId, target);
+                    if (!ok) {
+                        android.util.Log.d("GAP-FILL", "[seq] 에코 실패 - 중단(다음 틱 재시도) " + msgId + ":" + target);
+                        break;
+                    }
+                    android.util.Log.d("GAP-FILL", "[seq] 에코 OK - 다음 조각으로 " + msgId + ":" + target);
+                }
+            } finally {
+                mGapSeqRunning = false;
+            }
+        }, "gap-seq-" + msgId).start();
+    }
+
+    /** [gapSeqFix] ~R: 1개 송신 + 에코 동기 대기. 에코 OK=true. (sendGapFillRequest 프레임과 동일) */
+    private boolean sendGapFillRequestBlocking(int msgId, int seq) {
+        try {
+            String reqTitle = "~R:" + msgId + ":" + seq;
+            io.netty.buffer.ByteBuf buffer = io.netty.buffer.Unpooled.buffer();
+            buffer.writeByte(0x07);
+            String addr = "";
+            buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+            buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+            buffer.writeByte(reqTitle.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(reqTitle, StandardCharsets.UTF_8);
+            String memo = "";
+            buffer.writeByte(memo.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(memo, StandardCharsets.UTF_8);
+            byte[] body = new byte[buffer.readableBytes()];
+            buffer.readBytes(body);
+            int sendId = 600 + (seq & 0xFF);
+            String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(body, Base64.NO_WRAP));
+            String key = msgId + ":" + seq;
+            android.util.Log.d("GAP-FILL", "[seq] ~R: 송신 title=" + reqTitle + " sendId=" + sendId);
+            mGapReqLastAt.put(key, System.currentTimeMillis());
+            return awaitAckEchoBlocking(sms, sendId, msgId, key);
+        } catch (Exception e) {
+            Log.e("GAP-FILL", "[seq] ~R: 송신 실패 msgId=" + msgId + " seq=" + seq + " : " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** [gapSeqFix] awaitAckEcho의 동기(블로킹) 버전. 현재 스레드에서 에코 대기, OK=true 반환. */
+    private boolean awaitAckEchoBlocking(final String sms, final int ackSendId, final int msgId, final String gapKey) {
+        final Object lock = new Object();
+        final boolean[] acked = {false};
+        final boolean[] armed = {false};
+        final androidx.lifecycle.Observer<String> obs = sReceive -> {
+            if (!armed[0] || sReceive == null || !sReceive.startsWith("SENDING=")) return;
+            String[] vals = sReceive.substring(8).split(",");
+            if (vals.length >= 2 && "OK".equals(vals[1])
+                    && String.valueOf(ackSendId).equals(vals[0])) {
+                synchronized (lock) {
+                    acked[0] = true;
+                    lock.notifyAll();
+                }
+            }
+        };
+        runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().observeForever(obs));
+        try {
+            for (int attempt = 1; attempt <= ACK_MAX_ATTEMPTS; attempt++) {
+                final int a = attempt;
+                runOnUiThread(() -> {
+                    BLE.INSTANCE.getWriteQueue().offer(sms);
+                    armed[0] = true;
+                    android.util.Log.d("GAP-FILL", "[seq] 송신 시도 " + a + "/" + ACK_MAX_ATTEMPTS + " sendId=" + ackSendId);
+                });
+                synchronized (lock) {
+                    if (acked[0]) break;
+                    lock.wait(ACK_ECHO_TIMEOUT_MS);
+                    if (acked[0]) break;
+                }
+                android.util.Log.d("GAP-FILL", "[seq] 에코 타임아웃(시도 " + attempt + ") sendId=" + ackSendId);
+            }
+            if (acked[0] && gapKey != null) {
+                mGapReqCount.merge(gapKey, 1, Integer::sum);
+                android.util.Log.d("GAP-FILL", "[seq] 에코 OK → 카운트 " + gapKey + "=" + mGapReqCount.get(gapKey));
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } finally {
+            runOnUiThread(() -> BLE.INSTANCE.getOutboxMsgStatus().removeObserver(obs));
+        }
+        return acked[0];
     }
 
     // ============================================================

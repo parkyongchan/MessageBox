@@ -152,6 +152,8 @@ public class ChatRoomFragment extends Fragment {
                 binding.btnGapfillResend.setVisibility(View.GONE);
                 binding.btnGapfillDiscard.setVisibility(View.GONE);
             } else {
+                // [무인포기숨김] 자동모드인데 여기(else) 도달 = 3회 포기(gaveUp). 무인장비는 수동 재수신/버림 버튼 무의미 → 배너 통째 숨김
+                if (_act.isAutoResend()) { binding.bannerGapfill.setVisibility(View.GONE); return; }
                 binding.textGapfillInfo.setText("\uD83D\uDCE5 RECV  Incomplete: " + received + "/" + total + " (" + missing + " missing) \u00B7 " + (elapsed/60000) + " min ago");
                 binding.btnGapfillResend.setVisibility(View.VISIBLE);
                 binding.btnGapfillDiscard.setVisibility(View.VISIBLE);
