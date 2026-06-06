@@ -1806,7 +1806,7 @@ public class MainActivity extends AppCompatActivity {
                 cnt++;
                 synchronized (mAutoMtCount) { mAutoMtCount.put(msgId, cnt); }
                 // [gapSeqFix] auto는 순차송신(B)으로 — 누락 전부 하나씩, 매번 최신 재계산
-                sendGapFillSequential(msgId);
+                sendGapFillBatch(msgId);   // [batchFix] 빠진 거 묶어서 1건(분할가드)
                 android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " " + cnt + "/" + AUTO_RESEND_MAX + " (순차송신 시작)");
                 mAutoHandler.postDelayed(this, interval);
             }
@@ -1970,6 +1970,94 @@ public class MainActivity extends AppCompatActivity {
                 mGapSeqRunning = false;
             }
         }, "gap-seq-" + msgId).start();
+    }
+
+    // ============================================================
+    //  [batchFix] gap-fill ~R: 묶음 송신 — 빠진 seq들을 한 ~R:로 묶어 1건 송신
+    //  ~R:msgId:0,1,2,...  (서버 batchSeqFix가 콤마 split해 다 relay)
+    //  매번 최신 missing 재계산(최신 교체). title 300바이트 초과 시 분할.
+    //  에코 OK→남은 거 다음 묶음 / 에코 실패→중단(다음 틱). MT 전용, 위치정보 무관.
+    // ============================================================
+    private static final int GAP_BATCH_TITLE_MAX = 300;   // ~R: title 안전 한도(SBD MO 340 여유)
+
+    private void sendGapFillBatch(final int msgId) {
+        if (mGapSeqRunning) {
+            android.util.Log.d("GAP-FILL", "[batch] 이미 실행 중 - skip msgId=" + msgId);
+            return;
+        }
+        new Thread(() -> {
+            mGapSeqRunning = true;
+            try {
+                while (true) {
+                    // ★ 매번 최신 누락 재계산 (받은 건 자동 제외)
+                    java.util.List<Integer> missing = getMissingSeqs(msgId);
+                    if (missing == null || missing.isEmpty()) {
+                        android.util.Log.d("GAP-FILL", "[batch] 완성/없음 - 종료 msgId=" + msgId);
+                        break;
+                    }
+                    long now = System.currentTimeMillis();
+                    // 상한/쿨다운 통과 seq만 모으되, title 길이 한도 내에서 묶음
+                    java.util.List<Integer> toSend = new java.util.ArrayList<>();
+                    StringBuilder sb = new StringBuilder("~R:").append(msgId).append(":");
+                    int baseLen = sb.length();
+                    for (int seq : missing) {
+                        String key = msgId + ":" + seq;
+                        if (mGapReqCount.getOrDefault(key, 0) >= GAP_REQ_MAX_ATTEMPTS) continue;
+                        Long last = mGapReqLastAt.get(key);
+                        if (last != null && (now - last) < GAP_REQ_COOLDOWN_MS) continue;
+                        String add = (toSend.isEmpty() ? "" : ",") + seq;
+                        if (sb.length() + add.length() > GAP_BATCH_TITLE_MAX) break;   // 분할: 이번 묶음은 여기까지
+                        sb.append(add);
+                        toSend.add(seq);
+                    }
+                    if (toSend.isEmpty()) {
+                        android.util.Log.d("GAP-FILL", "[batch] 보낼 seq 없음(상한/쿨다운) - 종료 msgId=" + msgId);
+                        break;
+                    }
+                    boolean ok = sendGapFillBatchRequest(msgId, sb.toString(), toSend);
+                    if (!ok) {
+                        android.util.Log.d("GAP-FILL", "[batch] 에코 실패 - 중단(다음 틱 재시도) msgId=" + msgId + " seqs=" + toSend);
+                        break;
+                    }
+                    android.util.Log.d("GAP-FILL", "[batch] 에코 OK - seqs=" + toSend + " (남은 거 있으면 다음 묶음)");
+                    // 분할로 일부만 보낸 경우 while 계속 → 다음 묶음 (쿨다운 걸려 다음 틱으로 갈 수도)
+                }
+            } finally {
+                mGapSeqRunning = false;
+            }
+        }, "gap-batch-" + msgId).start();
+    }
+
+    /** [batchFix] ~R:묶음(title) 1건 송신 + 에코 대기. 에코 OK 시 묶인 seq 전부 카운트/쿨다운 기록. */
+    private boolean sendGapFillBatchRequest(int msgId, String reqTitle, java.util.List<Integer> seqs) {
+        try {
+            io.netty.buffer.ByteBuf buffer = io.netty.buffer.Unpooled.buffer();
+            buffer.writeByte(0x07);
+            String addr = "";
+            buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+            buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+            buffer.writeByte(reqTitle.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(reqTitle, StandardCharsets.UTF_8);
+            String memo = "";
+            buffer.writeByte(memo.getBytes(StandardCharsets.UTF_8).length);
+            buffer.writeCharSequence(memo, StandardCharsets.UTF_8);
+            byte[] body = new byte[buffer.readableBytes()];
+            buffer.readBytes(body);
+            int sendId = 600;   // 묶음은 단일 sendId (600). seq별 안 나눔
+            String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(body, Base64.NO_WRAP));
+            long now = System.currentTimeMillis();
+            for (int seq : seqs) { mGapReqLastAt.put(msgId + ":" + seq, now); }   // 쿨다운 기록(시도 시점)
+            android.util.Log.d("GAP-FILL", "[batch] ~R: 송신 title=" + reqTitle + " sendId=" + sendId);
+            boolean ok = awaitAckEchoBlocking(sms, sendId, msgId, null);   // gapKey=null: 카운트는 아래서 직접
+            if (ok) {
+                for (int seq : seqs) { mGapReqCount.merge(msgId + ":" + seq, 1, Integer::sum); }   // 에코 OK 시 묶인 seq 전부 +1
+                android.util.Log.d("GAP-FILL", "[batch] 에코 OK → 카운트 기록 seqs=" + seqs);
+            }
+            return ok;
+        } catch (Exception e) {
+            Log.e("GAP-FILL", "[batch] ~R: 송신 실패 msgId=" + msgId + " : " + e.getMessage());
+            return false;
+        }
     }
 
     /** [gapSeqFix] ~R: 1개 송신 + 에코 동기 대기. 에코 OK=true. (sendGapFillRequest 프레임과 동일) */
