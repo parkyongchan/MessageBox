@@ -2320,6 +2320,109 @@ public class MainActivity extends AppCompatActivity {
         if (cur.length() > 0) chunks.add(cur.toString());
         return chunks;
     }
+
+    // ============================================================
+    //  [fileMsg] 바이너리(파일/사진) 조각 분할 — splitUtf8의 byte[] 버전.
+    //  텍스트는 UTF-8 경계를 지켜야 하지만, 바이너리는 그냥 maxBytes씩 자르면 됨.
+    // ============================================================
+    private java.util.List<byte[]> splitBytes(byte[] data, int maxBytes) {
+        java.util.List<byte[]> chunks = new java.util.ArrayList<>();
+        if (data == null || data.length == 0) return chunks;
+        for (int off = 0; off < data.length; off += maxBytes) {
+            int len = Math.min(maxBytes, data.length - off);
+            byte[] chunk = new byte[len];
+            System.arraycopy(data, off, chunk, 0, len);
+            chunks.add(chunk);
+        }
+        return chunks;
+    }
+
+    // ============================================================
+    //  [fileMsg] 파일/사진 MO 송신 (앱 -> 서버). sendLargeMsg의 바이너리 버전.
+    //  body가 byte[] (텍스트 아님) → frame도 byte[] → 기존 Base64/SENDING= 경로 재활용.
+    //  마커: ~L:F:(파일) / ~L:I:(사진). 파일명은 seq0 title 끝에 부착.
+    //    seq0:  ~L:F:msgId:0:total:fullCrc:chunkCrc:fileName
+    //    seq>0: ~L:F:msgId:seq:total::chunkCrc
+    //  type: 'F'=파일, 'I'=사진. data: 원본 바이너리(10KB 이하, 호출 전 압축/검증).
+    // ============================================================
+    public void sendLargeFile(final String recipientImei, final byte[] data,
+                              final String fileName, final char type) {
+        if (data == null || data.length == 0) {
+            Log.e("FILE-MSG", "sendLargeFile: 데이터 없음");
+            return;
+        }
+        if (type != 'F' && type != 'I') {
+            Log.e("FILE-MSG", "sendLargeFile: 잘못된 type=" + type + " (F/I만)");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                java.util.List<byte[]> parts = splitBytes(data, 200);
+                final int total = parts.size();
+                if (total > 255) {
+                    Log.e("FILE-MSG", "조각 너무 많음: " + total + " > 255 (data=" + data.length + "B)");
+                    return;
+                }
+                final int msgId = mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
+                final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
+                final String safeName = (fileName == null) ? "" : fileName.replace(":", "_").replace(",", "_");
+
+                // 전체 CRC32 (바이너리 원본)
+                long fullCrc;
+                { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(data); fullCrc = c.getValue(); }
+
+                mLargeSendingCount++;
+                android.util.Log.d("FILE-MSG", "TX file start msgId=" + msgId + " type=" + type
+                        + " total=" + total + " bytes=" + data.length + " name=" + safeName
+                        + " crc=" + fullCrc);
+
+                try { Thread.sleep(1500); } catch (InterruptedException _ie) { Thread.currentThread().interrupt(); }
+
+                for (int seq = 0; seq < total; seq++) {
+                    byte[] body = parts.get(seq);
+                    long chunkCrc;
+                    { java.util.zip.CRC32 cc = new java.util.zip.CRC32(); cc.update(body); chunkCrc = cc.getValue(); }
+                    // seq0: 마커+msgId:0:total:fullCrc:chunkCrc:fileName / seq>0: ...:seq:total::chunkCrc
+                    String title = marker + msgId + ":" + seq + ":" + total
+                            + ":" + (seq == 0 ? String.valueOf(fullCrc) : "")
+                            + ":" + chunkCrc
+                            + (seq == 0 ? (":" + safeName) : "");
+                    android.util.Log.d("FILE-MSG", "TX chunk seq=" + seq + " len=" + body.length + " crc=" + chunkCrc);
+
+                    io.netty.buffer.ByteBuf buffer = io.netty.buffer.Unpooled.buffer();
+                    buffer.writeByte(0x07);
+                    String addr = (recipientImei == null) ? "" : recipientImei;
+                    buffer.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+                    buffer.writeCharSequence(addr, StandardCharsets.US_ASCII);
+                    buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+                    buffer.writeCharSequence(title, StandardCharsets.UTF_8);
+                    buffer.writeByte(body.length);          // bodyLen (1바이트, ≤200 OK)
+                    buffer.writeBytes(body);                 // ★ 바이너리 body 직접 (String 변환 없음)
+
+                    byte[] frame = new byte[buffer.readableBytes()];
+                    buffer.readBytes(frame);
+
+                    int sendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
+                    String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
+
+                    boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
+                    if (!ok) {
+                        Log.e("FILE-MSG", "chunk modem reject msgId=" + msgId + " seq=" + seq + " - abort");
+                        final int _abSeq = seq;
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                            "\u26A0 \uD30C\uC77C \uC804\uC1A1 \uC2E4\uD328(\uC2E0\uD638 \uBD88\uB7C9, \uC870\uAC01 " + _abSeq + "). \uC2E0\uD638 \uC591\uD638 \uC2DC \uB2E4\uC2DC \uC804\uC1A1\uD558\uC138\uC694.",
+                            Toast.LENGTH_LONG).show());
+                        return;
+                    }
+                }
+                android.util.Log.d("FILE-MSG", "TX file all-accepted msgId=" + msgId + " - wait server ~A:");
+            } catch (Exception e) {
+                Log.e("FILE-MSG", "sendLargeFile fail: " + e.getMessage(), e);
+            } finally {
+                mLargeSendingCount--;
+            }
+        }, "file-send").start();
+    }
     // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
     //   - 중복 수신 패킷 차단
