@@ -116,6 +116,16 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, String> mLargeMsgSender = new java.util.HashMap<>();
     // ⭐ 완성된 msgId의 완료 시각(중복 조각 재수신 차단용, 윈도우 지나면 새 메시지로 취급)
     private final java.util.Map<Integer, Long> mLargeMsgDoneAt = new java.util.HashMap<>();
+
+    // [fileMsg] 파일/사진(~L:F:/~L:I:) 수신 전용 버퍼 — 텍스트(mLargeMsgBuf)와 분리(바이너리 보존)
+    private final java.util.Map<Integer, java.util.TreeMap<Integer, byte[]>> mLargeFileBuf = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Integer> mLargeFileTotal = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Long> mLargeFileCrc = new java.util.HashMap<>();    // seq0 fullCrc (검증/옛버퍼구분)
+    private final java.util.Map<Integer, String> mLargeFileName = new java.util.HashMap<>(); // seq0 파일명
+    private final java.util.Map<Integer, Character> mLargeFileType = new java.util.HashMap<>(); // 'F'(파일)/'I'(사진)
+    private final java.util.Map<Integer, String> mLargeFileSender = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Long> mLargeFileLastAt = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Long> mLargeFileDoneAt = new java.util.HashMap<>(); // 완성 msgId 중복차단
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
     private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeMsgTo = new java.util.HashMap<>();
@@ -2477,6 +2487,112 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // ============================================================
+    //  [fileMsg 2-b] 파일/사진(~L:F:/~L:I:) 조각 수신 처리.
+    //  텍스트 ~L:T:와 분리된 바이너리 경로. mLargeFileBuf(byte[])에 쌓고,
+    //  다 모이면 조립 → fullCrc 검증 → 앱전용 디렉토리 저장 → DB(title=[FILE]/[IMG], msg=경로).
+    //  h: title.split(":"), fileBody: 이 조각의 바이너리(2-a에서 읽음).
+    //  title 형식: ~L:F:msgId:seq:total:fullCrc:chunkCrc:fileName (seq0) / :seq:total::chunkCrc (seq>0)
+    // ============================================================
+    private void handleFileChunk(String[] h, int msgId, int seq, int total, byte[] fileBody, String codeNum) {
+        try {
+            if (fileBody == null) { Log.e("FILE-MSG", "handleFileChunk: fileBody null msgId=" + msgId); return; }
+            char ftype = h[1].charAt(0);   // 'F' or 'I'
+
+            // 완성된 msgId 중복 조각 무시
+            if (mLargeFileDoneAt.get(msgId) != null) {
+                android.util.Log.d("FILE-MSG", "이미 완성 msgId=" + msgId + " 중복조각(seq=" + seq + ") 무시");
+                return;
+            }
+
+            // seq0: fullCrc / 파일명 / 타입 기록 + 옛 버퍼 폐기(crc 다르면)
+            if (seq == 0) {
+                long newCrc = -1;
+                if (h.length >= 6 && !h[5].isEmpty()) { try { newCrc = Long.parseLong(h[5]); } catch (Exception e) {} }
+                Long oldCrc = mLargeFileCrc.get(msgId);
+                if (oldCrc != null && newCrc != -1 && oldCrc != newCrc) {
+                    mLargeFileBuf.remove(msgId); mLargeFileTotal.remove(msgId); mLargeFileLastAt.remove(msgId);
+                    android.util.Log.d("FILE-MSG", "[idFix] 옛 파일버퍼 폐기 msgId=" + msgId + " (crc 다름)");
+                }
+                if (newCrc != -1) mLargeFileCrc.put(msgId, newCrc);
+                String fname = (h.length >= 8) ? h[7] : ("file_" + msgId);
+                mLargeFileName.put(msgId, fname);
+                mLargeFileType.put(msgId, ftype);
+            }
+
+            // 조각 쌓기
+            mLargeFileBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, fileBody);
+            mLargeFileTotal.put(msgId, total);
+            mLargeFileLastAt.put(msgId, System.currentTimeMillis());
+            mLargeFileSender.put(msgId, codeNum);
+            java.util.TreeMap<Integer, byte[]> parts = mLargeFileBuf.get(msgId);
+            android.util.Log.d("FILE-MSG", "파일조각 수신 msgId=" + msgId + " type=" + ftype
+                    + " seq=" + seq + "/" + (total - 1) + " 누적=" + parts.size() + "/" + total);
+
+            if (parts.size() < total) return;   // 아직 미완성
+
+            // ── 조립 ──
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            for (byte[] p : parts.values()) bos.write(p);
+            byte[] full = bos.toByteArray();
+
+            // ── fullCrc 검증 ──
+            Long expectCrc = mLargeFileCrc.get(msgId);
+            long actualCrc;
+            { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(full); actualCrc = c.getValue(); }
+            if (expectCrc != null && expectCrc != -1 && expectCrc != actualCrc) {
+                Log.e("FILE-MSG", "❌ CRC 불일치 msgId=" + msgId + " expect=" + expectCrc + " actual=" + actualCrc
+                        + " → 버퍼 폐기(재요청 대기)");
+                mLargeFileBuf.remove(msgId);   // 깨진 조립 → 버리고 ~R: 복구(2-c)로 다시 받게
+                return;
+            }
+
+            // ── 파일 저장 (앱 전용 디렉토리) ──
+            char tp = mLargeFileType.getOrDefault(msgId, ftype);
+            String fname = mLargeFileName.getOrDefault(msgId, "file_" + msgId);
+            java.io.File dir = new java.io.File(getExternalFilesDir(null), "received_files");
+            if (!dir.exists()) dir.mkdirs();
+            // 파일명 충돌 방지: msgId 접두
+            java.io.File outFile = new java.io.File(dir, msgId + "_" + fname);
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
+                fos.write(full);
+            }
+            android.util.Log.d("FILE-MSG", "✅ 파일 조립완료 msgId=" + msgId + " type=" + tp
+                    + " size=" + full.length + " saved=" + outFile.getAbsolutePath());
+
+            // ── DB insert (title=[FILE]/[IMG] + 파일명, msg=저장경로) ──
+            final String marker = (tp == 'I') ? "[IMG]" : "[FILE]";
+            final String dbTitle = marker + fname;
+            final String dbMsg = outFile.getAbsolutePath();
+            final String fCode = codeNum;
+            runOnUiThread(() -> {
+                MsgEntity addMsg = new MsgEntity(0, false, fCode, dbTitle, dbMsg,
+                        new Date(),
+                        new Date(System.currentTimeMillis()),
+                        new Date(System.currentTimeMillis()),
+                        false, false, false);
+                insertMsgWithDedupAndEcho(addMsg, fCode, dbTitle + "|" + dbMsg);
+            });
+
+            // ── 정리 + 완성 표시 ──
+            mLargeFileBuf.remove(msgId); mLargeFileTotal.remove(msgId);
+            mLargeFileSender.remove(msgId); mLargeFileLastAt.remove(msgId);
+            mLargeFileCrc.remove(msgId); mLargeFileName.remove(msgId); mLargeFileType.remove(msgId);
+            mLargeFileDoneAt.put(msgId, System.currentTimeMillis());
+
+            // ── ACK 송신 (텍스트와 동일: pref_ack_large ON 시 지연 큐) ──
+            boolean ackLargeOn = android.preference.PreferenceManager
+                    .getDefaultSharedPreferences(MainActivity.this)
+                    .getBoolean("pref_ack_large", false);
+            if (ackLargeOn && !mPendingServerAckIds.contains(msgId)) {
+                mPendingServerAckIds.add(msgId);
+                android.util.Log.d("ACK", "파일 완성 -> 서버 ACK 지연 큐 적재 msgId=" + msgId);
+            }
+        } catch (Exception e) {
+            Log.e("FILE-MSG", "handleFileChunk 실패 msgId=" + msgId + " : " + e.getMessage(), e);
+        }
+    }
+
 
     public void receivePacketProcess(String packet) throws Exception {
         Log.v("RECEVICE", packet);
@@ -2776,6 +2892,10 @@ public class MainActivity extends AppCompatActivity {
                             int msgId = Integer.parseInt(h[2]);
                             int seq   = Integer.parseInt(h[3]);
                             int total = Integer.parseInt(h[4]);
+                            // [fileMsg 2-b] 파일/사진(~L:F:/~L:I:)이면 전용 처리. 텍스트(~L:T:)는 아래 else 기존 로직.
+                            if (h[1].equals("F") || h[1].equals("I")) {
+                                handleFileChunk(h, msgId, seq, total, fileBody, codeNum);
+                            } else {
                             // ⭐ 무한 재수신 차단: 최근 완성된 msgId의 조각이 또 오면 무시
                             Long doneAt = mLargeMsgDoneAt.get(msgId);
                             if (doneAt != null
@@ -2832,6 +2952,7 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 }
                             }
+                        }   // [fileMsg 2-b] else(텍스트) 끝
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "헤더 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
