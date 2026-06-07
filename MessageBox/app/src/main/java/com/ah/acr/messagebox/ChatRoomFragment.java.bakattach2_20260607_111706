@@ -406,104 +406,6 @@ public class ChatRoomFragment extends Fragment {
         }).start();
     }
 
-    // ============================================================
-    //  [fileMsg 3-C] 파일/사진 첨부 선택 결과 처리.
-    //  Uri → byte[] 읽기 → 10KB 검증(파일=차단, 사진=압축) → mAttachBytes 저장 + UI.
-    // ============================================================
-    private static final int ATTACH_MAX_BYTES = 10 * 1024;   // 10KB 원본 한도
-
-    private void handleAttachPicked(Uri uri) {
-        if (uri == null) return;
-        final boolean isPhoto = binding.typePhoto.isChecked();
-        final String fname = getFileNameFromUri(uri);
-        new Thread(() -> {
-            try {
-                byte[] data = readBytesFromUri(uri);
-                if (data == null || data.length == 0) { postToast("Failed to read file"); return; }
-                if (isPhoto) {
-                    if (data.length > ATTACH_MAX_BYTES) {
-                        byte[] comp = compressImageToMax(uri, ATTACH_MAX_BYTES);
-                        if (comp == null) { postToast("Failed to compress photo"); return; }
-                        data = comp;
-                    }
-                    if (data.length > ATTACH_MAX_BYTES) { postToast("Photo too large even after compression"); return; }
-                } else {
-                    if (data.length > ATTACH_MAX_BYTES) {
-                        final int kb = data.length / 1024;
-                        if (getActivity() != null) getActivity().runOnUiThread(() ->
-                            new android.app.AlertDialog.Builder(requireContext())
-                                .setTitle("File too large")
-                                .setMessage("Max 10KB. Selected file is " + kb + "KB.")
-                                .setPositiveButton("OK", null).show());
-                        return;
-                    }
-                }
-                final byte[] fdata = data;
-                mAttachBytes = fdata;
-                mAttachName = (fname != null && !fname.isEmpty()) ? fname : (isPhoto ? "photo.jpg" : "file.bin");
-                if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                    binding.uploadLabel.setText(mAttachName + " (" + fdata.length + " B)");
-                    if (isPhoto) {
-                        try {
-                            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeByteArray(fdata, 0, fdata.length);
-                            if (bmp != null) { binding.uploadThumb.setImageBitmap(bmp); binding.uploadThumb.setVisibility(View.VISIBLE); }
-                        } catch (Exception ignore) {}
-                    } else { binding.uploadThumb.setVisibility(View.GONE); }
-                });
-            } catch (Exception e) { postToast("Attach error: " + e.getMessage()); }
-        }).start();
-    }
-
-    private void postToast(String msg) {
-        if (getActivity() != null) getActivity().runOnUiThread(() ->
-            Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show());
-    }
-
-    private byte[] readBytesFromUri(Uri uri) throws Exception {
-        java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
-        if (is == null) return null;
-        try (java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
-            byte[] buf = new byte[4096]; int n;
-            while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
-            return bos.toByteArray();
-        } finally { is.close(); }
-    }
-
-    private String getFileNameFromUri(Uri uri) {
-        String name = null;
-        try (android.database.Cursor c = requireContext().getContentResolver().query(uri, null, null, null, null)) {
-            if (c != null && c.moveToFirst()) {
-                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                if (idx >= 0) name = c.getString(idx);
-            }
-        } catch (Exception ignore) {}
-        return name;
-    }
-
-    private byte[] compressImageToMax(Uri uri, int maxBytes) {
-        try {
-            java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
-            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is);
-            if (is != null) is.close();
-            if (bmp == null) return null;
-            for (int q = 90; q >= 30; q -= 10) {
-                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, q, bos);
-                if (bos.size() <= maxBytes) return bos.toByteArray();
-            }
-            android.graphics.Bitmap cur = bmp;
-            for (int step = 0; step < 5; step++) {
-                int w = Math.max(1, cur.getWidth() / 2), h = Math.max(1, cur.getHeight() / 2);
-                cur = android.graphics.Bitmap.createScaledBitmap(cur, w, h, true);
-                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                cur.compress(android.graphics.Bitmap.CompressFormat.JPEG, 50, bos);
-                if (bos.size() <= maxBytes) return bos.toByteArray();
-                if (w <= 2 || h <= 2) break;
-            }
-            return null;
-        } catch (Exception e) { Log.e(TAG, "compressImageToMax fail: " + e.getMessage()); return null; }
-    }
-
 
     private void ensureAddressExists(String imei, String avatarPath) {
         addressViewModel.getAddressByNumbers(imei).observe(getViewLifecycleOwner(),
@@ -1042,9 +944,7 @@ public class ChatRoomFragment extends Fragment {
 
                 // [bleFix-serialQueue] 직접 GATT write 제거 → Service 직렬 큐로 통일 (SENDING/RECV 동시쓰기 충돌 방지)
                 //   완료 동기화는 기존 SENDING=id,OK 에코(lock.notifyAll)로 유지. Service가 Base64 인코딩하므로 원문(msg) 전달.
-                // [pendingFix] offer는 LiveData setValue(@MainThread) → 백그라운드(SendRunnable)에서 직접 호출 시 크래시. 메인 스레드로.
-                final String _qmsg = msg;
-                handler.post(() -> BLE.INSTANCE.getWriteQueue().offer(_qmsg));
+                BLE.INSTANCE.getWriteQueue().offer(msg);
 
                 synchronized (lock) {
                     try {

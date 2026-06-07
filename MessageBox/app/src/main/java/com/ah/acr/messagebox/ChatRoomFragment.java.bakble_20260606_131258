@@ -79,9 +79,6 @@ public class ChatRoomFragment extends Fragment {
     };
 
     private int mMoresendMsgId = -1;
-    // [fileMsg] 첨부된 파일/사진 바이트 + 이름 (3-C에서 채움, 송신 시 사용)
-    private byte[] mAttachBytes = null;
-    private String mAttachName = null;
     private final java.util.Map<Integer,Long> mBannerLockUntil = new java.util.HashMap<>();   // msgId -> 잠금 해제시각
     private static final long BANNER_LOCK_MS = 60000;   // [Step5] 재송신/재요청 클릭 후 60초 배너 잠금
 
@@ -155,8 +152,6 @@ public class ChatRoomFragment extends Fragment {
                 binding.btnGapfillResend.setVisibility(View.GONE);
                 binding.btnGapfillDiscard.setVisibility(View.GONE);
             } else {
-                // [무인포기숨김] 자동모드인데 여기(else) 도달 = 3회 포기(gaveUp). 무인장비는 수동 재수신/버림 버튼 무의미 → 배너 통째 숨김
-                if (_act.isAutoResend()) { binding.bannerGapfill.setVisibility(View.GONE); return; }
                 binding.textGapfillInfo.setText("\uD83D\uDCE5 RECV  Incomplete: " + received + "/" + total + " (" + missing + " missing) \u00B7 " + (elapsed/60000) + " min ago");
                 binding.btnGapfillResend.setVisibility(View.VISIBLE);
                 binding.btnGapfillDiscard.setVisibility(View.VISIBLE);
@@ -175,8 +170,6 @@ public class ChatRoomFragment extends Fragment {
 
     // Gallery launcher
     private ActivityResultLauncher<String> pickImageLauncher;
-    // [fileMsg 3-C] 파일/사진 첨부용 launcher (아바타용 pickImageLauncher와 별개)
-    private ActivityResultLauncher<String> mAttachLauncher;
 
     // Sending progress dialog
     private ProgressDialog sendDialog;
@@ -192,11 +185,6 @@ public class ChatRoomFragment extends Fragment {
         pickImageLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> handleImagePicked(uri)
-        );
-        // [fileMsg 3-C] 파일/사진 첨부 선택 결과 처리
-        mAttachLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(),
-                uri -> handleAttachPicked(uri)
         );
     }
 
@@ -406,104 +394,6 @@ public class ChatRoomFragment extends Fragment {
         }).start();
     }
 
-    // ============================================================
-    //  [fileMsg 3-C] 파일/사진 첨부 선택 결과 처리.
-    //  Uri → byte[] 읽기 → 10KB 검증(파일=차단, 사진=압축) → mAttachBytes 저장 + UI.
-    // ============================================================
-    private static final int ATTACH_MAX_BYTES = 10 * 1024;   // 10KB 원본 한도
-
-    private void handleAttachPicked(Uri uri) {
-        if (uri == null) return;
-        final boolean isPhoto = binding.typePhoto.isChecked();
-        final String fname = getFileNameFromUri(uri);
-        new Thread(() -> {
-            try {
-                byte[] data = readBytesFromUri(uri);
-                if (data == null || data.length == 0) { postToast("Failed to read file"); return; }
-                if (isPhoto) {
-                    if (data.length > ATTACH_MAX_BYTES) {
-                        byte[] comp = compressImageToMax(uri, ATTACH_MAX_BYTES);
-                        if (comp == null) { postToast("Failed to compress photo"); return; }
-                        data = comp;
-                    }
-                    if (data.length > ATTACH_MAX_BYTES) { postToast("Photo too large even after compression"); return; }
-                } else {
-                    if (data.length > ATTACH_MAX_BYTES) {
-                        final int kb = data.length / 1024;
-                        if (getActivity() != null) getActivity().runOnUiThread(() ->
-                            new android.app.AlertDialog.Builder(requireContext())
-                                .setTitle("File too large")
-                                .setMessage("Max 10KB. Selected file is " + kb + "KB.")
-                                .setPositiveButton("OK", null).show());
-                        return;
-                    }
-                }
-                final byte[] fdata = data;
-                mAttachBytes = fdata;
-                mAttachName = (fname != null && !fname.isEmpty()) ? fname : (isPhoto ? "photo.jpg" : "file.bin");
-                if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                    binding.uploadLabel.setText(mAttachName + " (" + fdata.length + " B)");
-                    if (isPhoto) {
-                        try {
-                            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeByteArray(fdata, 0, fdata.length);
-                            if (bmp != null) { binding.uploadThumb.setImageBitmap(bmp); binding.uploadThumb.setVisibility(View.VISIBLE); }
-                        } catch (Exception ignore) {}
-                    } else { binding.uploadThumb.setVisibility(View.GONE); }
-                });
-            } catch (Exception e) { postToast("Attach error: " + e.getMessage()); }
-        }).start();
-    }
-
-    private void postToast(String msg) {
-        if (getActivity() != null) getActivity().runOnUiThread(() ->
-            Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show());
-    }
-
-    private byte[] readBytesFromUri(Uri uri) throws Exception {
-        java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
-        if (is == null) return null;
-        try (java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
-            byte[] buf = new byte[4096]; int n;
-            while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
-            return bos.toByteArray();
-        } finally { is.close(); }
-    }
-
-    private String getFileNameFromUri(Uri uri) {
-        String name = null;
-        try (android.database.Cursor c = requireContext().getContentResolver().query(uri, null, null, null, null)) {
-            if (c != null && c.moveToFirst()) {
-                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                if (idx >= 0) name = c.getString(idx);
-            }
-        } catch (Exception ignore) {}
-        return name;
-    }
-
-    private byte[] compressImageToMax(Uri uri, int maxBytes) {
-        try {
-            java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
-            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is);
-            if (is != null) is.close();
-            if (bmp == null) return null;
-            for (int q = 90; q >= 30; q -= 10) {
-                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, q, bos);
-                if (bos.size() <= maxBytes) return bos.toByteArray();
-            }
-            android.graphics.Bitmap cur = bmp;
-            for (int step = 0; step < 5; step++) {
-                int w = Math.max(1, cur.getWidth() / 2), h = Math.max(1, cur.getHeight() / 2);
-                cur = android.graphics.Bitmap.createScaledBitmap(cur, w, h, true);
-                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                cur.compress(android.graphics.Bitmap.CompressFormat.JPEG, 50, bos);
-                if (bos.size() <= maxBytes) return bos.toByteArray();
-                if (w <= 2 || h <= 2) break;
-            }
-            return null;
-        } catch (Exception e) { Log.e(TAG, "compressImageToMax fail: " + e.getMessage()); return null; }
-    }
-
 
     private void ensureAddressExists(String imei, String avatarPath) {
         addressViewModel.getAddressByNumbers(imei).observe(getViewLifecycleOwner(),
@@ -558,9 +448,9 @@ public class ChatRoomFragment extends Fragment {
                 new ByteLengthFilter(200, "UTF-8")
         });
 
-        // Large radio: when Large/Photo/File, remove 200B filter; Short restores it
-        binding.typeLarge.setOnCheckedChangeListener((b, checked) -> {
-            updateTitleVisibility();
+        // 대용량 체크박스: 켜면 본문 200B 필터 해제, 끄면 복원
+        binding.checkLargeMsg.setOnCheckedChangeListener((b, checked) -> {
+            updateTitleVisibility();   // 대용량 체크 또는 ACK ON이면 제목칸 숨김
             if (checked) {
                 binding.editChatMsg.setFilters(new InputFilter[]{});
             } else {
@@ -580,7 +470,7 @@ public class ChatRoomFragment extends Fragment {
     /** 제목칸 표시 제어: 대용량 체크 OR 단문 ACK ON이면 숨김 (식별자 전용이라 입력 불필요). */
     private void updateTitleVisibility() {
         if (binding == null) return;
-        boolean large = binding.typeLarge.isChecked() || binding.typePhoto.isChecked() || binding.typeFile.isChecked();
+        boolean large = binding.checkLargeMsg.isChecked();
         boolean ackShortOn = android.preference.PreferenceManager
                 .getDefaultSharedPreferences(requireContext())
                 .getBoolean("pref_ack_short", false);
@@ -591,7 +481,7 @@ public class ChatRoomFragment extends Fragment {
     private void updateByteCount() {
         if (binding == null) return;
         int bytes = binding.editChatMsg.getText().toString().getBytes(StandardCharsets.UTF_8).length;
-        boolean large = binding.typeLarge.isChecked();
+        boolean large = binding.checkLargeMsg.isChecked();
         if (large) {
             int parts = Math.max(1, (int) Math.ceil(bytes / 200.0));
             binding.textByteCount.setText(bytes + " B / SBD " + parts);
@@ -741,65 +631,12 @@ public class ChatRoomFragment extends Fragment {
 
 
         // Send button (now save only)
-        // [fileMsg] Type selector → switch input UI
-        binding.groupMsgType.setOnCheckedChangeListener((g, checkedId) -> {
-            boolean isShort = (checkedId == R.id.type_short);
-            boolean isLarge = (checkedId == R.id.type_large);
-            boolean isPhoto = (checkedId == R.id.type_photo);
-            boolean isFile  = (checkedId == R.id.type_file);
-            boolean isAttach = isPhoto || isFile;
-
-            // Title: only for Short (and Large hides it per spec)
-            binding.editChatTitle.setVisibility(isShort ? View.VISIBLE : View.GONE);
-            // Message box vs Upload area
-            binding.editChatMsg.setVisibility(isAttach ? View.GONE : View.VISIBLE);
-            binding.uploadArea.setVisibility(isAttach ? View.VISIBLE : View.GONE);
-            // Count label
-            if (isShort)      binding.textByteCount.setText("0/200 B");
-            else if (isLarge) binding.textByteCount.setText("\u2248 0 chunks");
-            else              binding.textByteCount.setText("");
-
-            // reset attach when leaving attach mode
-            if (!isAttach) {
-                mAttachBytes = null; mAttachName = null;
-                binding.uploadThumb.setVisibility(View.GONE);
-                binding.uploadLabel.setText("Tap to attach");
-            }
-        });
-
-        // [fileMsg 3-C] Tap upload area → open file/photo picker
-        binding.uploadArea.setOnClickListener(v -> {
-            boolean isPhoto = binding.typePhoto.isChecked();
-            mAttachLauncher.launch(isPhoto ? "image/*" : "*/*");
-        });
-
         binding.btnChatSend.setOnClickListener(v -> {
             String title = binding.editChatTitle.getText().toString().trim();
             String msg   = binding.editChatMsg.getText().toString().trim();
 
             // 대용량 모드: 저장 없이 즉시 분할 전송 (상대 IMEI로)
-            // Photo/File: attach via upload area (handled in 3-C). Here just guard.
-            if (binding.typePhoto.isChecked() || binding.typeFile.isChecked()) {
-                if (mAttachBytes == null || mAttachBytes.length == 0) {
-                    Toast.makeText(getContext(), "Please attach a file first", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-                    Toast.makeText(getContext(), getString(R.string.chat_ble_not_connected), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                String fileTo = "SERVER".equals(mCodeNum) ? "" : mCodeNum;
-                char ft = binding.typePhoto.isChecked() ? 'I' : 'F';
-                ((MainActivity) requireActivity()).sendLargeFile(fileTo, mAttachBytes, mAttachName, ft);
-                mAttachBytes = null; mAttachName = null;
-                binding.uploadThumb.setVisibility(View.GONE);
-                binding.uploadLabel.setText("Tap to attach");
-                Toast.makeText(getContext(), "Large transfer started", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Large text mode: split & send immediately (no DB save)
-            if (binding.typeLarge.isChecked()) {
+            if (binding.checkLargeMsg.isChecked()) {
                 if (msg.isEmpty()) {
                     Toast.makeText(getContext(), getString(R.string.chat_input_empty), Toast.LENGTH_SHORT).show();
                     return;
@@ -1040,11 +877,22 @@ public class ChatRoomFragment extends Fragment {
                     break;
                 }
 
-                // [bleFix-serialQueue] 직접 GATT write 제거 → Service 직렬 큐로 통일 (SENDING/RECV 동시쓰기 충돌 방지)
-                //   완료 동기화는 기존 SENDING=id,OK 에코(lock.notifyAll)로 유지. Service가 Base64 인코딩하므로 원문(msg) 전달.
-                // [pendingFix] offer는 LiveData setValue(@MainThread) → 백그라운드(SendRunnable)에서 직접 호출 시 크래시. 메인 스레드로.
-                final String _qmsg = msg;
-                handler.post(() -> BLE.INSTANCE.getWriteQueue().offer(_qmsg));
+                BleManager.getInstance().write(
+                        bleDevice,
+                        SERVICE_UUID.toString(),
+                        characteristic.getUuid().toString(),
+                        sendMsg.getBytes(),
+                        new BleWriteCallback() {
+                            @Override
+                            public void onWriteSuccess(int current, int total, byte[] justWrite) {
+                                handler.post(() ->
+                                        Log.v("WRITE", "success curr=" + current + " total=" + total));
+                            }
+                            @Override
+                            public void onWriteFailure(BleException exception) {
+                                handler.post(() -> Log.e("WRITE", "failure: " + exception));
+                            }
+                        });
 
                 synchronized (lock) {
                     try {

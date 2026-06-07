@@ -255,16 +255,6 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
 
             // 본문 (공통)
             textMsg.setText(item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "");
-            // [copy] Long-press bubble text to copy
-            final String _copyText = item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "";
-            textMsg.setOnLongClickListener(view -> {
-                if (_copyText.isEmpty()) return false;
-                android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                        view.getContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("message", _copyText));
-                android.widget.Toast.makeText(view.getContext(), "Copied", android.widget.Toast.LENGTH_SHORT).show();
-                return true;
-            });
         }
     }
 }
