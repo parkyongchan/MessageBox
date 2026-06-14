@@ -129,6 +129,10 @@ public class MainActivity extends AppCompatActivity {
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
     private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeMsgTo = new java.util.HashMap<>();
+    // [fileMsg MO복구] 보낸 파일/사진 byte[] + 메타 (~Q:/auto/수동 재전송용)
+    private final java.util.Map<Integer, byte[]> mSentLargeFile = new java.util.HashMap<>();
+    private final java.util.Map<Integer, String> mSentLargeFileName = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Character> mSentLargeFileType = new java.util.HashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
     private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
@@ -1606,6 +1610,10 @@ public class MainActivity extends AppCompatActivity {
 
     /** ~Q: 로 받은 seq들을 원본(mSentLargeMsg)에서 꺼내 재송신. 반환=실제 보낸 개수. */
     private int sendMoResend(final int msgId, final java.util.List<Integer> seqs) {
+        // [fileMsg MO복구] 이 msgId가 파일/사진이면 파일 재전송으로 위임
+        boolean _isFileMsg;
+        synchronized (mSentLargeFile) { _isFileMsg = mSentLargeFile.containsKey(msgId); }
+        if (_isFileMsg) { return sendMoResendFile(msgId, seqs); }
         final String fullText;
         final String recipientImei;
         synchronized (mSentLargeMsg) {
@@ -1659,6 +1667,63 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }, "mo-resend").start();
+        return todo.size();
+    }
+
+    /** [fileMsg MO복구] ~Q: 받은 seq들을 보낸 파일(mSentLargeFile)에서 꺼내 재송신. 텍스트 sendMoResend의 파일 버전. */
+    private int sendMoResendFile(final int msgId, final java.util.List<Integer> seqs) {
+        final byte[] data; final String recipientImei; final String fileName; final char type;
+        synchronized (mSentLargeFile) {
+            data = mSentLargeFile.get(msgId);
+            recipientImei = mSentLargeMsgTo.get(msgId);
+            fileName = mSentLargeFileName.getOrDefault(msgId, "");
+            Character _t = mSentLargeFileType.get(msgId);
+            type = (_t == null) ? 'I' : _t;
+        }
+        if (data == null) { android.util.Log.w("MO-RESEND", "파일원본 없음 msgId=" + msgId); return 0; }
+        final java.util.List<byte[]> parts = splitBytes(data, 200);
+        final int total = parts.size();
+        final java.util.List<Integer> todo = new java.util.ArrayList<>();
+        for (int seq : seqs) {
+            if (seq < 0 || seq >= total) continue;
+            int cnt = mMoResendCount.getOrDefault(msgId + ":" + seq, 0);
+            if (cnt >= MO_RESEND_MAX) { android.util.Log.d("MO-RESEND", "상한 초과 skip " + msgId + ":" + seq); continue; }
+            todo.add(seq);
+        }
+        if (todo.isEmpty()) return 0;
+        final long fullCrc;
+        { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(data); fullCrc = c.getValue(); }
+        final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
+        new Thread(() -> {
+            for (int seq : todo) {
+                byte[] body = parts.get(seq);
+                long chunkCrc;
+                { java.util.zip.CRC32 cc = new java.util.zip.CRC32(); cc.update(body); chunkCrc = cc.getValue(); }
+                // seq0: marker:msgId:seq:total:fullCrc:chunkCrc:fileName, 그외: marker:msgId:seq:total::chunkCrc
+                String title = marker + msgId + ":" + seq + ":" + total + ":"
+                        + (seq == 0 ? String.valueOf(fullCrc) : "") + ":" + chunkCrc
+                        + (seq == 0 ? (":" + fileName) : "");
+                io.netty.buffer.ByteBuf buf = io.netty.buffer.Unpooled.buffer();
+                buf.writeByte(0x07);
+                String addr = (recipientImei == null) ? "" : recipientImei;
+                buf.writeByte(addr.getBytes(StandardCharsets.US_ASCII).length);
+                buf.writeCharSequence(addr, StandardCharsets.US_ASCII);
+                buf.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+                buf.writeCharSequence(title, StandardCharsets.UTF_8);
+                buf.writeByte(body.length);
+                buf.writeBytes(body);   // 바이너리 직접
+                byte[] frame = new byte[buf.readableBytes()]; buf.readBytes(frame);
+                int sendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
+                String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
+                boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
+                if (ok) {
+                    mMoResendCount.merge(msgId + ":" + seq, 1, Integer::sum);
+                    android.util.Log.d("MO-RESEND", "[file] 재송신 OK seq=" + seq);
+                } else {
+                    android.util.Log.e("MO-RESEND", "[file] 재송신 모뎀거부 seq=" + seq);
+                }
+            }
+        }, "mo-resend-file").start();
         return todo.size();
     }
 
@@ -2380,6 +2445,13 @@ public class MainActivity extends AppCompatActivity {
                 // 전체 CRC32 (바이너리 원본)
                 long fullCrc;
                 { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(data); fullCrc = c.getValue(); }
+                // [fileMsg MO복구] ~Q:/auto/수동 재전송 위해 원본 byte[]+메타 보관
+                synchronized (mSentLargeFile) {
+                    mSentLargeFile.put(msgId, data);
+                    mSentLargeFileName.put(msgId, safeName);
+                    mSentLargeFileType.put(msgId, type);
+                    mSentLargeMsgTo.put(msgId, recipientImei == null ? "" : recipientImei);
+                }
 
                 mLargeSendingCount++;
                 android.util.Log.d("FILE-MSG", "TX file start msgId=" + msgId + " type=" + type
@@ -2417,12 +2489,23 @@ public class MainActivity extends AppCompatActivity {
 
                     boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
                     if (!ok) {
-                        Log.e("FILE-MSG", "chunk modem reject msgId=" + msgId + " seq=" + seq + " - abort");
-                        final int _abSeq = seq;
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                            "\u26A0 \uD30C\uC77C \uC804\uC1A1 \uC2E4\uD328(\uC2E0\uD638 \uBD88\uB7C9, \uC870\uAC01 " + _abSeq + "). \uC2E0\uD638 \uC591\uD638 \uC2DC \uB2E4\uC2DC \uC804\uC1A1\uD558\uC138\uC694.",
-                            Toast.LENGTH_LONG).show());
-                        return;
+                        // [fileRetry] 일시적 감도 불량 극복: 실패 조각 5초 간격 3회 재시도 후 계속.
+                        int _retry = 0;
+                        while (!ok && _retry < 3) {
+                            _retry++;
+                            Log.w("FILE-MSG", "chunk echo 실패 msgId=" + msgId + " seq=" + seq + " - 재시도 " + _retry + "/3");
+                            try { Thread.sleep(5000); } catch (InterruptedException _ie) { Thread.currentThread().interrupt(); }
+                            ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
+                        }
+                        if (!ok) {
+                            Log.e("FILE-MSG", "chunk modem reject msgId=" + msgId + " seq=" + seq + " - abort(3회 실패)");
+                            final int _abSeq = seq;
+                            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                                "\u26A0 \uD30C\uC77C \uC804\uC1A1 \uC2E4\uD328(\uC2E0\uD638 \uBD88\uB7C9, \uC870\uAC01 " + _abSeq + "). \uC2E0\uD638 \uC591\uD638 \uC2DC \uB2E4\uC2DC \uC804\uC1A1\uD558\uC138\uC694.",
+                                Toast.LENGTH_LONG).show());
+                            return;
+                        }
+                        Log.d("FILE-MSG", "chunk 재시도 성공 msgId=" + msgId + " seq=" + seq);
                     }
                 }
                 android.util.Log.d("FILE-MSG", "TX file all-accepted msgId=" + msgId + " - wait server ~A:");
