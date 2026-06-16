@@ -84,6 +84,7 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
         private final TextView textSender;
         private final TextView textTitle;
         private final TextView textMsg;
+        private final ImageView imgPhoto;   // [3-D-2] 사진 썸네일
 
         // 좌측 시간 영역 (송신)
         private final LinearLayout layoutTimeLeft;
@@ -110,6 +111,7 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
             textSender     = view.findViewById(R.id.text_bubble_sender);
             textTitle      = view.findViewById(R.id.text_bubble_title);
             textMsg        = view.findViewById(R.id.text_bubble_msg);
+            imgPhoto       = view.findViewById(R.id.img_bubble_photo);
 
             layoutTimeLeft = view.findViewById(R.id.layout_bubble_time_left);
             imgPendingLeft = view.findViewById(R.id.img_bubble_pending_left);
@@ -254,7 +256,41 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
             }
 
             // 본문 (공통)
-            textMsg.setText(item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "");
+            // [3-D-2 썸네일 분기] title이 [IMG]면 경로(msg)로 사진 미리보기, 아니면 텍스트
+            String _bodyVal = item.getMsg().getMsg();
+            String _titleVal = item.getMsg().getTitle();
+            boolean _isImg = (_titleVal != null && _titleVal.startsWith("[IMG]") && _bodyVal != null && !_bodyVal.trim().isEmpty());
+            if (_isImg) {
+                android.graphics.Bitmap _bmp = null;
+                try { _bmp = android.graphics.BitmapFactory.decodeFile(_bodyVal); } catch (Exception _e) { _bmp = null; }
+                if (_bmp != null) {
+                    imgPhoto.setImageBitmap(_bmp);
+                    imgPhoto.setVisibility(View.VISIBLE);
+                    textMsg.setVisibility(View.GONE);
+                    final String _photoPath = _bodyVal;
+                    imgPhoto.setOnClickListener(v -> {
+                        try {
+                            java.io.File _f = new java.io.File(_photoPath);
+                            android.net.Uri _uri = androidx.core.content.FileProvider.getUriForFile(
+                                    v.getContext(), v.getContext().getPackageName() + ".fileprovider", _f);
+                            android.content.Intent _it = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+                            _it.setDataAndType(_uri, "image/*");
+                            _it.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            v.getContext().startActivity(_it);
+                        } catch (Exception _ex) {
+                            android.widget.Toast.makeText(v.getContext(), "\uC5F4\uAE30 \uC2E4\uD328: " + _ex.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    imgPhoto.setVisibility(View.GONE);
+                    textMsg.setVisibility(View.VISIBLE);
+                    textMsg.setText("[IMG] " + _bodyVal);
+                }
+            } else {
+                imgPhoto.setVisibility(View.GONE);
+                textMsg.setVisibility(View.VISIBLE);
+                textMsg.setText(_bodyVal != null ? _bodyVal : "");
+            }
             // [copy] Long-press bubble text to copy
             final String _copyText = item.getMsg().getMsg() != null ? item.getMsg().getMsg() : "";
             textMsg.setOnLongClickListener(view -> {

@@ -790,6 +790,30 @@ public class ChatRoomFragment extends Fragment {
                 }
                 String fileTo = "SERVER".equals(mCodeNum) ? "" : mCodeNum;
                 char ft = binding.typePhoto.isChecked() ? 'I' : 'F';
+                // [3-D-1] 송신 말풍선: 사진/파일 보낼 때 채팅에 즉시 [IMG]/[FILE] 표시 (전송됨=isSend true → FAB펜딩 제외)
+                {
+                    String _bubbleTitle = (ft == 'I') ? "[IMG]" : "[FILE]";
+                    String _fname = (mAttachName != null) ? mAttachName : (ft == 'I' ? "photo.jpg" : "file.bin");
+                    String _bubbleBody = _fname;   // 기본: 파일명
+                    // [3-D-2 송신썸네일] 이미지면 보낸 사진을 sent_files에 저장하고 경로를 msg에 → 어댑터가 썸네일 표시
+                    if (ft == 'I' && mAttachBytes != null) {
+                        try {
+                            java.io.File _sdir = new java.io.File(requireContext().getExternalFilesDir(null), "sent_files");
+                            if (!_sdir.exists()) _sdir.mkdirs();
+                            java.io.File _sf = new java.io.File(_sdir, System.currentTimeMillis() + "_" + _fname);
+                            try (java.io.FileOutputStream _fos = new java.io.FileOutputStream(_sf)) { _fos.write(mAttachBytes); }
+                            _bubbleBody = _sf.getAbsolutePath();   // 경로로 교체 → 썸네일
+                        } catch (Exception _se) { /* 저장 실패 시 파일명 유지(텍스트 폴백) */ }
+                    }
+                    MsgEntity _photoBubble = new MsgEntity(
+                            0, true, mCodeNum,
+                            _bubbleTitle, _bubbleBody,
+                            new java.util.Date(),
+                            null, null,
+                            false, true, false
+                    );
+                    msgViewModel.insert(_photoBubble, _s -> null);
+                }
                 ((MainActivity) requireActivity()).sendLargeFile(fileTo, mAttachBytes, mAttachName, ft);
                 mAttachBytes = null; mAttachName = null;
                 binding.uploadThumb.setVisibility(View.GONE);

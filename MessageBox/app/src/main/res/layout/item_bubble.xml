@@ -119,6 +119,18 @@
                     android:layout_marginBottom="4dp"
                     android:visibility="gone" />
 
+                <!-- Photo thumbnail (only for [IMG] messages) -->
+                <ImageView
+                    android:id="@+id/img_bubble_photo"
+                    android:layout_width="180dp"
+                    android:layout_height="wrap_content"
+                    android:adjustViewBounds="true"
+                    android:maxHeight="220dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginBottom="4dp"
+                    android:visibility="gone"
+                    android:contentDescription="Photo" />
+
                 <!-- Body -->
                 <TextView
                     android:id="@+id/text_bubble_msg"

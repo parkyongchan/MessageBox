@@ -2612,7 +2612,11 @@ public class MainActivity extends AppCompatActivity {
             android.util.Log.d("FILE-MSG", "파일조각 수신 msgId=" + msgId + " type=" + ftype
                     + " seq=" + seq + "/" + (total - 1) + " 누적=" + parts.size() + "/" + total);
 
-            if (parts.size() < total) return;   // 아직 미완성
+            // [fileGapSchedule] 미완성이면 자동 MT gap-fill 예약. 유실 조각 ~R: 재요청 → 서버가 ~L:I:/~L:F: 로 재전송 → 복구.
+            if (parts.size() < total) {
+                scheduleAutoMtGapfill(msgId);
+                return;   // 아직 미완성
+            }
 
             // ── 조립 ──
             java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
@@ -3323,8 +3327,22 @@ public class MainActivity extends AppCompatActivity {
         synchronized (mLargeMsgBuf) {
             java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
             Integer total = mLargeMsgTotal.get(msgId);
-            if (parts == null || total == null) return missing;
-            for (int s = 0; s < total; s++) if (!parts.containsKey(s)) missing.add(s);
+            if (parts == null || total == null) {
+                // [fileGapMissing] 텍스트 버퍼에 없으면 아래에서 파일/사진 버퍼 확인
+            } else {
+                for (int s = 0; s < total; s++) if (!parts.containsKey(s)) missing.add(s);
+                return missing;
+            }
+        }
+        // [fileGapMissing] 파일/사진 버퍼(mLargeFileBuf) 확인 - 파일 MT gap-fill 지원
+        if (missing.isEmpty()) {
+            synchronized (mLargeFileBuf) {
+                java.util.TreeMap<Integer, byte[]> fparts = mLargeFileBuf.get(msgId);
+                Integer ftotal = mLargeFileTotal.get(msgId);
+                if (fparts != null && ftotal != null) {
+                    for (int s = 0; s < ftotal; s++) if (!fparts.containsKey(s)) missing.add(s);
+                }
+            }
         }
         return missing;
     }
