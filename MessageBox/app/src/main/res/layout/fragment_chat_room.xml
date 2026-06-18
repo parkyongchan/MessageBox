@@ -395,7 +395,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Short"
+                android:text="Short-M"
                 android:textColor="#95B0D4"
                 android:textSize="11sp"
                 android:buttonTint="#00E5D1"
@@ -406,7 +406,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Large"
+                android:text="Large-M"
                 android:textColor="#95B0D4"
                 android:textSize="11sp"
                 android:buttonTint="#00E5D1" />
@@ -427,6 +427,16 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="File"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1" />
+
+            <RadioButton
+                android:id="@+id/type_voice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Voice"
                 android:textColor="#95B0D4"
                 android:textSize="11sp"
                 android:buttonTint="#00E5D1" />

@@ -1695,7 +1695,7 @@ public class MainActivity extends AppCompatActivity {
         if (todo.isEmpty()) return 0;
         final long fullCrc;
         { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(data); fullCrc = c.getValue(); }
-        final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
+        final String marker = (type == 'F') ? "~L:F:" : (type == 'V') ? "~L:V:" : "~L:I:";
         new Thread(() -> {
             for (int seq : todo) {
                 byte[] body = parts.get(seq);
@@ -2439,8 +2439,8 @@ public class MainActivity extends AppCompatActivity {
             Log.e("FILE-MSG", "sendLargeFile: 데이터 없음");
             return;
         }
-        if (type != 'F' && type != 'I') {
-            Log.e("FILE-MSG", "sendLargeFile: 잘못된 type=" + type + " (F/I만)");
+            if (type != 'F' && type != 'I' && type != 'V') {
+                Log.e("FILE-MSG", "sendLargeFile: 잘못된 type=" + type + " (F/I/V만)");
             return;
         }
         new Thread(() -> {
@@ -2452,7 +2452,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 final int msgId = mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
-                final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
+                final String marker = (type == 'F') ? "~L:F:" : (type == 'V') ? "~L:V:" : "~L:I:";
                 final String safeName = (fileName == null) ? "" : fileName.replace(":", "_").replace(",", "_");
 
                 // 전체 CRC32 (바이너리 원본)

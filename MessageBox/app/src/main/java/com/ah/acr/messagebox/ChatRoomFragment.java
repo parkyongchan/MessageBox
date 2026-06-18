@@ -580,7 +580,7 @@ public class ChatRoomFragment extends Fragment {
     /** 제목칸 표시 제어: 대용량 체크 OR 단문 ACK ON이면 숨김 (식별자 전용이라 입력 불필요). */
     private void updateTitleVisibility() {
         if (binding == null) return;
-        boolean large = binding.typeLarge.isChecked() || binding.typePhoto.isChecked() || binding.typeFile.isChecked();
+        boolean large = binding.typeLarge.isChecked() || binding.typePhoto.isChecked() || binding.typeFile.isChecked() || binding.typeVoice.isChecked();
         boolean ackShortOn = android.preference.PreferenceManager
                 .getDefaultSharedPreferences(requireContext())
                 .getBoolean("pref_ack_short", false);
@@ -770,7 +770,8 @@ public class ChatRoomFragment extends Fragment {
         // [fileMsg 3-C] Tap upload area → open file/photo picker
         binding.uploadArea.setOnClickListener(v -> {
             boolean isPhoto = binding.typePhoto.isChecked();
-            mAttachLauncher.launch(isPhoto ? "image/*" : "*/*");
+            boolean isVoice = binding.typeVoice.isChecked();
+            mAttachLauncher.launch(isPhoto ? "image/*" : (isVoice ? "audio/*" : "*/*"));
         });
 
         binding.btnChatSend.setOnClickListener(v -> {
@@ -779,7 +780,7 @@ public class ChatRoomFragment extends Fragment {
 
             // 대용량 모드: 저장 없이 즉시 분할 전송 (상대 IMEI로)
             // Photo/File: attach via upload area (handled in 3-C). Here just guard.
-            if (binding.typePhoto.isChecked() || binding.typeFile.isChecked()) {
+            if (binding.typePhoto.isChecked() || binding.typeFile.isChecked() || binding.typeVoice.isChecked()) {
                 if (mAttachBytes == null || mAttachBytes.length == 0) {
                     Toast.makeText(getContext(), "Please attach a file first", Toast.LENGTH_SHORT).show();
                     return;
@@ -789,9 +790,9 @@ public class ChatRoomFragment extends Fragment {
                     return;
                 }
                 String fileTo = "SERVER".equals(mCodeNum) ? "" : mCodeNum;
-                char ft = binding.typePhoto.isChecked() ? 'I' : 'F';
+                char ft = binding.typePhoto.isChecked() ? 'I' : (binding.typeVoice.isChecked() ? 'V' : 'F');
                 // [3-D-1] 송신 말풍선: 사진/파일 보낼 때 채팅에 즉시 [IMG]/[FILE] 표시 (전송됨=isSend true → FAB펜딩 제외)
-                    String _bubbleTitle = (ft == 'I') ? "[IMG]" : "[FILE]";
+            String _bubbleTitle = (ft == 'I') ? "[IMG]" : (ft == 'V') ? "[VOICE]" : "[FILE]";
                     String _fname = (mAttachName != null) ? mAttachName : (ft == 'I' ? "photo.jpg" : "file.bin");
                     String _bubbleBody = _fname;   // 기본: 파일명
                     // [3-D-2 송신썸네일] 이미지면 보낸 사진을 sent_files에 저장하고 경로를 msg에 → 어댑터가 썸네일 표시
