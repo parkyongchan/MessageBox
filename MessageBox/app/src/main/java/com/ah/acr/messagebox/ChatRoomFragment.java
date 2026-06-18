@@ -791,7 +791,6 @@ public class ChatRoomFragment extends Fragment {
                 String fileTo = "SERVER".equals(mCodeNum) ? "" : mCodeNum;
                 char ft = binding.typePhoto.isChecked() ? 'I' : 'F';
                 // [3-D-1] 송신 말풍선: 사진/파일 보낼 때 채팅에 즉시 [IMG]/[FILE] 표시 (전송됨=isSend true → FAB펜딩 제외)
-                {
                     String _bubbleTitle = (ft == 'I') ? "[IMG]" : "[FILE]";
                     String _fname = (mAttachName != null) ? mAttachName : (ft == 'I' ? "photo.jpg" : "file.bin");
                     String _bubbleBody = _fname;   // 기본: 파일명
@@ -813,8 +812,7 @@ public class ChatRoomFragment extends Fragment {
                             false, true, false
                     );
                     msgViewModel.insert(_photoBubble, _s -> null);
-                }
-                ((MainActivity) requireActivity()).sendLargeFile(fileTo, mAttachBytes, mAttachName, ft);
+                ((MainActivity) requireActivity()).sendLargeFile(fileTo, mAttachBytes, mAttachName, ft, _bubbleBody);
                 mAttachBytes = null; mAttachName = null;
                 binding.uploadThumb.setVisibility(View.GONE);
                 binding.uploadLabel.setText("Tap to attach");

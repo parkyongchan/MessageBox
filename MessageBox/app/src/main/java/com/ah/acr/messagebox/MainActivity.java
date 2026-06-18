@@ -2431,7 +2431,8 @@ public class MainActivity extends AppCompatActivity {
     //  type: 'F'=파일, 'I'=사진. data: 원본 바이너리(10KB 이하, 호출 전 압축/검증).
     // ============================================================
     public void sendLargeFile(final String recipientImei, final byte[] data,
-                              final String fileName, final char type) {
+                              final String fileName, final char type,
+                              final String bubbleBodyForAck) {   // [ackMedia] 말풍선 본문(content 매칭용)
         if (data == null || data.length == 0) {
             Log.e("FILE-MSG", "sendLargeFile: 데이터 없음");
             return;
@@ -2461,6 +2462,8 @@ public class MainActivity extends AppCompatActivity {
                     mSentLargeFileName.put(msgId, safeName);
                     mSentLargeFileType.put(msgId, type);
                     mSentLargeMsgTo.put(msgId, recipientImei == null ? "" : recipientImei);
+                    // [ackMedia] 말풍선 본문 보관 → ~A: 수신 시 content 매칭으로 V/VV 표시
+                    if (bubbleBodyForAck != null) mSentLargeMsg.put(msgId, bubbleBodyForAck);
                 }
 
                 mLargeSendingCount++;
@@ -2680,7 +2683,7 @@ public class MainActivity extends AppCompatActivity {
             // ── ACK 송신 (텍스트와 동일: pref_ack_large ON 시 지연 큐) ──
             boolean ackLargeOn = android.preference.PreferenceManager
                     .getDefaultSharedPreferences(MainActivity.this)
-                    .getBoolean("pref_ack_large", false);
+                    .getBoolean("pref_ack_media", false);
             if (ackLargeOn && !mPendingServerAckIds.contains(msgId)) {
                 mPendingServerAckIds.add(msgId);
                 android.util.Log.d("ACK", "파일 완성 -> 서버 ACK 지연 큐 적재 msgId=" + msgId);

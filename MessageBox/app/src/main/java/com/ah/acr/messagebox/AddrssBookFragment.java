@@ -444,8 +444,7 @@ public class AddrssBookFragment extends Fragment {
      *  ACK ON: 송신 시 식별자(msgId) 부착 + ~A:/~D: 수신 시 V/VV 표시. OFF: 식별자 미부착, ACK 무시. */
     public static final String PREF_ACK_SHORT = "pref_ack_short";
     public static final String PREF_ACK_LARGE = "pref_ack_large";
-    public static final String PREF_ACK_PHOTO = "pref_ack_photo";
-    public static final String PREF_ACK_FILE  = "pref_ack_file";
+    public static final String PREF_ACK_MEDIA = "pref_ack_media";   // [media] Photo/File/Voice 통합
     // Integrity (CRC) settings: short=optional, large=default ON, photo/file=forced ON
     public static final String PREF_INTEGRITY_SHORT = "pref_integrity_short";
     public static final String PREF_INTEGRITY_LARGE = "pref_integrity_large";
@@ -466,23 +465,19 @@ public class AddrssBookFragment extends Fragment {
         android.view.View v = getLayoutInflater().inflate(R.layout.dialog_ack_settings, null);
         androidx.appcompat.widget.SwitchCompat swShort = v.findViewById(R.id.switch_ack_short);
         androidx.appcompat.widget.SwitchCompat swLarge = v.findViewById(R.id.switch_ack_large);
-        androidx.appcompat.widget.SwitchCompat swPhoto = v.findViewById(R.id.switch_ack_photo);
-        androidx.appcompat.widget.SwitchCompat swFile  = v.findViewById(R.id.switch_ack_file);
+        androidx.appcompat.widget.SwitchCompat swMedia = v.findViewById(R.id.switch_ack_media);
         androidx.appcompat.widget.SwitchCompat swIntShort = v.findViewById(R.id.switch_integrity_short);
         androidx.appcompat.widget.SwitchCompat swIntLarge = v.findViewById(R.id.switch_integrity_large);
-        androidx.appcompat.widget.SwitchCompat swIntPhoto = v.findViewById(R.id.switch_integrity_photo);
-        androidx.appcompat.widget.SwitchCompat swIntFile  = v.findViewById(R.id.switch_integrity_file);
+        androidx.appcompat.widget.SwitchCompat swIntMedia = v.findViewById(R.id.switch_integrity_media);
         androidx.appcompat.widget.SwitchCompat swResendAuto = v.findViewById(R.id.switch_resend_auto);
         android.widget.EditText editResendInterval = v.findViewById(R.id.edit_resend_interval);
 
         swShort.setChecked(prefs.getBoolean(PREF_ACK_SHORT, false));
         swLarge.setChecked(prefs.getBoolean(PREF_ACK_LARGE, false));
-        swPhoto.setChecked(prefs.getBoolean(PREF_ACK_PHOTO, false));
-        swFile.setChecked(prefs.getBoolean(PREF_ACK_FILE, false));
+        swMedia.setChecked(prefs.getBoolean(PREF_ACK_MEDIA, false));
         swIntShort.setChecked(prefs.getBoolean(PREF_INTEGRITY_SHORT, false));   // short: optional, default OFF
         swIntLarge.setChecked(prefs.getBoolean(PREF_INTEGRITY_LARGE, true));    // large: default ON
-        swIntPhoto.setChecked(true);   // photo: forced ON (disabled)
-        swIntFile.setChecked(true);    // file: forced ON (disabled)
+        swIntMedia.setChecked(true);   // media(photo/file/voice): forced ON (disabled)
         swResendAuto.setChecked(prefs.getBoolean(PREF_RESEND_AUTO, false));   // 기본 OFF=수동
         editResendInterval.setText(String.valueOf(prefs.getInt(PREF_RESEND_INTERVAL, 10)));
 
@@ -496,8 +491,7 @@ public class AddrssBookFragment extends Fragment {
             prefs.edit()
                     .putBoolean(PREF_ACK_SHORT, swShort.isChecked())
                     .putBoolean(PREF_ACK_LARGE, swLarge.isChecked())
-                    .putBoolean(PREF_ACK_PHOTO, swPhoto.isChecked())
-                    .putBoolean(PREF_ACK_FILE, swFile.isChecked())
+                    .putBoolean(PREF_ACK_MEDIA, swMedia.isChecked())
                     .putBoolean(PREF_INTEGRITY_SHORT, swIntShort.isChecked())
                     .putBoolean(PREF_INTEGRITY_LARGE, swIntLarge.isChecked())
                     .putBoolean(PREF_RESEND_AUTO, swResendAuto.isChecked())

@@ -103,34 +103,13 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Photo (planned)"
-            android:textColor="#5A7090"
+            android:text="Photo / File / Voice"
+            android:textColor="#FFFFFF"
             android:textSize="14sp" />
         <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_ack_photo"
+            android:id="@+id/switch_ack_media"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:enabled="false" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingVertical="7dp">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="File (planned)"
-            android:textColor="#5A7090"
-            android:textSize="14sp" />
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_ack_file"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:enabled="false" />
+            android:layout_height="wrap_content" />
     </LinearLayout>
 
     <!-- divider -->
@@ -200,37 +179,17 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingVertical="7dp">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Photo (forced)"
-            android:textColor="#5A7090"
-            android:textSize="14sp" />
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_integrity_photo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:enabled="false" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:paddingVertical="7dp"
         android:layout_marginBottom="14dp">
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="File (forced)"
+            android:text="Photo / File / Voice (forced)"
             android:textColor="#5A7090"
             android:textSize="14sp" />
         <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_integrity_file"
+            android:id="@+id/switch_integrity_media"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false" />
