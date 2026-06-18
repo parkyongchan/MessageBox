@@ -1695,7 +1695,7 @@ public class MainActivity extends AppCompatActivity {
         if (todo.isEmpty()) return 0;
         final long fullCrc;
         { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(data); fullCrc = c.getValue(); }
-        final String marker = (type == 'F') ? "~L:F:" : (type == 'V') ? "~L:V:" : "~L:I:";
+        final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
         new Thread(() -> {
             for (int seq : todo) {
                 byte[] body = parts.get(seq);
@@ -2439,8 +2439,8 @@ public class MainActivity extends AppCompatActivity {
             Log.e("FILE-MSG", "sendLargeFile: 데이터 없음");
             return;
         }
-            if (type != 'F' && type != 'I' && type != 'V') {
-                Log.e("FILE-MSG", "sendLargeFile: 잘못된 type=" + type + " (F/I/V만)");
+        if (type != 'F' && type != 'I') {
+            Log.e("FILE-MSG", "sendLargeFile: 잘못된 type=" + type + " (F/I만)");
             return;
         }
         new Thread(() -> {
@@ -2452,7 +2452,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 final int msgId = mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
-                final String marker = (type == 'F') ? "~L:F:" : (type == 'V') ? "~L:V:" : "~L:I:";
+                final String marker = (type == 'F') ? "~L:F:" : "~L:I:";
                 final String safeName = (fileName == null) ? "" : fileName.replace(":", "_").replace(",", "_");
 
                 // 전체 CRC32 (바이너리 원본)
@@ -2577,6 +2577,57 @@ public class MainActivity extends AppCompatActivity {
             }
         }, "file-send").start();
     }
+
+    /** [publicSave] 받은 미디어를 종류별 공용 폴더에 저장 → 갤러리/음악앱/파일앱에서 바로 보임.
+     *  type: I→Pictures/MessageBox, V→Music/MessageBox, F→Download/MessageBox.
+     *  Android 10+(API29)는 MediaStore(권한 불필요), 실패/구버전은 앱 전용 폴더 폴백.
+     *  반환: 저장 위치(content:// URI 또는 절대경로). 실패 시 null. */
+    private String saveReceivedToPublic(char type, String fname, byte[] data, int msgId) {
+        String sub = "MessageBox";
+        String safe = (fname == null || fname.isEmpty()) ? ("file_" + msgId) : fname;
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            try {
+                android.content.ContentResolver resolver = getContentResolver();
+                android.content.ContentValues cv = new android.content.ContentValues();
+                cv.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, msgId + "_" + safe);
+                android.net.Uri collection;
+                String relPath;
+                if (type == 'I') {
+                    collection = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    relPath = android.os.Environment.DIRECTORY_PICTURES + "/" + sub;
+                } else if (type == 'V') {
+                    collection = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                    relPath = android.os.Environment.DIRECTORY_MUSIC + "/" + sub;
+                } else {
+                    collection = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                    relPath = android.os.Environment.DIRECTORY_DOWNLOADS + "/" + sub;
+                }
+                cv.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relPath);
+                cv.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1);
+                android.net.Uri uri = resolver.insert(collection, cv);
+                if (uri == null) throw new java.io.IOException("MediaStore insert null");
+                try (java.io.OutputStream os = resolver.openOutputStream(uri)) { os.write(data); }
+                cv.clear();
+                cv.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0);
+                resolver.update(uri, cv, null, null);
+                android.util.Log.d("FILE-MSG", "[publicSave] MediaStore OK type=" + type + " uri=" + uri);
+                return uri.toString();
+            } catch (Exception e) {
+                Log.e("FILE-MSG", "[publicSave] MediaStore fail -> fallback: " + e.getMessage());
+            }
+        }
+        try {
+            java.io.File dir = new java.io.File(getExternalFilesDir(null), "received_files");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File outFile = new java.io.File(dir, msgId + "_" + safe);
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) { fos.write(data); }
+            android.util.Log.d("FILE-MSG", "[publicSave] fallback OK path=" + outFile.getAbsolutePath());
+            return outFile.getAbsolutePath();
+        } catch (Exception e2) {
+            Log.e("FILE-MSG", "[publicSave] fallback fail: " + e2.getMessage());
+            return null;
+        }
+    }
     // ═════════════════════════════════════════════════════════════
     //   ⭐ v6 헬퍼 함수: 위치/메시지 dedup insert (2026-05-03)
     //   - 중복 수신 패킷 차단
@@ -2698,20 +2749,15 @@ public class MainActivity extends AppCompatActivity {
             // ── 파일 저장 (앱 전용 디렉토리) ──
             char tp = mLargeFileType.getOrDefault(msgId, ftype);
             String fname = mLargeFileName.getOrDefault(msgId, "file_" + msgId);
-            java.io.File dir = new java.io.File(getExternalFilesDir(null), "received_files");
-            if (!dir.exists()) dir.mkdirs();
-            // 파일명 충돌 방지: msgId 접두
-            java.io.File outFile = new java.io.File(dir, msgId + "_" + fname);
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
-                fos.write(full);
-            }
+            // [publicSave] 종류별 공용 폴더 저장 (갤러리/음악앱/다운로드)
+            String savedLoc = saveReceivedToPublic(tp, fname, full, msgId);
             android.util.Log.d("FILE-MSG", "✅ 파일 조립완료 msgId=" + msgId + " type=" + tp
-                    + " size=" + full.length + " saved=" + outFile.getAbsolutePath());
+                    + " size=" + full.length + " saved=" + savedLoc);
 
             // ── DB insert (title=[FILE]/[IMG] + 파일명, msg=저장경로) ──
-            final String marker = (tp == 'I') ? "[IMG]" : "[FILE]";
+            final String marker = (tp == 'I') ? "[IMG]" : (tp == 'V') ? "[VOICE]" : "[FILE]";
             final String dbTitle = marker + fname;
-            final String dbMsg = outFile.getAbsolutePath();
+            final String dbMsg = (savedLoc != null) ? savedLoc : ("[저장실패] " + fname);
             final String fCode = codeNum;
             runOnUiThread(() -> {
                 MsgEntity addMsg = new MsgEntity(0, false, fCode, dbTitle, dbMsg,
