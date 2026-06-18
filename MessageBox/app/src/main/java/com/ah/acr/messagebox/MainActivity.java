@@ -1878,6 +1878,16 @@ public class MainActivity extends AppCompatActivity {
                     android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 3회 소진 → 포기");
                     return;
                 }
+                // [gapOutboxWait] 위성 모뎀 outbox 적체(미발신>0)면 ~R: 보내봤자 더 밀림. cnt 증가 없이 다음 주기 대기 → 위성 빌 때까지 무한 인내(횟수 소진 방지). 위성 비면 그때 발송하고 카운트.
+                {
+                    com.ah.acr.messagebox.data.DeviceStatus _gst = mBleViewModel.getDeviceStatus().getValue();
+                    int _goutbox = (_gst != null) ? _gst.getOutBox() : 0;
+                    if (_goutbox > 0) {
+                        android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 위성 outbox 적체(" + _goutbox + ") - cnt 보존, 다음 주기 대기 (" + cnt + "/" + AUTO_RESEND_MAX + ")");
+                        mAutoHandler.postDelayed(this, interval);
+                        return;
+                    }
+                }
                 cnt++;
                 synchronized (mAutoMtCount) { mAutoMtCount.put(msgId, cnt); }
                 // [gapSeqFix] auto는 순차송신(B)으로 — 누락 전부 하나씩, 매번 최신 재계산
