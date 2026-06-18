@@ -133,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, byte[]> mSentLargeFile = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeFileName = new java.util.HashMap<>();
     private final java.util.Map<Integer, Character> mSentLargeFileType = new java.util.HashMap<>();
+    // [abortReSend] 모뎀 거부로 송신 못한 조각 seq 기록 → 송신 후 자동 재송신용
+    private final java.util.Map<Integer, java.util.List<Integer>> mSentLargeFileAborted = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
     private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
@@ -2516,12 +2518,58 @@ public class MainActivity extends AppCompatActivity {
                             runOnUiThread(() -> Toast.makeText(MainActivity.this,
                                 "\u26A0 \uD30C\uC77C \uC804\uC1A1 \uC2E4\uD328(\uC2E0\uD638 \uBD88\uB7C9, \uC870\uAC01 " + _abSeq + "). \uC2E0\uD638 \uC591\uD638 \uC2DC \uB2E4\uC2DC \uC804\uC1A1\uD558\uC138\uC694.",
                                 Toast.LENGTH_LONG).show());
-                            return;
+                            // [abortReSend] 전체 중단(return) 대신 이 조각만 기록하고 다음 조각 계속 → 뒤 조각 손실 방지
+                            mSentLargeFileAborted.computeIfAbsent(msgId, k -> new java.util.ArrayList<>()).add(seq);
+                            continue;
                         }
                         Log.d("FILE-MSG", "chunk 재시도 성공 msgId=" + msgId + " seq=" + seq);
                     }
                 }
                 android.util.Log.d("FILE-MSG", "TX file all-accepted msgId=" + msgId + " - wait server ~A:");
+
+                // [abortReSend] 모뎀 거부로 못 보낸 조각이 있으면 60초(위성 감도 회복 대기) 후 1회 재송신.
+                //   원본(mSentLargeFile)에서 그 seq만 다시 frame 생성 → 성공분은 기록에서 제거. 남으면 gap-fill이 추후 처리.
+                java.util.List<Integer> _abList = mSentLargeFileAborted.get(msgId);
+                if (_abList != null && !_abList.isEmpty()) {
+                    java.util.List<Integer> _retrySeqs = new java.util.ArrayList<>(_abList);
+                    android.util.Log.w("FILE-MSG", "[abortReSend] 미송신 조각 " + _retrySeqs + " - 60초 후 재송신 예정 msgId=" + msgId);
+                    try { Thread.sleep(60000); } catch (InterruptedException _ie2) { Thread.currentThread().interrupt(); }
+                    for (int _rseq : _retrySeqs) {
+                        try {
+                            byte[] _rbody = parts.get(_rseq);
+                            long _rcrc;
+                            { java.util.zip.CRC32 _rc = new java.util.zip.CRC32(); _rc.update(_rbody); _rcrc = _rc.getValue(); }
+                            String _rtitle = marker + msgId + ":" + _rseq + ":" + total
+                                    + ":" + (_rseq == 0 ? String.valueOf(fullCrc) : "")
+                                    + ":" + _rcrc
+                                    + (_rseq == 0 ? (":" + safeName) : "");
+                            io.netty.buffer.ByteBuf _rbuf = io.netty.buffer.Unpooled.buffer();
+                            _rbuf.writeByte(0x07);
+                            String _raddr = (recipientImei == null) ? "" : recipientImei;
+                            _rbuf.writeByte(_raddr.getBytes(StandardCharsets.US_ASCII).length);
+                            _rbuf.writeCharSequence(_raddr, StandardCharsets.US_ASCII);
+                            _rbuf.writeByte(_rtitle.getBytes(StandardCharsets.UTF_8).length);
+                            _rbuf.writeCharSequence(_rtitle, StandardCharsets.UTF_8);
+                            _rbuf.writeByte(_rbody.length);
+                            _rbuf.writeBytes(_rbody);
+                            byte[] _rframe = new byte[_rbuf.readableBytes()];
+                            _rbuf.readBytes(_rframe);
+                            int _rsendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
+                            String _rsms = String.format("SENDING=%d,%s", _rsendId, Base64.encodeToString(_rframe, Base64.NO_WRAP));
+                            boolean _rok = sendChunkAwaitEcho(_rsms, _rsendId, msgId, _rseq);
+                            if (_rok) {
+                                _abList.remove(Integer.valueOf(_rseq));
+                                android.util.Log.d("FILE-MSG", "[abortReSend] 재송신 성공 msgId=" + msgId + " seq=" + _rseq);
+                            } else {
+                                android.util.Log.w("FILE-MSG", "[abortReSend] 재송신 또 실패 msgId=" + msgId + " seq=" + _rseq + " (gap-fill 대기)");
+                            }
+                        } catch (Exception _re) {
+                            Log.e("FILE-MSG", "[abortReSend] 재송신 예외 seq=" + _rseq + " : " + _re.getMessage());
+                        }
+                    }
+                    if (_abList.isEmpty()) mSentLargeFileAborted.remove(msgId);
+                    android.util.Log.d("FILE-MSG", "[abortReSend] 재송신 종료 msgId=" + msgId + " 남은=" + (mSentLargeFileAborted.get(msgId)));
+                }
             } catch (Exception e) {
                 Log.e("FILE-MSG", "sendLargeFile fail: " + e.getMessage(), e);
             } finally {
