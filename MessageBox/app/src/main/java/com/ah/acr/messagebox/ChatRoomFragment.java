@@ -177,6 +177,7 @@ public class ChatRoomFragment extends Fragment {
     private ActivityResultLauncher<String> pickImageLauncher;
     // [fileMsg 3-C] 파일/사진 첨부용 launcher (아바타용 pickImageLauncher와 별개)
     private ActivityResultLauncher<String> mAttachLauncher;
+    private ActivityResultLauncher<String> mVoicePermLauncher;   // [voiceRec] 마이크 권한 요청
 
     // Sending progress dialog
     private ProgressDialog sendDialog;
@@ -192,6 +193,14 @@ public class ChatRoomFragment extends Fragment {
         pickImageLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> handleImagePicked(uri)
+        );
+        // [voiceRec] 마이크 권한 요청 - 허용 시 녹음 다이얼로그 자동 표시
+        mVoicePermLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) { showVoiceRecordDialog(); }
+                    else { Toast.makeText(getContext(), "\uB9C8\uC774\uD06C \uAD8C\uD55C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4", Toast.LENGTH_SHORT).show(); }
+                }
         );
         // [fileMsg 3-C] 파일/사진 첨부 선택 결과 처리
         mAttachLauncher = registerForActivityResult(
@@ -747,7 +756,8 @@ public class ChatRoomFragment extends Fragment {
             boolean isLarge = (checkedId == R.id.type_large);
             boolean isPhoto = (checkedId == R.id.type_photo);
             boolean isFile  = (checkedId == R.id.type_file);
-            boolean isAttach = isPhoto || isFile;
+            boolean isVoice = (checkedId == R.id.type_voice);   // [voiceFix] Voice도 첨부영역 사용
+            boolean isAttach = isPhoto || isFile || isVoice;
 
             // Title: only for Short (and Large hides it per spec)
             binding.editChatTitle.setVisibility(isShort ? View.VISIBLE : View.GONE);
@@ -1132,7 +1142,7 @@ public class ChatRoomFragment extends Fragment {
         // 권한 체크
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
                 android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 9201);
+            mVoicePermLauncher.launch(android.Manifest.permission.RECORD_AUDIO);   // [voiceRec] 허용 시 콜백에서 다이얼로그
             return;
         }
 

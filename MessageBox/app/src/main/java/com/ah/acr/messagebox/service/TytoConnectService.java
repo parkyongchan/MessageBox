@@ -791,6 +791,7 @@ public class TytoConnectService extends Service {
         try {
             String msg = packet.substring(6); // "BROAD=" 제거
             String[] vals = msg.split(",");
+            android.util.Log.d("BROAD-RAW", "len=" + vals.length + " sos[7]=" + (vals.length>7?vals[7]:"X") + " trk[8]=" + (vals.length>8?vals[8]:"X") + " | " + msg);
 
             if (vals.length >= 4) {
                 // ⭐ v4 Phase B-2-4-B: 배터리 변환
@@ -810,8 +811,8 @@ public class TytoConnectService extends Service {
                 boolean prevTracking = mIsTracking;
                 boolean prevSos = mIsSos;
 
-                if (vals.length > 7) mIsSos = !vals[7].equals("0");
-                if (vals.length > 8) mIsTracking = !vals[8].equals("0");
+                if (vals.length > 7) mIsSos = (vals[7].trim().equals("1") || vals[7].trim().equals("49"));
+                if (vals.length > 8) mIsTracking = (vals[8].trim().equals("1") || vals[8].trim().equals("49"));
 
                 // 세션 상태 변화 감지
                 if (mIsTracking != prevTracking || mIsSos != prevSos) {
