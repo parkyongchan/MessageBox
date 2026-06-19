@@ -18,3 +18,7 @@ build_log.txt
 *.bak
 
 _bak/
+
+# 백업 파일 (git 추적 제외)
+*.bak*
+_bak_xml/

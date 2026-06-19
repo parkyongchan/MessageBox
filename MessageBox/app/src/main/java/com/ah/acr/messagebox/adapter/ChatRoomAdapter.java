@@ -260,32 +260,35 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
             String _bodyVal = item.getMsg().getMsg();
             String _titleVal = item.getMsg().getTitle();
             boolean _isImg = (_titleVal != null && _titleVal.startsWith("[IMG]") && _bodyVal != null && !_bodyVal.trim().isEmpty());
+            // [mediaBubble] title로 종류 판정: [IMG]=썸네일+클릭, [FILE]/[VOICE]=아이콘텍스트+클릭. 경로/URI(content://) 둘 다 지원.
+            boolean _isVoice = (_titleVal != null && _titleVal.startsWith("[VOICE]"));
+            boolean _isFile  = (_titleVal != null && _titleVal.startsWith("[FILE]"));
             if (_isImg) {
-                android.graphics.Bitmap _bmp = null;
-                try { _bmp = android.graphics.BitmapFactory.decodeFile(_bodyVal); } catch (Exception _e) { _bmp = null; }
+                android.graphics.Bitmap _bmp = loadBitmapUniversal(imgPhoto.getContext(), _bodyVal);
                 if (_bmp != null) {
                     imgPhoto.setImageBitmap(_bmp);
                     imgPhoto.setVisibility(View.VISIBLE);
                     textMsg.setVisibility(View.GONE);
-                    final String _photoPath = _bodyVal;
-                    imgPhoto.setOnClickListener(v -> {
-                        try {
-                            java.io.File _f = new java.io.File(_photoPath);
-                            android.net.Uri _uri = androidx.core.content.FileProvider.getUriForFile(
-                                    v.getContext(), v.getContext().getPackageName() + ".fileprovider", _f);
-                            android.content.Intent _it = new android.content.Intent(android.content.Intent.ACTION_VIEW);
-                            _it.setDataAndType(_uri, "image/*");
-                            _it.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            v.getContext().startActivity(_it);
-                        } catch (Exception _ex) {
-                            android.widget.Toast.makeText(v.getContext(), "\uC5F4\uAE30 \uC2E4\uD328: " + _ex.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                    final String _loc = _bodyVal;
+                    imgPhoto.setOnClickListener(v -> openMediaUniversal(v.getContext(), _loc, "image/*"));
                 } else {
                     imgPhoto.setVisibility(View.GONE);
                     textMsg.setVisibility(View.VISIBLE);
                     textMsg.setText("[IMG] " + _bodyVal);
                 }
+            } else if (_isVoice || _isFile) {
+                imgPhoto.setVisibility(View.GONE);
+                textMsg.setVisibility(View.VISIBLE);
+                String _icon = _isVoice ? "\uD83C\uDFA4 " : "\uD83D\uDCC4 ";
+                String _nameOnly = _bodyVal;
+                int _sl = (_bodyVal != null) ? Math.max(_bodyVal.lastIndexOf('/'), _bodyVal.lastIndexOf("%2F")) : -1;
+                if (_sl >= 0 && _bodyVal != null) _nameOnly = _bodyVal.substring(Math.min(_sl + 1, _bodyVal.length()));
+                String _disp = (_titleVal != null && _titleVal.length() > (_isVoice ? 7 : 6))
+                        ? _titleVal.substring(_isVoice ? 7 : 6) : _nameOnly;
+                textMsg.setText(_icon + (_disp == null || _disp.isEmpty() ? (_isVoice ? "Voice" : "File") : _disp) + "  \u25B6");
+                final String _loc2 = _bodyVal;
+                final String _mime = _isVoice ? "audio/*" : "*/*";
+                textMsg.setOnClickListener(v -> openMediaUniversal(v.getContext(), _loc2, _mime));
             } else {
                 imgPhoto.setVisibility(View.GONE);
                 textMsg.setVisibility(View.VISIBLE);
@@ -301,6 +304,48 @@ public class ChatRoomAdapter extends ListAdapter<MsgWithAddress, ChatRoomAdapter
                 android.widget.Toast.makeText(view.getContext(), "Copied", android.widget.Toast.LENGTH_SHORT).show();
                 return true;
             });
+        }
+    }
+
+    /** [mediaBubble] content:// URI 또는 파일경로 둘 다에서 Bitmap 로드 (수신=URI, 송신=경로). 실패 시 null. */
+    private static android.graphics.Bitmap loadBitmapUniversal(android.content.Context ctx, String loc) {
+        if (loc == null || loc.trim().isEmpty()) return null;
+        try {
+            if (loc.startsWith("content://")) {
+                android.net.Uri u = android.net.Uri.parse(loc);
+                try (java.io.InputStream is = ctx.getContentResolver().openInputStream(u)) {
+                    return android.graphics.BitmapFactory.decodeStream(is);
+                }
+            } else {
+                return android.graphics.BitmapFactory.decodeFile(loc);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** [mediaBubble] content:// URI 또는 파일경로를 시스템 앱으로 열기 (음성=재생, 파일/이미지=뷰어). */
+    private static void openMediaUniversal(android.content.Context ctx, String loc, String mime) {
+        if (loc == null || loc.trim().isEmpty()) {
+            android.widget.Toast.makeText(ctx, "\uACBD\uB85C \uC5C6\uC74C", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            android.net.Uri uri;
+            if (loc.startsWith("content://")) {
+                uri = android.net.Uri.parse(loc);
+            } else {
+                java.io.File f = new java.io.File(loc);
+                uri = androidx.core.content.FileProvider.getUriForFile(
+                        ctx, ctx.getPackageName() + ".fileprovider", f);
+            }
+            android.content.Intent it = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+            it.setDataAndType(uri, mime);
+            it.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(it);
+        } catch (Exception ex) {
+            android.widget.Toast.makeText(ctx, "\uC5F4\uAE30 \uC2E4\uD328: " + ex.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 }
