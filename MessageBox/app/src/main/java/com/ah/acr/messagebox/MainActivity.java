@@ -2602,6 +2602,7 @@ public class MainActivity extends AppCompatActivity {
                     collection = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI;
                     relPath = android.os.Environment.DIRECTORY_DOWNLOADS + "/" + sub;
                 }
+                cv.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, (type == 'V') ? "audio/amr" : (type == 'I') ? "image/jpeg" : "application/octet-stream");
                 cv.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relPath);
                 cv.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1);
                 android.net.Uri uri = resolver.insert(collection, cv);
@@ -2710,7 +2711,7 @@ public class MainActivity extends AppCompatActivity {
                     android.util.Log.d("FILE-MSG", "[idFix] 옛 파일버퍼 폐기 msgId=" + msgId + " (crc 다름)");
                 }
                 if (newCrc != -1) mLargeFileCrc.put(msgId, newCrc);
-                String fname = (h.length >= 8) ? h[7] : ("file_" + msgId);
+                String fname = (h.length >= 8 && !h[7].isEmpty()) ? h[7] : ("file_" + msgId + ((ftype=='V')?".amr":(ftype=='I')?".jpg":".bin"));
                 mLargeFileName.put(msgId, fname);
                 mLargeFileType.put(msgId, ftype);
             }

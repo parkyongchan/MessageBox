@@ -810,7 +810,7 @@ public class ChatRoomFragment extends Fragment {
                     String _fname = (mAttachName != null) ? mAttachName : (ft == 'I' ? "photo.jpg" : "file.bin");
                     String _bubbleBody = _fname;   // 기본: 파일명
                     // [3-D-2 송신썸네일] 이미지면 보낸 사진을 sent_files에 저장하고 경로를 msg에 → 어댑터가 썸네일 표시
-                    if (ft == 'I' && mAttachBytes != null) {
+                    if ((ft == 'I' || ft == 'V' || ft == 'F') && mAttachBytes != null) {
                         try {
                             java.io.File _sdir = new java.io.File(requireContext().getExternalFilesDir(null), "sent_files");
                             if (!_sdir.exists()) _sdir.mkdirs();
