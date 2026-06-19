@@ -771,7 +771,11 @@ public class ChatRoomFragment extends Fragment {
         binding.uploadArea.setOnClickListener(v -> {
             boolean isPhoto = binding.typePhoto.isChecked();
             boolean isVoice = binding.typeVoice.isChecked();
-            mAttachLauncher.launch(isPhoto ? "image/*" : (isVoice ? "audio/*" : "*/*"));
+                if (isVoice) {
+                    showVoiceRecordDialog();   // [voiceRec] 음성은 녹음 다이얼로그
+                } else {
+                    mAttachLauncher.launch(isPhoto ? "image/*" : "*/*");
+                }
         });
 
         binding.btnChatSend.setOnClickListener(v -> {
@@ -1115,5 +1119,137 @@ public class ChatRoomFragment extends Fragment {
         }
         mGapfillHandler.removeCallbacks(mGapfillTick);
         binding = null;
+    }
+
+    // ═══ [voiceRec] 음성 녹음 다이얼로그 (AMR-NB 4.75kbps, 최대 10초, 최소 크기) ═══
+    private android.media.MediaRecorder mVoiceRecorder = null;
+    private java.io.File mVoiceFile = null;
+    private boolean mVoiceRecording = false;
+    private final android.os.Handler mVoiceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int mVoiceElapsed = 0;   // 0.1초 단위 카운트 (100 = 10초)
+
+    private void showVoiceRecordDialog() {
+        // 권한 체크
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 9201);
+            return;
+        }
+
+        android.view.View v = getLayoutInflater().inflate(R.layout.dialog_voice_record, null);
+        final android.widget.TextView timer = v.findViewById(R.id.voice_timer);
+        final android.widget.ImageView recBtn = v.findViewById(R.id.voice_rec_btn);
+        final android.widget.TextView status = v.findViewById(R.id.voice_status);
+        final android.widget.Button cancelBtn = v.findViewById(R.id.voice_cancel);
+        final android.widget.Button attachBtn = v.findViewById(R.id.voice_attach);
+
+        final androidx.appcompat.app.AlertDialog dlg =
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext()).setView(v).create();
+
+        final boolean[] hasRecorded = {false};
+
+        // 타이머 틱 (0.1초마다, 10초=100틱 자동정지)
+        final Runnable[] tick = new Runnable[1];
+        tick[0] = () -> {
+            if (!mVoiceRecording) return;
+            mVoiceElapsed++;
+            int sec = mVoiceElapsed / 10;
+            int ds = mVoiceElapsed % 10;
+            timer.setText(String.format(java.util.Locale.US, "00:%02d.%d / 00:10", sec, ds));
+            if (mVoiceElapsed >= 100) {   // 10초 → 자동 정지
+                stopVoiceRecording();
+                mVoiceRecording = false;
+                status.setText("Recorded " + (mVoiceElapsed / 10) + "s - tap Attach");
+                recBtn.setColorFilter(0xFF00E5D1);
+                hasRecorded[0] = true;
+                attachBtn.setEnabled(true);
+                return;
+            }
+            mVoiceHandler.postDelayed(tick[0], 100);
+        };
+
+        recBtn.setOnClickListener(b -> {
+            if (!mVoiceRecording) {
+                // 녹음 시작
+                if (startVoiceRecording()) {
+                    mVoiceRecording = true;
+                    mVoiceElapsed = 0;
+                    hasRecorded[0] = false;
+                    attachBtn.setEnabled(false);
+                    status.setText("Recording... (tap to stop)");
+                    recBtn.setColorFilter(0xFFFFFFFF);
+                    mVoiceHandler.postDelayed(tick[0], 100);
+                }
+            } else {
+                // 수동 정지
+                stopVoiceRecording();
+                mVoiceRecording = false;
+                status.setText("Recorded " + (mVoiceElapsed / 10) + "." + (mVoiceElapsed % 10) + "s - tap Attach");
+                recBtn.setColorFilter(0xFF00E5D1);
+                hasRecorded[0] = true;
+                attachBtn.setEnabled(true);
+            }
+        });
+
+        cancelBtn.setOnClickListener(b -> {
+            if (mVoiceRecording) { stopVoiceRecording(); mVoiceRecording = false; }
+            if (mVoiceFile != null && mVoiceFile.exists()) mVoiceFile.delete();
+            mVoiceFile = null;
+            dlg.dismiss();
+        });
+
+        attachBtn.setOnClickListener(b -> {
+            if (!hasRecorded[0] || mVoiceFile == null || !mVoiceFile.exists()) {
+                Toast.makeText(getContext(), "Record first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                byte[] data = new byte[(int) mVoiceFile.length()];
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(mVoiceFile)) { fis.read(data); }
+                mAttachBytes = data;
+                mAttachName = "voice_" + System.currentTimeMillis() + ".amr";
+                binding.uploadThumb.setVisibility(View.GONE);
+                binding.uploadLabel.setText("\uD83C\uDFA4 " + (mVoiceElapsed / 10) + "s (" + (data.length / 1024) + "KB)");
+                Toast.makeText(getContext(), "Voice attached (" + data.length + "B)", Toast.LENGTH_SHORT).show();
+                dlg.dismiss();
+            } catch (Exception e) {
+                Toast.makeText(getContext(), "Attach fail: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dlg.setOnDismissListener(d -> {
+            mVoiceHandler.removeCallbacks(tick[0]);
+            if (mVoiceRecording) { stopVoiceRecording(); mVoiceRecording = false; }
+        });
+        dlg.show();
+    }
+
+    /** 녹음 시작 - AMR-NB 4.75kbps (최소 크기). 성공 시 true. */
+    private boolean startVoiceRecording() {
+        try {
+            mVoiceFile = new java.io.File(requireContext().getCacheDir(), "voice_rec_" + System.currentTimeMillis() + ".amr");
+            mVoiceRecorder = new android.media.MediaRecorder();
+            mVoiceRecorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC);
+            mVoiceRecorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.AMR_NB);
+            mVoiceRecorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AMR_NB);
+            mVoiceRecorder.setAudioSamplingRate(8000);
+            mVoiceRecorder.setAudioEncodingBitRate(4750);   // AMR-NB 최저 비트레이트
+            mVoiceRecorder.setOutputFile(mVoiceFile.getAbsolutePath());
+            mVoiceRecorder.prepare();
+            mVoiceRecorder.start();
+            return true;
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Record start fail: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            if (mVoiceRecorder != null) { try { mVoiceRecorder.release(); } catch (Exception ig) {} mVoiceRecorder = null; }
+            return false;
+        }
+    }
+
+    private void stopVoiceRecording() {
+        if (mVoiceRecorder != null) {
+            try { mVoiceRecorder.stop(); } catch (Exception e) { /* 너무 짧으면 예외 */ }
+            try { mVoiceRecorder.release(); } catch (Exception e) {}
+            mVoiceRecorder = null;
+        }
     }
 }
