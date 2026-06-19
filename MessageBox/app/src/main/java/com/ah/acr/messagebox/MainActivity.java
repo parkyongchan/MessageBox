@@ -3069,7 +3069,7 @@ public class MainActivity extends AppCompatActivity {
                     // [fileMsg 2-a] ~L:F:/~L:I:(파일/사진)면 body를 byte[]로 읽기(바이너리 보존, trim 안 함). 그 외(텍스트/단문)는 기존 String.
                     String message;
                     byte[] fileBody = null;
-                    if (title.startsWith("~L:F:") || title.startsWith("~L:I:")) {
+                    if (title.startsWith("~L:F:") || title.startsWith("~L:I:") || title.startsWith("~L:V:")) {
                         fileBody = new byte[memoSize];
                         buffer.readBytes(fileBody);
                         message = "";   // 파일 body는 fileBody(byte[])에. message는 파싱 진행용 빈값.
@@ -3087,7 +3087,7 @@ public class MainActivity extends AppCompatActivity {
                             int seq   = Integer.parseInt(h[3]);
                             int total = Integer.parseInt(h[4]);
                             // [fileMsg 2-b] 파일/사진(~L:F:/~L:I:)이면 전용 처리. 텍스트(~L:T:)는 아래 else 기존 로직.
-                            if (h[1].equals("F") || h[1].equals("I")) {
+                            if (h[1].equals("F") || h[1].equals("I") || h[1].equals("V")) {
                                 handleFileChunk(h, msgId, seq, total, fileBody, codeNum);
                             } else {
                             // ⭐ 무한 재수신 차단: 최근 완성된 msgId의 조각이 또 오면 무시

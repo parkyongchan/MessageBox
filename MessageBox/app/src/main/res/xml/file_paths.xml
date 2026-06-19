@@ -9,4 +9,14 @@
     <external-files-path
         name="external_files"
         path="." />
+
+    <!-- 음성 녹음 (getCacheDir) -->
+    <cache-path
+        name="cache_files"
+        path="." />
+
+    <!-- 내부 파일 (getFilesDir) -->
+    <files-path
+        name="internal_files"
+        path="." />
 </paths>
