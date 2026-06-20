@@ -2480,17 +2480,10 @@ public class MainActivity extends AppCompatActivity {
                     long chunkCrc;
                     { java.util.zip.CRC32 cc = new java.util.zip.CRC32(); cc.update(body); chunkCrc = cc.getValue(); }
                     // seq0: 마커+msgId:0:total:fullCrc:chunkCrc:fileName / seq>0: ...:seq:total::chunkCrc
-                    String title;
-                    if (type == 'F' && seq == 0) {
-                        // [extCode] 파일 seq0: 6자리hex fullCrc + 확장자코드 (title 20byte 한도)
-                        String _hex = String.format("%06X", fullCrc & 0xFFFFFFL);
-                        title = marker + msgId + ":" + seq + ":" + total + ":" + _hex + extToCode(safeName);
-                    } else {
-                        title = marker + msgId + ":" + seq + ":" + total
-                                + ":" + (seq == 0 ? String.valueOf(fullCrc) : "")
-                                + ":" + chunkCrc
-                                + (seq == 0 ? (":" + safeName) : "");
-                    }
+                    String title = marker + msgId + ":" + seq + ":" + total
+                            + ":" + (seq == 0 ? String.valueOf(fullCrc) : "")
+                            + ":" + chunkCrc
+                            + (seq == 0 ? (":" + safeName) : "");
                     android.util.Log.d("FILE-MSG", "TX chunk seq=" + seq + " len=" + body.length + " crc=" + chunkCrc);
 
                     io.netty.buffer.ByteBuf buffer = io.netty.buffer.Unpooled.buffer();
@@ -2748,32 +2741,14 @@ public class MainActivity extends AppCompatActivity {
             // seq0: fullCrc / 파일명 / 타입 기록 + 옛 버퍼 폐기(crc 다르면)
             if (seq == 0) {
                 long newCrc = -1;
-                // [extCode] 파일(F)은 h[5]=6자리hex+확장자코드. 16진 6자만 newCrc로(24비트). 사진/음성은 기존 10진.
-                if (h.length >= 6 && !h[5].isEmpty()) {
-                    try {
-                        if (ftype == 'F' && h[5].length() >= 1) {
-                            String _h5 = h[5];
-                            String _hexPart = (_h5.length() >= 7) ? _h5.substring(0, 6) : _h5.substring(0, Math.max(0, _h5.length()-1));
-                            newCrc = Long.parseLong(_hexPart, 16);
-                        } else {
-                            newCrc = Long.parseLong(h[5]);
-                        }
-                    } catch (Exception e) {}
-                }
+                if (h.length >= 6 && !h[5].isEmpty()) { try { newCrc = Long.parseLong(h[5]); } catch (Exception e) {} }
                 Long oldCrc = mLargeFileCrc.get(msgId);
                 if (oldCrc != null && newCrc != -1 && oldCrc != newCrc) {
                     mLargeFileBuf.remove(msgId); mLargeFileTotal.remove(msgId); mLargeFileLastAt.remove(msgId);
                     android.util.Log.d("FILE-MSG", "[idFix] 옛 파일버퍼 폐기 msgId=" + msgId + " (crc 다름)");
                 }
                 if (newCrc != -1) mLargeFileCrc.put(msgId, newCrc);
-                // [extCode] 파일(F)은 h[5] 끝 1글자=확장자코드 → 원본 확장자. 사진/음성은 타입으로 확장자.
-                String fname;
-                if (ftype == 'F') {
-                    char _ec = (h.length >= 6 && h[5].length() >= 1) ? h[5].charAt(h[5].length()-1) : 'm';
-                    fname = "file_" + msgId + codeToExt(_ec);
-                } else {
-                    fname = (h.length >= 8 && !h[7].isEmpty()) ? h[7] : ("file_" + msgId + ((ftype=='V')?".amr":(ftype=='I')?".jpg":".bin"));
-                }
+                String fname = (h.length >= 8 && !h[7].isEmpty()) ? h[7] : ("file_" + msgId + ((ftype=='V')?".amr":(ftype=='I')?".jpg":".bin"));
                 mLargeFileName.put(msgId, fname);
                 mLargeFileType.put(msgId, ftype);
             }
@@ -2802,9 +2777,7 @@ public class MainActivity extends AppCompatActivity {
             Long expectCrc = mLargeFileCrc.get(msgId);
             long actualCrc;
             { java.util.zip.CRC32 c = new java.util.zip.CRC32(); c.update(full); actualCrc = c.getValue(); }
-            // [extCode] 파일(F)은 fullCrc 24비트만 전송(title 한도) → actualCrc도 24비트 마스킹 비교. 사진/음성은 32비트 전체.
-            long _actualCmp = (ftype == 'F') ? (actualCrc & 0xFFFFFFL) : actualCrc;
-            if (expectCrc != null && expectCrc != -1 && expectCrc != _actualCmp) {
+            if (expectCrc != null && expectCrc != -1 && expectCrc != actualCrc) {
                 Log.e("FILE-MSG", "❌ CRC 불일치 msgId=" + msgId + " expect=" + expectCrc + " actual=" + actualCrc
                         + " → 버퍼 폐기(재요청 대기)");
                 mLargeFileBuf.remove(msgId);   // 깨진 조립 → 버리고 ~R: 복구(2-c)로 다시 받게

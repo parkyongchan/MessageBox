@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A1628">
+
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- Header (back + avatar + name + refresh + delete) -->
+    <!-- ??????????????????????????????????????????????? -->
+    <LinearLayout
+        android:id="@+id/chat_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1F3C"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Back button -->
+        <ImageView
+            android:id="@+id/btn_chat_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_arrow_back"
+            android:padding="8dp"
+            app:tint="#00E5D1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Back" />
+
+        <!-- Header avatar -->
+        <FrameLayout
+            android:id="@+id/frame_chat_room_avatar"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="10dp">
+
+            <ImageView
+                android:id="@+id/img_chat_room_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="Avatar" />
+
+            <TextView
+                android:id="@+id/text_chat_room_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="#1A2F50"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|end"
+                android:background="#0D1F3C" />
+
+            <ImageView
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_gravity="bottom|end"
+                android:src="@drawable/ic_camera"
+                app:tint="#00E5D1"
+                android:contentDescription="Edit avatar" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_chat_room_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_chat_room_num"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#8899AA"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+        <!-- Refresh button -->
+        <ImageView
+            android:id="@+id/btn_chat_refresh"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_refresh"
+            android:padding="8dp"
+            app:tint="#00E5D1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Refresh Inbox" />
+
+        <!-- Delete all button -->
+        <ImageView
+            android:id="@+id/btn_chat_delete_all"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_delete_all"
+            android:padding="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Delete all" />
+
+    </LinearLayout>
+
+
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- Bubble list                                      -->
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- [gap-fill] 誘몄셿 ??⑸웾 諛곕꼫 (湲곕낯 ?④?)            -->
+    <!-- ??????????????????????????????????????????????? -->
+    <LinearLayout
+        android:id="@+id/banner_gapfill"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#3A2A0D"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/chat_header"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/text_gapfill_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFD37A"
+            android:textSize="13sp"
+            android:text="" />
+
+        <TextView
+            android:id="@+id/btn_gapfill_resend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+                android:text="Re-receive"
+            android:textColor="#0A1628"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="#FFD37A"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+        <TextView
+            android:id="@+id/btn_gapfill_discard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Discard"
+            android:textColor="#FFD37A"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="@android:color/transparent"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+    </LinearLayout>
+
+    <!-- MO resend banner (蹂대궡湲??ㅽ뙣 ?ъ넚?? -->
+    <LinearLayout
+        android:id="@+id/banner_moresend"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D2A3A"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/banner_gapfill"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/text_moresend_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#7AC8FF"
+            android:textSize="13sp"
+            android:text="" />
+
+        <TextView
+            android:id="@+id/btn_moresend_resend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Resend"
+            android:textColor="#0A1628"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="#7AC8FF"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+        <TextView
+            android:id="@+id/btn_moresend_discard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Discard"
+            android:textColor="#7AC8FF"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:background="@android:color/transparent"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_chat_room"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false"
+        app:layout_constraintTop_toBottomOf="@id/banner_moresend"
+        app:layout_constraintBottom_toTopOf="@id/chat_divider"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+
+    <!-- Divider -->
+    <View
+        android:id="@+id/chat_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A2F50"
+        app:layout_constraintBottom_toTopOf="@id/chat_input_area" />
+
+
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- Input area                                       -->
+    <!-- ??????????????????????????????????????????????? -->
+    <LinearLayout
+        android:id="@+id/chat_input_area"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#0D1F3C"
+        android:padding="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <EditText
+            android:id="@+id/edit_chat_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/chat_input_hint_title"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#4A5F78"
+            android:textSize="12sp"
+            android:background="#1A2F50"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:layout_marginBottom="6dp"
+            android:singleLine="true" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/edit_chat_msg"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/chat_input_hint_message"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#4A5F78"
+                android:textSize="13sp"
+                android:background="#1A2F50"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:inputType="textMultiLine"
+                android:maxLines="4"
+                android:layout_marginEnd="8dp" />
+
+        <LinearLayout
+                android:id="@+id/upload_area"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="#1A2F50"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/upload_thumb"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/upload_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Tap to attach"
+                    android:textColor="#95B0D4"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+
+
+
+            <Button
+                android:id="@+id/btn_chat_send"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:minWidth="56dp"
+                android:text="Send"
+                android:textColor="#0A1628"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:backgroundTint="#00E5D1"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:padding="0dp" />
+
+        </LinearLayout>
+
+        <!-- ??⑸웾 硫붿떆吏 泥댄겕諛뺤뒪 + 湲?먯닔 -->
+        <RadioGroup
+            android:id="@+id/group_msg_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <RadioButton
+                android:id="@+id/type_short"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/type_large"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1" />
+
+            <RadioButton
+                android:id="@+id/type_photo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Photo"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1" />
+
+            <RadioButton
+                android:id="@+id/type_file"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="File"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1" />
+
+            <RadioButton
+                android:id="@+id/type_voice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Voice"
+                android:textColor="#95B0D4"
+                android:textSize="11sp"
+                android:buttonTint="#00E5D1" />
+
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/text_byte_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:text="0/200 B"
+            android:textColor="#4A5F78"
+            android:textSize="10sp"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+
+    <!-- ??????????????????????????????????????????????? -->
+    <!-- FAB: Send pending messages (bottom-right floating) -->
+    <!-- ??????????????????????????????????????????????? -->
+    <FrameLayout
+        android:id="@+id/fab_send_pending"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_fab_send_pending"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:elevation="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/chat_divider">
+
+        <!-- Send icon -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="▶"
+            android:textColor="#0A1628"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- Badge (pending message count) -->
+        <TextView
+            android:id="@+id/text_fab_badge"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="-2dp"
+            android:layout_marginEnd="-2dp"
+            android:background="@drawable/bg_fab_badge"
+            android:gravity="center"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
