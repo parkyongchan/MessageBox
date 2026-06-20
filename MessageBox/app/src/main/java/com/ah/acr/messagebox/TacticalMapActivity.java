@@ -1,43 +1,66 @@
 package com.ah.acr.messagebox;
 
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.ah.acr.messagebox.util.MapModeManager;
 
 import org.osmdroid.config.Configuration;
+import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.events.MapListener;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Tactical Map - full screen tactical overlay map.
- * C단계: 화면 뼈대 + 지도(온/오프라인) + 닫기/줌/토글.
- * D단계(마커), E단계(저장/공유/전송)는 추후.
+ * C: map(online/offline) + close/zoom/toggle.
+ * D: markers (7 types, place/clear).
+ * E: save/share/send (TODO).
  */
 public class TacticalMapActivity extends AppCompatActivity {
 
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
     private static final double DEFAULT_ZOOM = 15.0;
 
+    private static final String[] MK_NAMES = {
+            "HOSTILE (적)", "FRIENDLY (아군)", "UNKNOWN (미상)",
+            "NEUTRAL (중립)", "POI (관심지점)", "ENGAGED (교전)", "THREAT (위협)"
+    };
+    private static final int[] MK_ICONS = {
+            R.drawable.ic_tac_hostile, R.drawable.ic_tac_friendly,
+            R.drawable.ic_tac_unknown, R.drawable.ic_tac_neutral,
+            R.drawable.ic_tac_poi, R.drawable.ic_tac_engaged,
+            R.drawable.ic_tac_threat
+    };
+
     private MapView mMapView;
     private TextView mZoomLabel;
     private TextView mBtnOnline;
     private TextView mBtnOffline;
+    private TextView mToolMarker;
+
+    private int mMarkerType = -1;
+    private final List<Marker> mTacMarkers = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // OSMDroid config (must be before setContentView with MapView)
         Configuration.getInstance().setUserAgentValue(getPackageName());
         File osmDir = getExternalFilesDir(null);
         if (osmDir != null) {
@@ -51,7 +74,8 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupTopBar();
         setupZoomControls();
         setupModeToggle();
-        setupToolAndActionStubs();
+        setupMarkerTools();
+        setupActionStubs();
     }
 
     private void setupMap() {
@@ -73,6 +97,18 @@ public class TacticalMapActivity extends AppCompatActivity {
                 return false;
             }
         });
+
+        MapEventsReceiver receiver = new MapEventsReceiver() {
+            @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
+                if (mMarkerType >= 0) {
+                    placeMarker(p, mMarkerType);
+                    return true;
+                }
+                return false;
+            }
+            @Override public boolean longPressHelper(GeoPoint p) { return false; }
+        };
+        mMapView.getOverlays().add(0, new MapEventsOverlay(receiver));
 
         updateZoomLabel();
     }
@@ -132,19 +168,83 @@ public class TacticalMapActivity extends AppCompatActivity {
         }
     }
 
-    private void setupToolAndActionStubs() {
-        // D단계(마커/선/측정/지우기) - 추후 구현, 지금은 안내
-        int[] toolIds = {
-                R.id.tac_tool_marker, R.id.tac_tool_line,
-                R.id.tac_tool_measure, R.id.tac_tool_clear
-        };
-        for (int id : toolIds) {
-            TextView tv = findViewById(id);
-            if (tv != null) tv.setOnClickListener(v ->
-                    Toast.makeText(this, "준비중 (D단계)", Toast.LENGTH_SHORT).show());
-        }
+    private void setupMarkerTools() {
+        mToolMarker = findViewById(R.id.tac_tool_marker);
+        mToolMarker.setOnClickListener(v -> showMarkerTypeDialog());
 
-        // E단계(저장/공유/전송) - 추후 구현, 지금은 안내
+        TextView clear = findViewById(R.id.tac_tool_clear);
+        clear.setOnClickListener(v -> clearMarkers());
+
+        TextView line = findViewById(R.id.tac_tool_line);
+        if (line != null) line.setOnClickListener(v ->
+                Toast.makeText(this, "준비중 (LINE)", Toast.LENGTH_SHORT).show());
+        TextView measure = findViewById(R.id.tac_tool_measure);
+        if (measure != null) measure.setOnClickListener(v ->
+                Toast.makeText(this, "준비중 (MEASURE)", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showMarkerTypeDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("마커 종류 선택")
+                .setItems(MK_NAMES, (dialog, which) -> {
+                    mMarkerType = which;
+                    mToolMarker.setTextColor(0xFFFFEB3B);
+                    Toast.makeText(this,
+                            MK_NAMES[which] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("취소", (d, w) -> {
+                    mMarkerType = -1;
+                    mToolMarker.setTextColor(0xFF00E5D1);
+                })
+                .show();
+    }
+
+    private void placeMarker(GeoPoint p, int type) {
+        Marker marker = new Marker(mMapView);
+        marker.setPosition(p);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        marker.setTitle(MK_NAMES[type]);
+        Drawable icon = ContextCompat.getDrawable(this, MK_ICONS[type]);
+        if (icon != null) marker.setIcon(icon);
+        marker.setOnMarkerClickListener((m, mv) -> {
+            new AlertDialog.Builder(this)
+                    .setTitle(m.getTitle())
+                    .setMessage(String.format("위도 %.5f\n경도 %.5f",
+                            m.getPosition().getLatitude(), m.getPosition().getLongitude()))
+                    .setPositiveButton("확인", null)
+                    .setNegativeButton("삭제", (d, w) -> {
+                        mMapView.getOverlays().remove(m);
+                        mTacMarkers.remove(m);
+                        mMapView.invalidate();
+                    })
+                    .show();
+            return true;
+        });
+        mTacMarkers.add(marker);
+        mMapView.getOverlays().add(marker);
+        mMapView.invalidate();
+    }
+
+    private void clearMarkers() {
+        if (mTacMarkers.isEmpty()) {
+            Toast.makeText(this, "마커 없음", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("마커 전체 삭제")
+                .setMessage("마커 " + mTacMarkers.size() + "개를 모두 지울까요?")
+                .setPositiveButton("삭제", (d, w) -> {
+                    for (Marker m : mTacMarkers) mMapView.getOverlays().remove(m);
+                    mTacMarkers.clear();
+                    mMarkerType = -1;
+                    mToolMarker.setTextColor(0xFF00E5D1);
+                    mMapView.invalidate();
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    private void setupActionStubs() {
         int[] actIds = { R.id.tac_act_save, R.id.tac_act_share, R.id.tac_act_send };
         for (int id : actIds) {
             TextView tv = findViewById(id);
