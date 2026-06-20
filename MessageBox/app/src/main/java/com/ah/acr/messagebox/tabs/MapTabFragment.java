@@ -120,6 +120,15 @@ public class MapTabFragment extends Fragment {
         binding.chip7d.setSelected(true);
         binding.chipAll.setSelected(true);
 
+        // 전술지도 버튼: 설정 ON일 때만 표시
+        boolean tacticalOn = android.preference.PreferenceManager
+                .getDefaultSharedPreferences(requireContext())
+                .getBoolean("pref_tactical_enabled", false);
+        binding.btnTactical.setVisibility(tacticalOn ? View.VISIBLE : View.GONE);
+        binding.btnTactical.setOnClickListener(v ->
+                startActivity(new android.content.Intent(
+                        requireContext(), com.ah.acr.messagebox.TacticalMapActivity.class)));
+
         return binding.getRoot();
     }
 

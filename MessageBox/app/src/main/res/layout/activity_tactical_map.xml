@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A1628">
+
+    <!-- ===== Top Bar ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1F3C"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/btn_tac_close"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="#FFFFFF"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="centerInside"
+            android:contentDescription="Close" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_tactical_crosshair"
+            app:tint="#00E5D1"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TACTICAL MAP"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <!-- Online/Offline toggle -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="#162A47"
+            android:padding="3dp">
+
+            <TextView
+                android:id="@+id/btn_tac_online"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ONLINE"
+                android:textColor="#0A1628"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="#00E5D1"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp" />
+
+            <TextView
+                android:id="@+id/btn_tac_offline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OFFLINE"
+                android:textColor="#95B0D4"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ===== Map Area ===== -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/tac_map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Zoom info -->
+        <TextView
+            android:id="@+id/tac_zoom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:text="ZOOM 15"
+            android:textColor="#95B0D4"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:background="#CC0A1628"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <!-- Zoom controls -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="10dp">
+
+            <ImageButton
+                android:id="@+id/tac_zoom_in"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_zoom_in"
+                app:tint="#FFFFFF"
+                android:background="@drawable/bg_map_button"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:layout_marginBottom="6dp"
+                android:contentDescription="Zoom in" />
+
+            <ImageButton
+                android:id="@+id/tac_zoom_out"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_zoom_out"
+                app:tint="#FFFFFF"
+                android:background="@drawable/bg_map_button"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:contentDescription="Zoom out" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- ===== Tool Bar (markers/draw/measure) - D단계 ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1F3C"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/tac_tool_marker"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MARKER"
+            android:textColor="#00E5D1"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tac_tool_line"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="LINE"
+            android:textColor="#95B0D4"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tac_tool_measure"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MEASURE"
+            android:textColor="#95B0D4"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tac_tool_clear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="CLEAR"
+            android:textColor="#FF6B6B"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- ===== Action Bar (save/share/send) - E단계 ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#081019"
+        android:gravity="center"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/tac_act_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="5dp"
+            android:text="SAVE"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/bg_map_button"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
+
+        <TextView
+            android:id="@+id/tac_act_share"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="SHARE"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/bg_map_button"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
+
+        <TextView
+            android:id="@+id/tac_act_send"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="10dp"
+            android:text="SEND"
+            android:textColor="#0A1628"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="#00E5D1"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

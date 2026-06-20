@@ -439,6 +439,38 @@
                 android:textStyle="bold"
                 android:letterSpacing="0.08" />
 
+            <LinearLayout
+                android:id="@+id/btn_tactical"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_map_button"
+                android:padding="6dp"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_tactical_crosshair"
+                    app:tint="#00E5D1"
+                    android:contentDescription="Tactical Map" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TACT"
+                    android:textColor="#00E5D1"
+                    android:textSize="8sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:paddingTop="2dp" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
         <!-- Map controls -->

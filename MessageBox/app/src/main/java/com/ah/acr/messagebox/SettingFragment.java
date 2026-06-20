@@ -73,6 +73,7 @@ public class SettingFragment extends Fragment {
 
     // ★★★ 캐시 키 (SharedPreferences)
     private static final String PREF_LAST_SET = "pref_last_device_set";
+    public static final String PREF_TACTICAL = "pref_tactical_enabled";
 
     private FragmentSettingBinding binding;
     private KeyViewModel mKeyViewModel;
@@ -159,6 +160,15 @@ public class SettingFragment extends Fragment {
 
         // Receiver 버튼 클릭 → 다이얼로그
         binding.layoutReceiverDisplay.setOnClickListener(v -> showReceiverMenu());
+
+        // 전술지도 사용 토글
+        android.content.SharedPreferences tPrefs =
+                android.preference.PreferenceManager
+                        .getDefaultSharedPreferences(requireContext());
+        binding.chkTactical.setChecked(
+                tPrefs.getBoolean(PREF_TACTICAL, false));
+        binding.chkTactical.setOnCheckedChangeListener((v, checked) ->
+                tPrefs.edit().putBoolean(PREF_TACTICAL, checked).apply());
 
         // 장비 상태 관찰
         mBleViewModel.getDeviceStatus().observe(getViewLifecycleOwner(), new Observer<DeviceStatus>() {

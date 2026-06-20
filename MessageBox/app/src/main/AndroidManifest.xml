@@ -85,6 +85,13 @@
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.MessageBox.NoActionBar" />
 
+        <!-- 전술지도 (Tactical Map) -->
+        <activity
+            android:name=".TacticalMapActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MessageBox.NoActionBar" />
+
         <!-- 위치 추적 포그라운드 서비스 (기존) -->
         <service
             android:name=".service.LocationTrackingService"
