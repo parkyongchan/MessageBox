@@ -96,22 +96,47 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- Zoom info -->
-        <TextView
-            android:id="@+id/tac_zoom"
+        <!-- Coord toggle + Zoom info -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top|end"
             android:layout_margin="8dp"
-            android:text="ZOOM 15"
-            android:textColor="#95B0D4"
-            android:textSize="9sp"
-            android:textStyle="bold"
-            android:background="#CC0A1628"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tac_coord_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="COORD"
+                android:textColor="#95B0D4"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="#CC0A1628"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tac_zoom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ZOOM 15"
+                android:textColor="#95B0D4"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:background="#CC0A1628"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+
+        </LinearLayout>
 
         <!-- Zoom controls -->
         <LinearLayout
@@ -145,6 +170,22 @@
                 android:contentDescription="Zoom out" />
 
         </LinearLayout>
+
+
+        <!-- Legend panel (bottom overlay, shown when COORD on) -->
+        <LinearLayout
+            android:id="@+id/tac_legend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="8dp"
+            android:orientation="vertical"
+            android:background="#CC0A1628"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:visibility="gone" />
 
     </FrameLayout>
 

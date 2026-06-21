@@ -1,8 +1,16 @@
 package com.ah.acr.messagebox;
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,13 +33,8 @@ import org.osmdroid.views.overlay.MapEventsOverlay;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-/**
- * Tactical Map - full screen tactical overlay map.
- * C: map(online/offline) + close/zoom/toggle.
- * D: markers (7 types, place/clear).
- * E: save/share/send (TODO).
- */
 public class TacticalMapActivity extends AppCompatActivity {
 
     private static final GeoPoint DEFAULT_CENTER = new GeoPoint(37.5665, 126.9780);
@@ -41,21 +44,38 @@ public class TacticalMapActivity extends AppCompatActivity {
             "HOSTILE (적)", "FRIENDLY (아군)", "UNKNOWN (미상)",
             "NEUTRAL (중립)", "POI (관심지점)", "ENGAGED (교전)", "THREAT (위협)"
     };
+    private static final String[] MK_SHORT = {
+            "HOSTILE", "FRIENDLY", "UNKNOWN", "NEUTRAL", "POI", "ENGAGED", "THREAT"
+    };
     private static final int[] MK_ICONS = {
             R.drawable.ic_tac_hostile, R.drawable.ic_tac_friendly,
             R.drawable.ic_tac_unknown, R.drawable.ic_tac_neutral,
             R.drawable.ic_tac_poi, R.drawable.ic_tac_engaged,
             R.drawable.ic_tac_threat
     };
+    private static final int[] MK_COLORS = {
+            0xFFE53935, 0xFF1E88E5, 0xFFFDD835,
+            0xFF43A047, 0xFFFFFFFF, 0xFFE53935, 0xFFFB8C00
+    };
+
+    private static class TacMarker {
+        Marker marker;
+        int type;
+        GeoPoint point;
+        TacMarker(Marker m, int t, GeoPoint p) { marker = m; type = t; point = p; }
+    }
 
     private MapView mMapView;
     private TextView mZoomLabel;
     private TextView mBtnOnline;
     private TextView mBtnOffline;
     private TextView mToolMarker;
+    private TextView mCoordToggle;
+    private LinearLayout mLegend;
 
     private int mMarkerType = -1;
-    private final List<Marker> mTacMarkers = new ArrayList<>();
+    private boolean mShowCoords = false;
+    private final List<TacMarker> mTacMarkers = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +94,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupTopBar();
         setupZoomControls();
         setupModeToggle();
+        setupCoordToggle();
         setupMarkerTools();
         setupActionStubs();
     }
@@ -135,9 +156,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void setupModeToggle() {
         mBtnOnline = findViewById(R.id.btn_tac_online);
         mBtnOffline = findViewById(R.id.btn_tac_offline);
-
         refreshModeUi();
-
         mBtnOnline.setOnClickListener(v -> {
             MapModeManager.setMode(this, MapModeManager.Mode.ONLINE);
             MapModeManager.applyToMapView(this, mMapView);
@@ -168,6 +187,55 @@ public class TacticalMapActivity extends AppCompatActivity {
         }
     }
 
+    private void setupCoordToggle() {
+        mCoordToggle = findViewById(R.id.tac_coord_toggle);
+        mLegend = findViewById(R.id.tac_legend);
+        refreshCoordToggleUi();
+        mCoordToggle.setOnClickListener(v -> {
+            mShowCoords = !mShowCoords;
+            refreshCoordToggleUi();
+            rebuildAllMarkerIcons();
+            updateLegend();
+            Toast.makeText(this,
+                    mShowCoords ? "좌표 표시 ON" : "좌표 표시 OFF",
+                    Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void refreshCoordToggleUi() {
+        if (mCoordToggle == null) return;
+        mCoordToggle.setTextColor(mShowCoords ? 0xFFFFEB3B : 0xFF95B0D4);
+    }
+
+    private void rebuildAllMarkerIcons() {
+        for (int i = 0; i < mTacMarkers.size(); i++) {
+            TacMarker tm = mTacMarkers.get(i);
+            tm.marker.setIcon(makeMarkerIcon(tm.type, i + 1));
+        }
+        if (mMapView != null) mMapView.invalidate();
+    }
+
+    private void updateLegend() {
+        if (mLegend == null) return;
+        mLegend.removeAllViews();
+        if (!mShowCoords || mTacMarkers.isEmpty()) {
+            mLegend.setVisibility(View.GONE);
+            return;
+        }
+        mLegend.setVisibility(View.VISIBLE);
+        for (int i = 0; i < mTacMarkers.size(); i++) {
+            TacMarker tm = mTacMarkers.get(i);
+            TextView row = new TextView(this);
+            String txt = String.format(Locale.US, "%d. %s  %.5f, %.5f",
+                    i + 1, MK_SHORT[tm.type],
+                    tm.point.getLatitude(), tm.point.getLongitude());
+            row.setText(txt);
+            row.setTextColor(MK_COLORS[tm.type]);
+            row.setTextSize(9f);
+            row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
+            mLegend.addView(row);
+        }
+    }
     private void setupMarkerTools() {
         mToolMarker = findViewById(R.id.tac_tool_marker);
         mToolMarker.setOnClickListener(v -> showMarkerTypeDialog());
@@ -199,29 +267,83 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .show();
     }
 
+    private Drawable makeMarkerIcon(int type, int number) {
+        Drawable base = ContextCompat.getDrawable(this, MK_ICONS[type]);
+        if (base == null) return null;
+
+        int iconSize = dp(36);
+        int badge = dp(15);
+        int totalW = iconSize;
+        int totalH = iconSize + badge;
+
+        Bitmap bmp = Bitmap.createBitmap(totalW, totalH, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+
+        base.setBounds(0, badge, iconSize, badge + iconSize);
+        base.draw(c);
+
+        String num = String.valueOf(number);
+        Paint numBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        numBg.setColor(0xFF0A1628);
+        Paint numBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+        numBorder.setColor(0xFFFFEB3B);
+        numBorder.setStyle(Paint.Style.STROKE);
+        numBorder.setStrokeWidth(dp(1.5f));
+
+        float cx = totalW / 2f;
+        float cy = badge / 2f + dp(1);
+        float r = badge / 2f;
+        c.drawCircle(cx, cy, r, numBg);
+        c.drawCircle(cx, cy, r, numBorder);
+
+        Paint numText = new Paint(Paint.ANTI_ALIAS_FLAG);
+        numText.setColor(Color.WHITE);
+        numText.setTextSize(dp(10));
+        numText.setFakeBoldText(true);
+        numText.setTextAlign(Paint.Align.CENTER);
+        float ty = cy - (numText.descent() + numText.ascent()) / 2f;
+        c.drawText(num, cx, ty, numText);
+
+        return new BitmapDrawable(getResources(), bmp);
+    }
+
+    private int dp(float v) {
+        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
     private void placeMarker(GeoPoint p, int type) {
         Marker marker = new Marker(mMapView);
         marker.setPosition(p);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         marker.setTitle(MK_NAMES[type]);
-        Drawable icon = ContextCompat.getDrawable(this, MK_ICONS[type]);
+
+        final TacMarker tm = new TacMarker(marker, type, p);
+        mTacMarkers.add(tm);
+        int number = mTacMarkers.size();
+
+        Drawable icon = makeMarkerIcon(type, number);
         if (icon != null) marker.setIcon(icon);
+
         marker.setOnMarkerClickListener((m, mv) -> {
+            int idx = mTacMarkers.indexOf(tm) + 1;
             new AlertDialog.Builder(this)
-                    .setTitle(m.getTitle())
-                    .setMessage(String.format("위도 %.5f\n경도 %.5f",
+                    .setTitle("#" + idx + " " + m.getTitle())
+                    .setMessage(String.format(Locale.US, "위도 %.5f\n경도 %.5f",
                             m.getPosition().getLatitude(), m.getPosition().getLongitude()))
                     .setPositiveButton("확인", null)
                     .setNegativeButton("삭제", (d, w) -> {
                         mMapView.getOverlays().remove(m);
-                        mTacMarkers.remove(m);
+                        mTacMarkers.remove(tm);
+                        rebuildAllMarkerIcons();
+                        updateLegend();
                         mMapView.invalidate();
                     })
                     .show();
             return true;
         });
-        mTacMarkers.add(marker);
+
         mMapView.getOverlays().add(marker);
+        updateLegend();
         mMapView.invalidate();
     }
 
@@ -234,10 +356,11 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .setTitle("마커 전체 삭제")
                 .setMessage("마커 " + mTacMarkers.size() + "개를 모두 지울까요?")
                 .setPositiveButton("삭제", (d, w) -> {
-                    for (Marker m : mTacMarkers) mMapView.getOverlays().remove(m);
+                    for (TacMarker tm : mTacMarkers) mMapView.getOverlays().remove(tm.marker);
                     mTacMarkers.clear();
                     mMarkerType = -1;
                     mToolMarker.setTextColor(0xFF00E5D1);
+                    updateLegend();
                     mMapView.invalidate();
                 })
                 .setNegativeButton("취소", null)
