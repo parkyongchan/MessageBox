@@ -7,6 +7,13 @@ import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.content.ContentValues;
+import android.net.Uri;
+import android.provider.MediaStore;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageButton;
@@ -368,11 +375,55 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     private void setupActionStubs() {
-        int[] actIds = { R.id.tac_act_save, R.id.tac_act_share, R.id.tac_act_send };
-        for (int id : actIds) {
-            TextView tv = findViewById(id);
-            if (tv != null) tv.setOnClickListener(v ->
-                    Toast.makeText(this, "준비중 (E단계)", Toast.LENGTH_SHORT).show());
+        TextView save = findViewById(R.id.tac_act_save);
+        if (save != null) save.setOnClickListener(v -> captureAndSave());
+
+        TextView share = findViewById(R.id.tac_act_share);
+        if (share != null) share.setOnClickListener(v ->
+                Toast.makeText(this, "준비중 (SHARE)", Toast.LENGTH_SHORT).show());
+
+        TextView send = findViewById(R.id.tac_act_send);
+        if (send != null) send.setOnClickListener(v ->
+                Toast.makeText(this, "준비중 (SEND)", Toast.LENGTH_SHORT).show());
+    }
+
+    private Bitmap captureMapArea() {
+        View area = findViewById(R.id.tac_map_area);
+        if (area == null || area.getWidth() == 0) return null;
+        Bitmap bmp = Bitmap.createBitmap(
+                area.getWidth(), area.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        area.draw(c);
+        return bmp;
+    }
+
+    private String timestampName() {
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+        return "TYTO_TAC_" + fmt.format(new Date());
+    }
+
+    private void captureAndSave() {
+        Bitmap bmp = captureMapArea();
+        if (bmp == null) {
+            Toast.makeText(this, "캡처 실패 (지도 준비중)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String name = timestampName() + ".jpg";
+        try {
+            ContentValues cv = new ContentValues();
+            cv.put(MediaStore.Images.Media.DISPLAY_NAME, name);
+            cv.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            cv.put(MediaStore.Images.Media.RELATIVE_PATH,
+                    android.os.Environment.DIRECTORY_PICTURES + "/TYTO");
+            Uri uri = getContentResolver().insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+            if (uri == null) throw new Exception("insert null");
+            OutputStream os = getContentResolver().openOutputStream(uri);
+            bmp.compress(Bitmap.CompressFormat.JPEG, 95, os);
+            os.close();
+            Toast.makeText(this, "저장 완료: " + name, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "저장 실패: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
