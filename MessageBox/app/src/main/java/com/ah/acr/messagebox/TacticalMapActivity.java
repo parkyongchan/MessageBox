@@ -239,11 +239,24 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void updateLegend() {
         if (mLegend == null) return;
         mLegend.removeAllViews();
-        if (!mShowCoords || mTacMarkers.isEmpty()) {
+        boolean hasMyLoc = (mMyLocOn && mMyLocMarker != null);
+        if (!mShowCoords || (mTacMarkers.isEmpty() && !hasMyLoc)) {
             mLegend.setVisibility(View.GONE);
             return;
         }
         mLegend.setVisibility(View.VISIBLE);
+        // My location row (top)
+        if (hasMyLoc) {
+            TextView my = new TextView(this);
+            my.setText(String.format(Locale.US, "MY LOC  %.5f, %.5f",
+                    mMyLocMarker.getPosition().getLatitude(),
+                    mMyLocMarker.getPosition().getLongitude()));
+            my.setTextColor(0xFF2196F3);
+            my.setTextSize(9f);
+            my.setTypeface(my.getTypeface(), android.graphics.Typeface.BOLD);
+            mLegend.addView(my);
+        }
+        // Marker rows
         for (int i = 0; i < mTacMarkers.size(); i++) {
             TacMarker tm = mTacMarkers.get(i);
             TextView row = new TextView(this);
@@ -445,6 +458,7 @@ public class TacticalMapActivity extends AppCompatActivity {
             mMapView.invalidate();
         }
         mMyLocOn = false;
+        updateLegend();
         android.widget.ImageButton btn = findViewById(R.id.tac_my_location);
         if (btn != null) btn.setColorFilter(0xFFFFFFFF);
     }
@@ -462,6 +476,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         mMyLocMarker.setPosition(p);
         mMapView.getController().animateTo(p);
         mMapView.invalidate();
+        updateLegend();
     }
 
     @Override
