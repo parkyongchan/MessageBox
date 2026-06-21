@@ -8,6 +8,13 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.content.ContentValues;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import androidx.core.app.ActivityCompat;
+import java.io.FileOutputStream;
 import android.net.Uri;
 import android.provider.MediaStore;
 import java.io.OutputStream;
@@ -84,6 +91,12 @@ public class TacticalMapActivity extends AppCompatActivity {
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
 
+    private android.location.LocationManager mLocMgr;
+    private Marker mMyLocMarker;
+    private boolean mMyLocOn = false;
+    private android.location.LocationListener mLocListener;
+    private static final int REQ_LOC = 9001;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,6 +117,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupCoordToggle();
         setupMarkerTools();
         setupActionStubs();
+        setupMyLocation();
     }
 
     private void setupMap() {
@@ -374,13 +388,97 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void setupMyLocation() {
+        android.widget.ImageButton btn = findViewById(R.id.tac_my_location);
+        if (btn == null) return;
+        btn.setOnClickListener(v -> {
+            if (mMyLocOn) {
+                stopMyLocation();
+            } else {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOC);
+                    return;
+                }
+                startMyLocation();
+            }
+        });
+    }
+
+    private void startMyLocation() {
+        try {
+            if (mLocMgr == null)
+                mLocMgr = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
+            if (mLocListener == null) {
+                mLocListener = new android.location.LocationListener() {
+                    @Override public void onLocationChanged(android.location.Location loc) {
+                        showMyLocation(loc);
+                    }
+                    @Override public void onProviderEnabled(String p) {}
+                    @Override public void onProviderDisabled(String p) {}
+                    @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
+                };
+            }
+            android.location.Location last =
+                    mLocMgr.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER);
+            if (last != null) showMyLocation(last);
+            mLocMgr.requestLocationUpdates(
+                    android.location.LocationManager.GPS_PROVIDER, 2000, 5f, mLocListener);
+            mMyLocOn = true;
+            android.widget.ImageButton btn = findViewById(R.id.tac_my_location);
+            if (btn != null) btn.setColorFilter(0xFFFFEB3B);
+            Toast.makeText(this, "내 위치 ON", Toast.LENGTH_SHORT).show();
+        } catch (SecurityException e) {
+            Toast.makeText(this, "위치 권한 필요", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopMyLocation() {
+        if (mLocMgr != null && mLocListener != null) {
+            try { mLocMgr.removeUpdates(mLocListener); } catch (Exception ignored) {}
+        }
+        if (mMyLocMarker != null) {
+            mMapView.getOverlays().remove(mMyLocMarker);
+            mMyLocMarker = null;
+            mMapView.invalidate();
+        }
+        mMyLocOn = false;
+        android.widget.ImageButton btn = findViewById(R.id.tac_my_location);
+        if (btn != null) btn.setColorFilter(0xFFFFFFFF);
+    }
+
+    private void showMyLocation(android.location.Location loc) {
+        GeoPoint p = new GeoPoint(loc.getLatitude(), loc.getLongitude());
+        if (mMyLocMarker == null) {
+            mMyLocMarker = new Marker(mMapView);
+            mMyLocMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+            mMyLocMarker.setTitle("MY LOCATION");
+            Drawable dot = ContextCompat.getDrawable(this, R.drawable.ic_my_location_dot);
+            if (dot != null) mMyLocMarker.setIcon(dot);
+            mMapView.getOverlays().add(mMyLocMarker);
+        }
+        mMyLocMarker.setPosition(p);
+        mMapView.getController().animateTo(p);
+        mMapView.invalidate();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
+        super.onRequestPermissionsResult(req, perms, results);
+        if (req == REQ_LOC && results.length > 0
+                && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startMyLocation();
+        }
+    }
+
     private void setupActionStubs() {
         TextView save = findViewById(R.id.tac_act_save);
         if (save != null) save.setOnClickListener(v -> captureAndSave());
 
         TextView share = findViewById(R.id.tac_act_share);
-        if (share != null) share.setOnClickListener(v ->
-                Toast.makeText(this, "준비중 (SHARE)", Toast.LENGTH_SHORT).show());
+        if (share != null) share.setOnClickListener(v -> shareCapture());
 
         TextView send = findViewById(R.id.tac_act_send);
         if (send != null) send.setOnClickListener(v ->
@@ -400,6 +498,31 @@ public class TacticalMapActivity extends AppCompatActivity {
     private String timestampName() {
         SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
         return "TYTO_TAC_" + fmt.format(new Date());
+    }
+
+    private void shareCapture() {
+        Bitmap bmp = captureMapArea();
+        if (bmp == null) {
+            Toast.makeText(this, "캡처 실패", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            File dir = new File(getCacheDir(), "shared");
+            if (!dir.exists()) dir.mkdirs();
+            File f = new File(dir, timestampName() + ".jpg");
+            FileOutputStream fos = new FileOutputStream(f);
+            bmp.compress(Bitmap.CompressFormat.JPEG, 95, fos);
+            fos.close();
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".fileprovider", f);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("image/jpeg");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "전술지도 공유"));
+        } catch (Exception e) {
+            Toast.makeText(this, "공유 실패: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void captureAndSave() {
@@ -436,6 +559,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (mMyLocOn) stopMyLocation();
         if (mMapView != null) mMapView.onPause();
     }
 }
