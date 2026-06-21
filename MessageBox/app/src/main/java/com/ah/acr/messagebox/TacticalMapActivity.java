@@ -197,7 +197,7 @@ public class TacticalMapActivity extends AppCompatActivity {
             MapModeManager.setMode(this, MapModeManager.Mode.OFFLINE);
             MapModeManager.Mode applied = MapModeManager.applyToMapView(this, mMapView);
             if (applied == MapModeManager.Mode.ONLINE) {
-                Toast.makeText(this, "오프라인 지도(MBTiles) 없음 - 온라인 사용", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "No offline map (MBTiles) - using online", Toast.LENGTH_SHORT).show();
             }
             refreshModeUi();
         });
@@ -228,7 +228,7 @@ public class TacticalMapActivity extends AppCompatActivity {
             rebuildAllMarkerIcons();
             updateLegend();
             Toast.makeText(this,
-                    mShowCoords ? "좌표 표시 ON" : "좌표 표시 OFF",
+                    mShowCoords ? "Coords ON" : "Coords OFF",
                     Toast.LENGTH_SHORT).show();
         });
     }
@@ -289,22 +289,22 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         TextView line = findViewById(R.id.tac_tool_line);
         if (line != null) line.setOnClickListener(v ->
-                Toast.makeText(this, "준비중 (LINE)", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, "Coming soon (LINE)", Toast.LENGTH_SHORT).show());
         TextView measure = findViewById(R.id.tac_tool_measure);
         if (measure != null) measure.setOnClickListener(v ->
-                Toast.makeText(this, "준비중 (MEASURE)", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, "Coming soon (MEASURE)", Toast.LENGTH_SHORT).show());
     }
 
     private void showMarkerTypeDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("마커 종류 선택")
+                .setTitle("Select Marker Type")
                 .setItems(MK_NAMES, (dialog, which) -> {
                     mMarkerType = which;
                     mToolMarker.setTextColor(0xFFFFEB3B);
                     Toast.makeText(this,
-                            MK_NAMES[which] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                            MK_NAMES[which] + " - tap the map", Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("취소", (d, w) -> {
+                .setNegativeButton("Cancel", (d, w) -> {
                     mMarkerType = -1;
                     mToolMarker.setTextColor(0xFF00E5D1);
                 })
@@ -372,10 +372,10 @@ public class TacticalMapActivity extends AppCompatActivity {
             int idx = mTacMarkers.indexOf(tm) + 1;
             new AlertDialog.Builder(this)
                     .setTitle("#" + idx + " " + m.getTitle())
-                    .setMessage(String.format(Locale.US, "위도 %.5f\n경도 %.5f",
+                    .setMessage(String.format(Locale.US, "Lat %.5f\nLon %.5f",
                             m.getPosition().getLatitude(), m.getPosition().getLongitude()))
-                    .setPositiveButton("확인", null)
-                    .setNegativeButton("삭제", (d, w) -> {
+                    .setPositiveButton("OK", null)
+                    .setNegativeButton("Delete", (d, w) -> {
                         mMapView.getOverlays().remove(m);
                         mTacMarkers.remove(tm);
                         rebuildAllMarkerIcons();
@@ -393,13 +393,13 @@ public class TacticalMapActivity extends AppCompatActivity {
 
     private void clearMarkers() {
         if (mTacMarkers.isEmpty()) {
-            Toast.makeText(this, "마커 없음", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No markers", Toast.LENGTH_SHORT).show();
             return;
         }
         new AlertDialog.Builder(this)
-                .setTitle("마커 전체 삭제")
-                .setMessage("마커 " + mTacMarkers.size() + "개를 모두 지울까요?")
-                .setPositiveButton("삭제", (d, w) -> {
+                .setTitle("Clear All Markers")
+                .setMessage("Delete all " + mTacMarkers.size() + " markers?")
+                .setPositiveButton("Delete", (d, w) -> {
                     for (TacMarker tm : mTacMarkers) mMapView.getOverlays().remove(tm.marker);
                     mTacMarkers.clear();
                     mMarkerType = -1;
@@ -407,7 +407,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                     updateLegend();
                     mMapView.invalidate();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -452,9 +452,9 @@ public class TacticalMapActivity extends AppCompatActivity {
             mMyLocOn = true;
             android.widget.ImageButton btn = findViewById(R.id.tac_my_location);
             if (btn != null) btn.setColorFilter(0xFFFFEB3B);
-            Toast.makeText(this, "내 위치 ON", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "My Location ON", Toast.LENGTH_SHORT).show();
         } catch (SecurityException e) {
-            Toast.makeText(this, "위치 권한 필요", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Location permission required", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -499,13 +499,28 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     private void sendTactical() {
+        String[] modes = { "Send as Photo (map image)", "Send as Tactical Data (markers) - Coming soon" };
+        new AlertDialog.Builder(this)
+                .setTitle("Send Mode")
+                .setItems(modes, (dialog, which) -> {
+                    if (which == 0) {
+                        sendAsPhoto();
+                    } else {
+                        Toast.makeText(this, "Tactical data send - coming soon (Phase 2)", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sendAsPhoto() {
         Bitmap bmp = captureMapArea();
         if (bmp == null) {
-            Toast.makeText(this, "캡처 실패 (지도 준비중)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Capture failed (map loading)", Toast.LENGTH_SHORT).show();
             return;
         }
         if (mAddressList == null || mAddressList.isEmpty()) {
-            Toast.makeText(this, "수신처(주소록)가 없습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No recipients (address book empty)", Toast.LENGTH_SHORT).show();
             return;
         }
         final String[] names = new String[mAddressList.size()];
@@ -515,7 +530,7 @@ public class TacticalMapActivity extends AppCompatActivity {
             names[i] = (nic != null && !nic.isEmpty()) ? nic : a.getNumbers();
         }
         new AlertDialog.Builder(this)
-                .setTitle("전송할 수신처 선택")
+                .setTitle("Select Recipient")
                 .setItems(names, (dialog, which) -> {
                     AddressEntity sel = mAddressList.get(which);
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -523,10 +538,10 @@ public class TacticalMapActivity extends AppCompatActivity {
                     TacticalShare.pendingImage = bos.toByteArray();
                     TacticalShare.pendingCodeNum = sel.getNumbers();
                     TacticalShare.pendingName = names[which];
-                    Toast.makeText(this, names[which] + " 채팅방으로 이동합니다", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Opening chat: " + names[which], Toast.LENGTH_SHORT).show();
                     finish();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -559,7 +574,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void shareCapture() {
         Bitmap bmp = captureMapArea();
         if (bmp == null) {
-            Toast.makeText(this, "캡처 실패", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Capture failed", Toast.LENGTH_SHORT).show();
             return;
         }
         try {
@@ -575,16 +590,16 @@ public class TacticalMapActivity extends AppCompatActivity {
             intent.setType("image/jpeg");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "전술지도 공유"));
+            startActivity(Intent.createChooser(intent, "Share Tactical Map"));
         } catch (Exception e) {
-            Toast.makeText(this, "공유 실패: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Share failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
     private void captureAndSave() {
         Bitmap bmp = captureMapArea();
         if (bmp == null) {
-            Toast.makeText(this, "캡처 실패 (지도 준비중)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Capture failed (map loading)", Toast.LENGTH_SHORT).show();
             return;
         }
         String name = timestampName() + ".jpg";
@@ -600,9 +615,9 @@ public class TacticalMapActivity extends AppCompatActivity {
             OutputStream os = getContentResolver().openOutputStream(uri);
             bmp.compress(Bitmap.CompressFormat.JPEG, 95, os);
             os.close();
-            Toast.makeText(this, "저장 완료: " + name, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Saved: " + name, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "저장 실패: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Save failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
