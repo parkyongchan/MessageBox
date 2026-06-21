@@ -271,8 +271,8 @@ public class TacticalMapActivity extends AppCompatActivity {
         Drawable base = ContextCompat.getDrawable(this, MK_ICONS[type]);
         if (base == null) return null;
 
-        int iconSize = dp(36);
-        int badge = dp(15);
+        int iconSize = dp(22);
+        int badge = dp(12);
         int totalW = iconSize;
         int totalH = iconSize + badge;
 
@@ -298,7 +298,7 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         Paint numText = new Paint(Paint.ANTI_ALIAS_FLAG);
         numText.setColor(Color.WHITE);
-        numText.setTextSize(dp(10));
+        numText.setTextSize(dp(8));
         numText.setFakeBoldText(true);
         numText.setTextAlign(Paint.Align.CENTER);
         float ty = cy - (numText.descent() + numText.ascent()) / 2f;
