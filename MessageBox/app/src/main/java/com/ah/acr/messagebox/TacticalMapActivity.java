@@ -46,6 +46,7 @@ import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import java.io.File;
@@ -83,6 +84,12 @@ public class TacticalMapActivity extends AppCompatActivity {
         TacMarker(Marker m, int t, GeoPoint p) { marker = m; type = t; point = p; }
     }
 
+    private static class MeasureSet {
+        Marker startDot;
+        Polyline line;
+        Marker label;
+    }
+
     private MapView mMapView;
     private TextView mZoomLabel;
     private TextView mBtnOnline;
@@ -98,6 +105,11 @@ public class TacticalMapActivity extends AppCompatActivity {
     private android.location.LocationManager mLocMgr;
     private Marker mMyLocMarker;
     private boolean mMyLocOn = false;
+    private boolean mMeasureMode = false;
+    private GeoPoint mMeasureFirst = null;
+    private final java.util.List<MeasureSet> mMeasureSets = new java.util.ArrayList<>();
+    private Marker mPendingDot = null;
+    private TextView mToolMeasure;
     private android.location.LocationListener mLocListener;
     private static final int REQ_LOC = 9001;
     private AddressViewModel mAddressVM;
@@ -152,6 +164,10 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         MapEventsReceiver receiver = new MapEventsReceiver() {
             @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
+                if (mMeasureMode) {
+                    addMeasurePoint(p);
+                    return true;
+                }
                 if (mMarkerType >= 0) {
                     placeMarker(p, mMarkerType);
                     return true;
@@ -290,9 +306,8 @@ public class TacticalMapActivity extends AppCompatActivity {
         TextView line = findViewById(R.id.tac_tool_line);
         if (line != null) line.setOnClickListener(v ->
                 Toast.makeText(this, "Coming soon (LINE)", Toast.LENGTH_SHORT).show());
-        TextView measure = findViewById(R.id.tac_tool_measure);
-        if (measure != null) measure.setOnClickListener(v ->
-                Toast.makeText(this, "Coming soon (MEASURE)", Toast.LENGTH_SHORT).show());
+        mToolMeasure = findViewById(R.id.tac_tool_measure);
+        if (mToolMeasure != null) mToolMeasure.setOnClickListener(v -> toggleMeasureMode());
     }
 
     private void showMarkerTypeDialog() {
@@ -392,18 +407,23 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     private void clearMarkers() {
-        if (mTacMarkers.isEmpty()) {
-            Toast.makeText(this, "No markers", Toast.LENGTH_SHORT).show();
+        boolean hasMarkers = !mTacMarkers.isEmpty();
+        boolean hasMeasures = !mMeasureSets.isEmpty() || mPendingDot != null;
+        if (!hasMarkers && !hasMeasures) {
+            Toast.makeText(this, "Nothing to clear", Toast.LENGTH_SHORT).show();
             return;
         }
+        String msg = "Delete " + mTacMarkers.size() + " marker(s) and "
+                + mMeasureSets.size() + " measurement(s)?";
         new AlertDialog.Builder(this)
-                .setTitle("Clear All Markers")
-                .setMessage("Delete all " + mTacMarkers.size() + " markers?")
+                .setTitle("Clear All")
+                .setMessage(msg)
                 .setPositiveButton("Delete", (d, w) -> {
                     for (TacMarker tm : mTacMarkers) mMapView.getOverlays().remove(tm.marker);
                     mTacMarkers.clear();
                     mMarkerType = -1;
-                    mToolMarker.setTextColor(0xFF00E5D1);
+                    if (mToolMarker != null) mToolMarker.setTextColor(0xFF00E5D1);
+                    clearAllMeasures();
                     updateLegend();
                     mMapView.invalidate();
                 })
@@ -543,6 +563,130 @@ public class TacticalMapActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void toggleMeasureMode() {
+        mMeasureMode = !mMeasureMode;
+        if (mMeasureMode) {
+            mMarkerType = -1;
+            if (mToolMarker != null) mToolMarker.setTextColor(0xFF00E5D1);
+            if (mToolMeasure != null) mToolMeasure.setTextColor(0xFFFFEB3B);
+            Toast.makeText(this, "Measure mode - tap two points", Toast.LENGTH_SHORT).show();
+        } else {
+            if (mToolMeasure != null) mToolMeasure.setTextColor(0xFF00E5D1);
+            mMeasureFirst = null;
+        }
+    }
+
+    private void addMeasurePoint(GeoPoint p) {
+        if (mMeasureFirst == null) {
+            mMeasureFirst = p;
+            mPendingDot = new Marker(mMapView);
+            mPendingDot.setPosition(p);
+            mPendingDot.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+            mPendingDot.setIcon(makeDotIcon());
+            mPendingDot.setTitle("Measure start");
+            mMapView.getOverlays().add(mPendingDot);
+            mMapView.invalidate();
+            Toast.makeText(this, "Start set - tap end point", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        double meters = mMeasureFirst.distanceToAsDouble(p);
+        double bearing = mMeasureFirst.bearingTo(p);
+        if (bearing < 0) bearing += 360;
+        String distStr = (meters < 1000)
+                ? String.format(Locale.US, "%.0f m", meters)
+                : String.format(Locale.US, "%.2f km", meters / 1000.0);
+        String label = distStr + " / " + String.format(Locale.US, "%03.0f", bearing) + "\u00B0";
+        final MeasureSet set = new MeasureSet();
+        set.startDot = mPendingDot;
+        mPendingDot = null;
+        Polyline line = new Polyline();
+        java.util.List<GeoPoint> pts = new java.util.ArrayList<>();
+        pts.add(mMeasureFirst);
+        pts.add(p);
+        line.setPoints(pts);
+        line.getOutlinePaint().setColor(0xFFFF6D00);
+        line.getOutlinePaint().setStrokeWidth(7f);
+        line.setTitle(label);
+        mMapView.getOverlays().add(line);
+        set.line = line;
+        GeoPoint mid = new GeoPoint(
+                (mMeasureFirst.getLatitude() + p.getLatitude()) / 2,
+                (mMeasureFirst.getLongitude() + p.getLongitude()) / 2);
+        Marker lbl = new Marker(mMapView);
+        lbl.setPosition(mid);
+        lbl.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        lbl.setIcon(makeTextLabel(label));
+        lbl.setTitle(label);
+        lbl.setOnMarkerClickListener((m, mv) -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Measurement")
+                    .setMessage(label)
+                    .setPositiveButton("OK", null)
+                    .setNegativeButton("Delete", (d, w) -> removeMeasureSet(set))
+                    .show();
+            return true;
+        });
+        mMapView.getOverlays().add(lbl);
+        set.label = lbl;
+        mMeasureSets.add(set);
+        mMapView.invalidate();
+        mMeasureFirst = null;
+        Toast.makeText(this, label, Toast.LENGTH_LONG).show();
+    }
+
+    private void removeMeasureSet(MeasureSet set) {
+        if (set.startDot != null) mMapView.getOverlays().remove(set.startDot);
+        if (set.line != null) mMapView.getOverlays().remove(set.line);
+        if (set.label != null) mMapView.getOverlays().remove(set.label);
+        mMeasureSets.remove(set);
+        mMapView.invalidate();
+    }
+
+    private void clearAllMeasures() {
+        for (MeasureSet s : mMeasureSets) {
+            if (s.startDot != null) mMapView.getOverlays().remove(s.startDot);
+            if (s.line != null) mMapView.getOverlays().remove(s.line);
+            if (s.label != null) mMapView.getOverlays().remove(s.label);
+        }
+        mMeasureSets.clear();
+        if (mPendingDot != null) { mMapView.getOverlays().remove(mPendingDot); mPendingDot = null; }
+        mMeasureFirst = null;
+    }
+
+    private Drawable makeDotIcon() {
+        int sz = dp(14);
+        Bitmap bmp = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setColor(0xFFFF6D00);
+        Paint border = new Paint(Paint.ANTI_ALIAS_FLAG);
+        border.setColor(0xFF0A1628);
+        border.setStyle(Paint.Style.STROKE);
+        border.setStrokeWidth(dp(2));
+        float cx = sz / 2f, cy = sz / 2f, r = sz / 2f - dp(2);
+        c.drawCircle(cx, cy, r, fill);
+        c.drawCircle(cx, cy, r, border);
+        return new BitmapDrawable(getResources(), bmp);
+    }
+
+    private Drawable makeTextLabel(String text) {
+        Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tp.setColor(Color.WHITE);
+        tp.setTextSize(dp(11));
+        tp.setFakeBoldText(true);
+        float tw = tp.measureText(text);
+        int padH = dp(6), padV = dp(3);
+        int w = (int) tw + padH * 2;
+        int h = dp(18);
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setColor(0xCC0A1628);
+        c.drawRoundRect(0, 0, w, h, dp(3), dp(3), bg);
+        c.drawText(text, padH, h - padV - dp(2), tp);
+        return new BitmapDrawable(getResources(), bmp);
     }
 
     private void setupActionStubs() {
