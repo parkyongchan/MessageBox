@@ -238,6 +238,14 @@ public class ChatRoomFragment extends Fragment {
         observeUnsentMessages();  // FAB update
         registerEchoReceiver();   // ECHO 수신 → 자동 새로고침
         updateTitleVisibility();   // 초기 제목칸 상태 (ACK ON이면 숨김)
+
+        // [전술지도] 첨부 신호가 있으면 전술지도 이미지 자동 첨부
+        if (getArguments() != null && getArguments().getBoolean("tactical_attach", false)) {
+            if (com.ah.acr.messagebox.TacticalShare.pendingImage != null) {
+                attachTacticalImage(com.ah.acr.messagebox.TacticalShare.pendingImage);
+                com.ah.acr.messagebox.TacticalShare.clear();
+            }
+        }
     }
 
     @Override
@@ -511,6 +519,47 @@ public class ChatRoomFragment extends Fragment {
             }
             return null;
         } catch (Exception e) { Log.e(TAG, "compressImageToMax fail: " + e.getMessage()); return null; }
+    }
+
+    private byte[] compressBitmapToMax(android.graphics.Bitmap bmp, int maxBytes) {
+        if (bmp == null) return null;
+        for (int q = 90; q >= 30; q -= 10) {
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, q, bos);
+            if (bos.size() <= maxBytes) return bos.toByteArray();
+        }
+        android.graphics.Bitmap cur = bmp;
+        for (int step = 0; step < 6; step++) {
+            int w = Math.max(1, cur.getWidth() / 2), h = Math.max(1, cur.getHeight() / 2);
+            cur = android.graphics.Bitmap.createScaledBitmap(cur, w, h, true);
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            cur.compress(android.graphics.Bitmap.CompressFormat.JPEG, 50, bos);
+            if (bos.size() <= maxBytes) return bos.toByteArray();
+            if (w <= 2 || h <= 2) break;
+        }
+        return null;
+    }
+
+    private void attachTacticalImage(byte[] raw) {
+        if (raw == null || raw.length == 0) return;
+        new Thread(() -> {
+            try {
+                android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.length);
+                byte[] data = compressBitmapToMax(bmp, ATTACH_MAX_BYTES);
+                if (data == null) { postToast("전술지도 압축 실패"); return; }
+                final byte[] fdata = data;
+                mAttachBytes = fdata;
+                mAttachName = "tactical.jpg";
+                if (getActivity() != null) getActivity().runOnUiThread(() -> {
+                    if (binding.typePhoto != null) binding.typePhoto.setChecked(true);
+                    binding.uploadLabel.setText(mAttachName + " (" + fdata.length + " B)");
+                    try {
+                        android.graphics.Bitmap tb = android.graphics.BitmapFactory.decodeByteArray(fdata, 0, fdata.length);
+                        if (tb != null) { binding.uploadThumb.setImageBitmap(tb); binding.uploadThumb.setVisibility(View.VISIBLE); }
+                    } catch (Exception ignore) {}
+                });
+            } catch (Exception e) { postToast("전술지도 첨부 오류: " + e.getMessage()); }
+        }).start();
     }
 
 

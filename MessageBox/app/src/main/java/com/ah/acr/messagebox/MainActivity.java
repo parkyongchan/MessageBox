@@ -1240,6 +1240,13 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         com.ah.acr.messagebox.service.TytoConnectService.setActivityAlive(true);
         registerAutoRecvReceiver();
+
+        // [전술지도] 전송 대기중이면 채팅 탭으로 전환
+        if (com.ah.acr.messagebox.TacticalShare.hasPending()) {
+            if (binding.bottomNav.getSelectedItemId() != R.id.tab_chat) {
+                binding.bottomNav.setSelectedItemId(R.id.tab_chat);
+            }
+        }
     }
 
     @Override

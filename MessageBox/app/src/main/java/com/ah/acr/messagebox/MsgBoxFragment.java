@@ -474,6 +474,20 @@ public class MsgBoxFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // [전술지도] 전송 대기중이면 채팅방 자동 열기 + 첨부 신호
+        if (com.ah.acr.messagebox.TacticalShare.hasPending()) {
+            Bundle bundle = new Bundle();
+            bundle.putString("code_num", com.ah.acr.messagebox.TacticalShare.pendingCodeNum);
+            bundle.putString("contact_name", com.ah.acr.messagebox.TacticalShare.pendingName);
+            bundle.putBoolean("tactical_attach", true);
+            NavHostFragment.findNavController(MsgBoxFragment.this)
+                    .navigate(R.id.action_msgbox_to_chat_room, bundle);
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;

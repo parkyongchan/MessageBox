@@ -8,6 +8,10 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.content.ContentValues;
+import com.ah.acr.messagebox.database.AddressEntity;
+import com.ah.acr.messagebox.database.AddressViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import java.io.ByteArrayOutputStream;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -96,6 +100,8 @@ public class TacticalMapActivity extends AppCompatActivity {
     private boolean mMyLocOn = false;
     private android.location.LocationListener mLocListener;
     private static final int REQ_LOC = 9001;
+    private AddressViewModel mAddressVM;
+    private java.util.List<AddressEntity> mAddressList = new java.util.ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +124,10 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupMarkerTools();
         setupActionStubs();
         setupMyLocation();
+        mAddressVM = new ViewModelProvider(this).get(AddressViewModel.class);
+        mAddressVM.getAllAddress().observe(this, list -> {
+            if (list != null) mAddressList = list;
+        });
     }
 
     private void setupMap() {
@@ -488,6 +498,38 @@ public class TacticalMapActivity extends AppCompatActivity {
         }
     }
 
+    private void sendTactical() {
+        Bitmap bmp = captureMapArea();
+        if (bmp == null) {
+            Toast.makeText(this, "캡처 실패 (지도 준비중)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (mAddressList == null || mAddressList.isEmpty()) {
+            Toast.makeText(this, "수신처(주소록)가 없습니다", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] names = new String[mAddressList.size()];
+        for (int i = 0; i < mAddressList.size(); i++) {
+            AddressEntity a = mAddressList.get(i);
+            String nic = a.getNumbersNic();
+            names[i] = (nic != null && !nic.isEmpty()) ? nic : a.getNumbers();
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("전송할 수신처 선택")
+                .setItems(names, (dialog, which) -> {
+                    AddressEntity sel = mAddressList.get(which);
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    bmp.compress(Bitmap.CompressFormat.JPEG, 95, bos);
+                    TacticalShare.pendingImage = bos.toByteArray();
+                    TacticalShare.pendingCodeNum = sel.getNumbers();
+                    TacticalShare.pendingName = names[which];
+                    Toast.makeText(this, names[which] + " 채팅방으로 이동합니다", Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
     private void setupActionStubs() {
         TextView save = findViewById(R.id.tac_act_save);
         if (save != null) save.setOnClickListener(v -> captureAndSave());
@@ -496,8 +538,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         if (share != null) share.setOnClickListener(v -> shareCapture());
 
         TextView send = findViewById(R.id.tac_act_send);
-        if (send != null) send.setOnClickListener(v ->
-                Toast.makeText(this, "준비중 (SEND)", Toast.LENGTH_SHORT).show());
+        if (send != null) send.setOnClickListener(v -> sendTactical());
     }
 
     private Bitmap captureMapArea() {
