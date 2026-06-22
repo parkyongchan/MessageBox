@@ -83,11 +83,16 @@ public class TacticalMapActivity extends AppCompatActivity {
             "Air Defense (방공)", "HQ (본부)", "Medical (의무)"
     };
     private static final String[] UNIT_ABBR = { "INF", "ARM", "ART", "UAV", "REC", "AD", "HQ", "MED" };
+    private static final String[] PLACE_NAMES = {
+            "Building (건물)", "Bridge (교량)", "Helipad (헬기장)", "Checkpoint (검문소)"
+    };
+    private static final String[] PLACE_ABBR = { "BLD", "BRG", "HEL", "CKP" };
 
     private static class TacMarker {
         Marker marker;
         int type;
         int unitType = -1;
+        int placeType = -1;  // POI 전용: -1=none, 0~3
         GeoPoint point;
         TacMarker(Marker m, int t, GeoPoint p) { marker = m; type = t; point = p; }
     }
@@ -282,7 +287,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void rebuildAllMarkerIcons() {
         for (int i = 0; i < mTacMarkers.size(); i++) {
             TacMarker tm = mTacMarkers.get(i);
-            tm.marker.setIcon(makeMarkerIcon(tm.type, i + 1, tm.unitType));
+            tm.marker.setIcon(makeMarkerIcon(tm.type, i + 1, tm.unitType, tm.placeType));
         }
         if (mMapView != null) mMapView.invalidate();
     }
@@ -351,7 +356,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .show();
     }
 
-    private Drawable makeMarkerIcon(int type, int number, int unitType) {
+    private Drawable makeMarkerIcon(int type, int number, int unitType, int placeType) {
         Drawable base = ContextCompat.getDrawable(this, MK_ICONS[type]);
         if (base == null) return null;
 
@@ -366,7 +371,9 @@ public class TacticalMapActivity extends AppCompatActivity {
         base.setBounds(0, badge, iconSize, badge + iconSize);
         base.draw(c);
 
-        if (unitType >= 0) {
+        if (type == 4 && placeType >= 0) {
+            drawPlaceSymbol(c, placeType, iconSize, badge);
+        } else if (unitType >= 0) {
             drawUnitSymbol(c, unitType, iconSize, badge);
         }
 
@@ -393,6 +400,43 @@ public class TacticalMapActivity extends AppCompatActivity {
         c.drawText(num, cx, ty, numText);
 
         return new BitmapDrawable(getResources(), bmp);
+    }
+
+    private void drawPlaceSymbol(Canvas c, int placeType, int iconSize, int badge) {
+        Paint sym = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sym.setColor(0xFF0A1628);
+        sym.setStyle(Paint.Style.STROKE);
+        sym.setStrokeWidth(dp(2));
+        float left = iconSize * 0.30f;
+        float right = iconSize * 0.70f;
+        float top = badge + iconSize * 0.32f;
+        float bot = badge + iconSize * 0.60f;
+        float cx = iconSize / 2f;
+        float cy = badge + iconSize * 0.46f;
+        switch (placeType) {
+            case 0:
+                c.drawRect(left, top, right, bot, sym);
+                break;
+            case 1:
+                c.drawLine(left, top + (bot-top)*0.3f, right, top + (bot-top)*0.3f, sym);
+                c.drawLine(left, top + (bot-top)*0.7f, right, top + (bot-top)*0.7f, sym);
+                break;
+            case 2: {
+                Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
+                tp.setColor(0xFF0A1628);
+                tp.setTextSize(iconSize * 0.34f);
+                tp.setFakeBoldText(true);
+                tp.setTextAlign(Paint.Align.CENTER);
+                float ty = cy - (tp.descent() + tp.ascent()) / 2f;
+                c.drawText("H", cx, ty, tp);
+                break;
+            }
+            case 3:
+                c.drawLine(left, top, right, top, sym);
+                c.drawLine(left, top, cx, bot, sym);
+                c.drawLine(right, top, cx, bot, sym);
+                break;
+        }
     }
 
     private void drawUnitSymbol(Canvas c, int unitType, int iconSize, int badge) {
@@ -464,7 +508,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         mTacMarkers.add(tm);
         int number = mTacMarkers.size();
 
-        Drawable icon = makeMarkerIcon(type, number, tm.unitType);
+        Drawable icon = makeMarkerIcon(type, number, tm.unitType, tm.placeType);
         if (icon != null) marker.setIcon(icon);
 
         marker.setOnMarkerClickListener((m, mv) -> {
@@ -491,9 +535,26 @@ public class TacticalMapActivity extends AppCompatActivity {
         mMapView.invalidate();
     }
 
+    private void showPlaceTypeDialog(TacMarker tm) {
+        String[] opts = new String[PLACE_NAMES.length + 1];
+        opts[0] = "None (없음)";
+        for (int k = 0; k < PLACE_NAMES.length; k++) opts[k + 1] = PLACE_NAMES[k];
+        new AlertDialog.Builder(this)
+                .setTitle("Place Type")
+                .setItems(opts, (d, which) -> {
+                    tm.placeType = which - 1;
+                    rebuildAllMarkerIcons();
+                    mMapView.invalidate();
+                    String nm = (which == 0) ? "None" : PLACE_ABBR[which - 1];
+                    Toast.makeText(this, "Place: " + nm, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private void showUnitTypeDialog(TacMarker tm) {
         if (tm.type == 4) {  // POI는 병종 없음
-            Toast.makeText(this, "POI has no unit type", Toast.LENGTH_SHORT).show();
+            showPlaceTypeDialog(tm);
             return;
         }
         String[] opts = new String[UNIT_NAMES.length + 1];
