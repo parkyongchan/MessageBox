@@ -475,6 +475,10 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     private void showUnitTypeDialog(TacMarker tm) {
+        if (tm.type == 4) {  // POI는 병종 없음
+            Toast.makeText(this, "POI has no unit type", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String[] opts = new String[UNIT_NAMES.length + 1];
         opts[0] = "None (없음)";
         for (int k = 0; k < UNIT_NAMES.length; k++) opts[k + 1] = UNIT_NAMES[k];
