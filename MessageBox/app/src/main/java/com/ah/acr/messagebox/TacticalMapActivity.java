@@ -310,8 +310,9 @@ public class TacticalMapActivity extends AppCompatActivity {
         for (int i = 0; i < mTacMarkers.size(); i++) {
             TacMarker tm = mTacMarkers.get(i);
             TextView row = new TextView(this);
-            String txt = String.format(Locale.US, "%d. %s  %.5f, %.5f",
-                    i + 1, MK_SHORT[tm.type],
+            String unitStr = (tm.unitType >= 0) ? " [" + UNIT_ABBR[tm.unitType] + "]" : "";
+            String txt = String.format(Locale.US, "%d. %s%s  %.5f, %.5f",
+                    i + 1, MK_SHORT[tm.type], unitStr,
                     tm.point.getLatitude(), tm.point.getLongitude());
             row.setText(txt);
             row.setTextColor(MK_COLORS[tm.type]);
