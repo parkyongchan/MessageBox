@@ -316,7 +316,14 @@ public class TacticalMapActivity extends AppCompatActivity {
         for (int i = 0; i < mTacMarkers.size(); i++) {
             TacMarker tm = mTacMarkers.get(i);
             TextView row = new TextView(this);
-            String unitStr = (tm.unitType >= 0) ? " [" + UNIT_ABBR[tm.unitType] + "]" : "";
+            String unitStr;
+            if (tm.type == 4 && tm.placeType >= 0) {
+                unitStr = " [" + PLACE_ABBR[tm.placeType] + "]";
+            } else if (tm.unitType >= 0) {
+                unitStr = " [" + UNIT_ABBR[tm.unitType] + "]";
+            } else {
+                unitStr = "";
+            }
             String txt = String.format(Locale.US, "%d. %s%s  %.5f, %.5f",
                     i + 1, MK_SHORT[tm.type], unitStr,
                     tm.point.getLatitude(), tm.point.getLongitude());
