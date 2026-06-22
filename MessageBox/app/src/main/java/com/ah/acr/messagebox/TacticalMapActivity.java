@@ -79,9 +79,10 @@ public class TacticalMapActivity extends AppCompatActivity {
 
     private static final String[] UNIT_NAMES = {
             "Infantry (보병)", "Armor (기갑)", "Artillery (포병)",
-            "UAV/Drone (드론)", "Recon (정찰)"
+            "UAV/Drone (드론)", "Recon (정찰)",
+            "Air Defense (방공)", "HQ (본부)", "Medical (의무)"
     };
-    private static final String[] UNIT_ABBR = { "INF", "ARM", "ART", "UAV", "REC" };
+    private static final String[] UNIT_ABBR = { "INF", "ARM", "ART", "UAV", "REC", "AD", "HQ", "MED" };
 
     private static class TacMarker {
         Marker marker;
@@ -429,6 +430,22 @@ public class TacticalMapActivity extends AppCompatActivity {
             }
             case 4:
                 c.drawLine(left, bot, right, top, sym);
+                break;
+            case 5:
+                c.drawLine(left, bot, cx, top, sym);
+                c.drawLine(cx, top, right, bot, sym);
+                break;
+            case 6: {
+                float poleX = left + dp(1);
+                c.drawLine(poleX, top, poleX, bot, sym);
+                Paint flag = new Paint(Paint.ANTI_ALIAS_FLAG);
+                flag.setColor(Color.WHITE);
+                c.drawRect(poleX, top, poleX + (right - left) * 0.5f, top + (bot - top) * 0.4f, flag);
+                break;
+            }
+            case 7:
+                c.drawLine(cx, top, cx, bot, sym);
+                c.drawLine(left, cy, right, cy, sym);
                 break;
         }
     }
