@@ -90,6 +90,12 @@ public class TacticalMapActivity extends AppCompatActivity {
         Marker label;
     }
 
+    private static class LineSet {
+        Polyline line;
+        Marker label;
+        java.util.List<Marker> dots = new java.util.ArrayList<>();
+    }
+
     private MapView mMapView;
     private TextView mZoomLabel;
     private TextView mBtnOnline;
@@ -110,6 +116,13 @@ public class TacticalMapActivity extends AppCompatActivity {
     private final java.util.List<MeasureSet> mMeasureSets = new java.util.ArrayList<>();
     private Marker mPendingDot = null;
     private TextView mToolMeasure;
+    private boolean mLineMode = false;
+    private TextView mToolLine;
+    private final java.util.List<GeoPoint> mLinePoints = new java.util.ArrayList<>();
+    private final java.util.List<Marker> mLineDots = new java.util.ArrayList<>();
+    private Polyline mLineCurrent = null;
+    private Marker mLineLabel = null;
+    private final java.util.List<LineSet> mLineSets = new java.util.ArrayList<>();
     private android.location.LocationListener mLocListener;
     private static final int REQ_LOC = 9001;
     private AddressViewModel mAddressVM;
@@ -164,6 +177,10 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         MapEventsReceiver receiver = new MapEventsReceiver() {
             @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
+                if (mLineMode) {
+                    addLinePoint(p);
+                    return true;
+                }
                 if (mMeasureMode) {
                     addMeasurePoint(p);
                     return true;
@@ -303,9 +320,8 @@ public class TacticalMapActivity extends AppCompatActivity {
         TextView clear = findViewById(R.id.tac_tool_clear);
         clear.setOnClickListener(v -> clearMarkers());
 
-        TextView line = findViewById(R.id.tac_tool_line);
-        if (line != null) line.setOnClickListener(v ->
-                Toast.makeText(this, "Coming soon (LINE)", Toast.LENGTH_SHORT).show());
+        mToolLine = findViewById(R.id.tac_tool_line);
+        if (mToolLine != null) mToolLine.setOnClickListener(v -> toggleLineMode());
         mToolMeasure = findViewById(R.id.tac_tool_measure);
         if (mToolMeasure != null) mToolMeasure.setOnClickListener(v -> toggleMeasureMode());
     }
@@ -409,12 +425,14 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void clearMarkers() {
         boolean hasMarkers = !mTacMarkers.isEmpty();
         boolean hasMeasures = !mMeasureSets.isEmpty() || mPendingDot != null;
-        if (!hasMarkers && !hasMeasures) {
+        boolean hasLines = !mLineSets.isEmpty() || !mLinePoints.isEmpty();
+        if (!hasMarkers && !hasMeasures && !hasLines) {
             Toast.makeText(this, "Nothing to clear", Toast.LENGTH_SHORT).show();
             return;
         }
         String msg = "Delete " + mTacMarkers.size() + " marker(s) and "
-                + mMeasureSets.size() + " measurement(s)?";
+                + mMeasureSets.size() + " measurement(s), "
+                + mLineSets.size() + " line(s)?";
         new AlertDialog.Builder(this)
                 .setTitle("Clear All")
                 .setMessage(msg)
@@ -424,6 +442,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                     mMarkerType = -1;
                     if (mToolMarker != null) mToolMarker.setTextColor(0xFF00E5D1);
                     clearAllMeasures();
+                    clearAllLines();
                     updateLegend();
                     mMapView.invalidate();
                 })
@@ -563,6 +582,124 @@ public class TacticalMapActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void toggleLineMode() {
+        mLineMode = !mLineMode;
+        if (mLineMode) {
+            mMarkerType = -1;
+            mMeasureMode = false;
+            if (mToolMarker != null) mToolMarker.setTextColor(0xFF00E5D1);
+            if (mToolMeasure != null) mToolMeasure.setTextColor(0xFF00E5D1);
+            if (mToolLine != null) mToolLine.setTextColor(0xFFFFEB3B);
+            Toast.makeText(this, "Line mode - tap points, tap LINE to finish", Toast.LENGTH_SHORT).show();
+        } else {
+            finishLine();
+            if (mToolLine != null) mToolLine.setTextColor(0xFF00E5D1);
+        }
+    }
+
+    private void addLinePoint(GeoPoint p) {
+        mLinePoints.add(p);
+        Marker dot = new Marker(mMapView);
+        dot.setPosition(p);
+        dot.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        dot.setIcon(makeLineDotIcon());
+        mMapView.getOverlays().add(dot);
+        mLineDots.add(dot);
+        if (mLineCurrent == null) {
+            mLineCurrent = new Polyline();
+            mLineCurrent.getOutlinePaint().setColor(0xFF00E5FF);
+            mLineCurrent.getOutlinePaint().setStrokeWidth(6f);
+            mMapView.getOverlays().add(mLineCurrent);
+        }
+        mLineCurrent.setPoints(new java.util.ArrayList<>(mLinePoints));
+        double total = 0;
+        for (int k = 1; k < mLinePoints.size(); k++) {
+            total += mLinePoints.get(k - 1).distanceToAsDouble(mLinePoints.get(k));
+        }
+        String tStr = (total < 1000)
+                ? String.format(Locale.US, "Total: %.0f m", total)
+                : String.format(Locale.US, "Total: %.2f km", total / 1000.0);
+        if (mLineLabel != null) mMapView.getOverlays().remove(mLineLabel);
+        if (mLinePoints.size() >= 2) {
+            mLineLabel = new Marker(mMapView);
+            mLineLabel.setPosition(p);
+            mLineLabel.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+            mLineLabel.setIcon(makeTextLabel(tStr));
+            mLineLabel.setTitle(tStr);
+            mMapView.getOverlays().add(mLineLabel);
+        }
+        mMapView.invalidate();
+    }
+
+    private void finishLine() {
+        if (mLinePoints.size() < 2) {
+            for (Marker d : mLineDots) mMapView.getOverlays().remove(d);
+            if (mLineCurrent != null) mMapView.getOverlays().remove(mLineCurrent);
+            if (mLineLabel != null) mMapView.getOverlays().remove(mLineLabel);
+            mLineDots.clear(); mLinePoints.clear();
+            mLineCurrent = null; mLineLabel = null;
+            mMapView.invalidate();
+            return;
+        }
+        final LineSet set = new LineSet();
+        set.line = mLineCurrent;
+        set.label = mLineLabel;
+        set.dots = new java.util.ArrayList<>(mLineDots);
+        if (mLineLabel != null) {
+            mLineLabel.setOnMarkerClickListener((mk, mv) -> {
+                new AlertDialog.Builder(this)
+                        .setTitle("Line")
+                        .setMessage(mk.getTitle())
+                        .setPositiveButton("OK", null)
+                        .setNegativeButton("Delete", (d, w) -> removeLineSet(set))
+                        .show();
+                return true;
+            });
+        }
+        mLineSets.add(set);
+        mLineCurrent = null; mLineLabel = null;
+        mLineDots.clear(); mLinePoints.clear();
+        mMapView.invalidate();
+    }
+
+    private void removeLineSet(LineSet set) {
+        if (set.line != null) mMapView.getOverlays().remove(set.line);
+        if (set.label != null) mMapView.getOverlays().remove(set.label);
+        for (Marker d : set.dots) mMapView.getOverlays().remove(d);
+        mLineSets.remove(set);
+        mMapView.invalidate();
+    }
+
+    private void clearAllLines() {
+        for (LineSet s : mLineSets) {
+            if (s.line != null) mMapView.getOverlays().remove(s.line);
+            if (s.label != null) mMapView.getOverlays().remove(s.label);
+            for (Marker d : s.dots) mMapView.getOverlays().remove(d);
+        }
+        mLineSets.clear();
+        for (Marker d : mLineDots) mMapView.getOverlays().remove(d);
+        if (mLineCurrent != null) mMapView.getOverlays().remove(mLineCurrent);
+        if (mLineLabel != null) mMapView.getOverlays().remove(mLineLabel);
+        mLineDots.clear(); mLinePoints.clear();
+        mLineCurrent = null; mLineLabel = null;
+    }
+
+    private Drawable makeLineDotIcon() {
+        int sz = dp(12);
+        Bitmap bmp = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setColor(0xFF00E5FF);
+        Paint border = new Paint(Paint.ANTI_ALIAS_FLAG);
+        border.setColor(0xFF0A1628);
+        border.setStyle(Paint.Style.STROKE);
+        border.setStrokeWidth(dp(2));
+        float cx = sz / 2f, cy = sz / 2f, r = sz / 2f - dp(2);
+        c.drawCircle(cx, cy, r, fill);
+        c.drawCircle(cx, cy, r, border);
+        return new BitmapDrawable(getResources(), bmp);
     }
 
     private void toggleMeasureMode() {
