@@ -759,14 +759,14 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     private void sendTactical() {
-        String[] modes = { "Send as Photo (map image)", "Send as Tactical Data (markers) - Coming soon" };
+        String[] modes = { "Send as Photo (map image)", "Send as Tactical Data (markers)" };
         new AlertDialog.Builder(this)
                 .setTitle("Send Mode")
                 .setItems(modes, (dialog, which) -> {
                     if (which == 0) {
                         sendAsPhoto();
                     } else {
-                        Toast.makeText(this, "Tactical data send - coming soon (Phase 2)", Toast.LENGTH_SHORT).show();
+                        sendAsTacticalData();
                     }
                 })
                 .setNegativeButton("Cancel", null)
@@ -774,6 +774,38 @@ public class TacticalMapActivity extends AppCompatActivity {
     }
 
     // [전술데이터] 마커/라인/메저 → 직렬화 텍스트 (프로토콜 v1.3)
+    private void sendAsTacticalData() {
+        if (mTacMarkers.isEmpty() && mLineSets.isEmpty() && mMeasureSets.isEmpty()) {
+            Toast.makeText(this, "No tactical data to send", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (mAddressList == null || mAddressList.isEmpty()) {
+            Toast.makeText(this, "No recipients (address book empty)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] names = new String[mAddressList.size()];
+        for (int i = 0; i < mAddressList.size(); i++) {
+            AddressEntity a = mAddressList.get(i);
+            String nic = a.getNumbersNic();
+            names[i] = (nic != null && !nic.isEmpty()) ? nic : a.getNumbers();
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Select Recipient")
+                .setItems(names, (dialog, which) -> {
+                    AddressEntity sel = mAddressList.get(which);
+                    String payload = serializeTactical();
+                    TacticalShare.pendingTactical = payload;
+                    TacticalShare.pendingMarkerCount = mTacMarkers.size();
+                    TacticalShare.pendingLineCount = mLineSets.size();
+                    TacticalShare.pendingCodeNum = sel.getNumbers();
+                    TacticalShare.pendingName = names[which];
+                    Toast.makeText(this, "Opening chat: " + names[which], Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private String serializeTactical() {
         StringBuilder sb = new StringBuilder();
         String myImei = com.ah.acr.messagebox.util.ImeiStorage.getLast(this);
