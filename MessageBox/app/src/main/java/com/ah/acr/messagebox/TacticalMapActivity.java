@@ -98,6 +98,18 @@ public class TacticalMapActivity extends AppCompatActivity {
         TacMarker(Marker m, int t, GeoPoint p) { marker = m; type = t; point = p; }
     }
 
+    // 앱 종료 전까지 마커 유지 (static, 재시작시 리셋)
+    static class MarkerData {
+        int id, type, unitType, placeType;
+        double lat, lon;
+        MarkerData(int id, int type, int unitType, int placeType, double lat, double lon) {
+            this.id = id; this.type = type; this.unitType = unitType;
+            this.placeType = placeType; this.lat = lat; this.lon = lon;
+        }
+    }
+    private static final java.util.List<MarkerData> sMarkerData = new java.util.ArrayList<>();
+    private static int sNextMarkerId = 1;
+
     private static class MeasureSet {
         Marker startDot;
         Polyline line;
@@ -122,6 +134,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
     private int mNextMarkerId = 1;  // 고유 ID 카운터
+    private boolean mRestoring = false;  // 복원 중이면 static에 재추가 안 함
 
     private android.location.LocationManager mLocMgr;
     private Marker mMyLocMarker;
@@ -164,6 +177,8 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupMarkerTools();
         setupActionStubs();
         setupMyLocation();
+
+        restoreMarkers();  // 앱 종료 전 마커 복원
         mAddressVM = new ViewModelProvider(this).get(AddressViewModel.class);
         mAddressVM.getAllAddress().observe(this, list -> {
             if (list != null) mAddressList = list;
@@ -517,7 +532,11 @@ public class TacticalMapActivity extends AppCompatActivity {
         final TacMarker tm = new TacMarker(marker, type, p);
         mTacMarkers.add(tm);
         int number = mTacMarkers.size();
-        tm.id = mNextMarkerId++;
+        if (!mRestoring) {
+            tm.id = sNextMarkerId++;
+            sMarkerData.add(new MarkerData(tm.id, type, tm.unitType, tm.placeType,
+                    p.getLatitude(), p.getLongitude()));
+        }
 
         Drawable icon = makeMarkerIcon(type, number, tm.unitType, tm.placeType);
         if (icon != null) marker.setIcon(icon);
@@ -533,6 +552,9 @@ public class TacticalMapActivity extends AppCompatActivity {
                     .setNegativeButton("Delete", (d, w) -> {
                         mMapView.getOverlays().remove(m);
                         mTacMarkers.remove(tm);
+                        for (int k = sMarkerData.size() - 1; k >= 0; k--) {
+                            if (sMarkerData.get(k).id == tm.id) { sMarkerData.remove(k); break; }
+                        }
                         rebuildAllMarkerIcons();
                         updateLegend();
                         mMapView.invalidate();
@@ -545,6 +567,13 @@ public class TacticalMapActivity extends AppCompatActivity {
             @Override public void onMarkerDrag(Marker m) { }
             @Override public void onMarkerDragEnd(Marker m) {
                 tm.point = m.getPosition();
+                for (MarkerData md : sMarkerData) {
+                    if (md.id == tm.id) {
+                        md.lat = m.getPosition().getLatitude();
+                        md.lon = m.getPosition().getLongitude();
+                        break;
+                    }
+                }
                 updateLegend();
                 mMapView.invalidate();
                 Toast.makeText(TacticalMapActivity.this,
@@ -555,6 +584,23 @@ public class TacticalMapActivity extends AppCompatActivity {
             @Override public void onMarkerDragStart(Marker m) { }
         });
         mMapView.getOverlays().add(marker);
+        updateLegend();
+        mMapView.invalidate();
+    }
+
+    private void restoreMarkers() {
+        if (sMarkerData.isEmpty()) return;
+        mRestoring = true;
+        for (MarkerData md : sMarkerData) {
+            GeoPoint gp = new GeoPoint(md.lat, md.lon);
+            placeMarker(gp, md.type);
+            TacMarker tm = mTacMarkers.get(mTacMarkers.size() - 1);
+            tm.id = md.id;
+            tm.unitType = md.unitType;
+            tm.placeType = md.placeType;
+        }
+        mRestoring = false;
+        rebuildAllMarkerIcons();
         updateLegend();
         mMapView.invalidate();
     }
