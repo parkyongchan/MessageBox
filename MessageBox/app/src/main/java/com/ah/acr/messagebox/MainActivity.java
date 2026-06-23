@@ -133,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, byte[]> mSentLargeFile = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeFileName = new java.util.HashMap<>();
     private final java.util.Map<Integer, Character> mSentLargeFileType = new java.util.HashMap<>();
+    private final java.util.Map<Integer, String> mSentTacticalRaw = new java.util.HashMap<>();   // [tactical] 전술 원문(~Q: 재전송용). mSentLargeMsg엔 요약이 들어가므로 분리.
     // [abortReSend] 모뎀 거부로 송신 못한 조각 seq 기록 → 송신 후 자동 재송신용
     private final java.util.Map<Integer, java.util.List<Integer>> mSentLargeFileAborted = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
@@ -1425,7 +1426,17 @@ public class MainActivity extends AppCompatActivity {
 
     // 전술 데이터 전송용 (~L:G:). type='G'
     public void sendLargeTactical(final String recipientImei, final String payload) {
-        sendLargeMessage(recipientImei, payload, 'G');
+        // [tacticalMerge] 요약 말풍선 생성 (원문은 사람이 못 읽으므로)
+        int mC = 0, lC = 0, rC = 0;
+        if (payload != null) {
+            for (String seg : payload.split(";")) {
+                if (seg.startsWith("M:")) mC++;
+                else if (seg.startsWith("L:")) lC++;
+                else if (seg.startsWith("R:")) rC++;
+            }
+        }
+        String summary = "[Tactical] markers " + mC + ", lines " + lC + ", measures " + rC;
+        sendLargeMsg(recipientImei, payload, 'G', summary);
     }
 
     public void sendLargeMessage(final String recipientImei, final String fullText, final char lmType) {
@@ -1632,10 +1643,11 @@ public class MainActivity extends AppCompatActivity {
         boolean _isFileMsg;
         synchronized (mSentLargeFile) { _isFileMsg = mSentLargeFile.containsKey(msgId); }
         if (_isFileMsg) { return sendMoResendFile(msgId, seqs); }
+        final boolean _isTactical; synchronized (mSentTacticalRaw) { _isTactical = mSentTacticalRaw.containsKey(msgId); }
         final String fullText;
         final String recipientImei;
         synchronized (mSentLargeMsg) {
-            fullText = mSentLargeMsg.get(msgId);
+            fullText = _isTactical ? mSentTacticalRaw.get(msgId) : mSentLargeMsg.get(msgId);
             recipientImei = mSentLargeMsgTo.get(msgId);
         }
         if (fullText == null) {
@@ -2247,7 +2259,15 @@ public class MainActivity extends AppCompatActivity {
     // ============================================================
     public void sendLargeMsg(final String fullText) { sendLargeMsg("", fullText); }
 
+    // [tacticalMerge] 2-인자 = 텍스트 기본 (말풍선=본문, type='T')
     public void sendLargeMsg(final String recipientImei, final String fullText) {
+        sendLargeMsg(recipientImei, fullText, 'T', fullText);
+    }
+
+    // [tacticalMerge] 4-인자 핵심: lmType(T/G), bubbleBody(말풍선/ACK용)
+    //   wire=fullText(원문), 말풍선=bubbleBody(요약 가능). 재시도/ACK/CRC/~Q: 전부 공유.
+    public void sendLargeMsg(final String recipientImei, final String fullText,
+                             final char lmType, final String bubbleBody) {
         if (fullText == null || fullText.isEmpty()) {
             Log.e("LARGE-MSG", "sendLargeMsg: 본문 없음");
             return;
@@ -2263,7 +2283,7 @@ public class MainActivity extends AppCompatActivity {
                 final int msgId = mLargeMsgIdSeq.getAndUpdate(p -> (p + 1) & 0xFF);
 
                 synchronized (mSentLargeMsg) {
-                    mSentLargeMsg.put(msgId, fullText);
+                    if (lmType == 'G') { mSentTacticalRaw.put(msgId, fullText); mSentLargeMsg.put(msgId, bubbleBody); } else { mSentLargeMsg.put(msgId, fullText); }
                     mSentLargeMsgTo.put(msgId, recipientImei == null ? "" : recipientImei);
                 }
 
@@ -2272,7 +2292,7 @@ public class MainActivity extends AppCompatActivity {
                 final String bubbleTo = (recipientImei == null || recipientImei.isEmpty())
                         ? "SERVER" : recipientImei;
                 runOnUiThread(() -> {
-                    MsgEntity sendingMsg = new MsgEntity(0, true, bubbleTo, "", fullText,
+                    MsgEntity sendingMsg = new MsgEntity(0, true, bubbleTo, "", bubbleBody,
                             new Date(),
                             new Date(System.currentTimeMillis()),
                             new Date(System.currentTimeMillis()),
@@ -2313,12 +2333,12 @@ public class MainActivity extends AppCompatActivity {
                             _cc.update(body.getBytes(StandardCharsets.UTF_8));
                             chunkCrc = _cc.getValue();
                         }
-                        title = "~L:T:" + msgId + ":" + seq + ":" + total
+                        title = "~L:" + lmType + ":" + msgId + ":" + seq + ":" + total
                                 + ":" + (seq == 0 ? String.valueOf(fullCrc) : "")
                                 + ":" + chunkCrc;
                         android.util.Log.d("LARGE-MSG", "TX chunkCrc seq=" + seq + " crc=" + chunkCrc);
                     } else {
-                        title = "~L:T:" + msgId + ":" + seq + ":" + total;
+                        title = "~L:" + lmType + ":" + msgId + ":" + seq + ":" + total;
                     }
 
                     ByteBuf buffer = Unpooled.buffer();
