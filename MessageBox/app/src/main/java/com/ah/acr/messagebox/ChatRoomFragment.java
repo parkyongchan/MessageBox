@@ -241,10 +241,17 @@ public class ChatRoomFragment extends Fragment {
 
         // [전술지도] 첨부 신호가 있으면 전술지도 이미지 자동 첨부
         if (getArguments() != null && getArguments().getBoolean("tactical_attach", false)) {
+            String tTo = com.ah.acr.messagebox.TacticalShare.pendingCodeNum;
             if (com.ah.acr.messagebox.TacticalShare.pendingImage != null) {
                 attachTacticalImage(com.ah.acr.messagebox.TacticalShare.pendingImage);
-                com.ah.acr.messagebox.TacticalShare.clear();
+            } else if (com.ah.acr.messagebox.TacticalShare.pendingTactical != null) {
+                String tPayload = com.ah.acr.messagebox.TacticalShare.pendingTactical;
+                if (getActivity() instanceof MainActivity && tTo != null && !tTo.isEmpty()) {
+                    ((MainActivity) requireActivity()).sendLargeTactical(tTo, tPayload);
+                    android.widget.Toast.makeText(getContext(), "Tactical data sent", android.widget.Toast.LENGTH_SHORT).show();
+                }
             }
+            com.ah.acr.messagebox.TacticalShare.clear();
         }
     }
 

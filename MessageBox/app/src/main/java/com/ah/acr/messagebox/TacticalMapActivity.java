@@ -827,9 +827,11 @@ public class TacticalMapActivity extends AppCompatActivity {
             if (ls.line == null) continue;
             java.util.List<GeoPoint> pts = ls.line.getActualPoints();
             sb.append(";L:").append(lineNo++).append(",").append(pts.size());
+            boolean firstPt = true;
             for (GeoPoint gp : pts) {
-                sb.append(",").append(String.format(Locale.US, "%.5f", gp.getLatitude()))
-                  .append("|").append(String.format(Locale.US, "%.5f", gp.getLongitude()));
+                sb.append(firstPt ? "," : "|"); firstPt = false;
+                sb.append(String.format(Locale.US, "%.5f", gp.getLatitude()))
+                  .append(",").append(String.format(Locale.US, "%.5f", gp.getLongitude()));
             }
         }
         // 메저: R:id,lat1,lon1|lat2,lon2
@@ -840,9 +842,9 @@ public class TacticalMapActivity extends AppCompatActivity {
             if (pts.size() < 2) continue;
             sb.append(";R:").append(rNo++)
               .append(",").append(String.format(Locale.US, "%.5f", pts.get(0).getLatitude()))
-              .append("|").append(String.format(Locale.US, "%.5f", pts.get(0).getLongitude()))
-              .append(",").append(String.format(Locale.US, "%.5f", pts.get(1).getLatitude()))
-              .append("|").append(String.format(Locale.US, "%.5f", pts.get(1).getLongitude()));
+              .append(",").append(String.format(Locale.US, "%.5f", pts.get(0).getLongitude()))
+              .append("|").append(String.format(Locale.US, "%.5f", pts.get(1).getLatitude()))
+              .append(",").append(String.format(Locale.US, "%.5f", pts.get(1).getLongitude()));
         }
         return sb.toString();
     }

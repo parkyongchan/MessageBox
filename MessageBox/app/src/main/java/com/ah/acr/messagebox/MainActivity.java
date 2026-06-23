@@ -1420,6 +1420,15 @@ public class MainActivity extends AppCompatActivity {
      * @param fullText      보낼 전체 본문
      */
     public void sendLargeMessage(final String recipientImei, final String fullText) {
+        sendLargeMessage(recipientImei, fullText, 'T');
+    }
+
+    // 전술 데이터 전송용 (~L:G:). type='G'
+    public void sendLargeTactical(final String recipientImei, final String payload) {
+        sendLargeMessage(recipientImei, payload, 'G');
+    }
+
+    public void sendLargeMessage(final String recipientImei, final String fullText, final char lmType) {
         final java.util.List<String> chunks = splitLargeMessage(fullText);
         if (chunks.isEmpty()) return;
         final int msgId = nextLargeMsgId();
@@ -1432,7 +1441,7 @@ public class MainActivity extends AppCompatActivity {
         // 전체 송신을 별도 스레드 1개에서 순차 처리 (조각 간 충돌 방지)
         new Thread(() -> {
             for (int seq = 0; seq < total; seq++) {
-                String title = "~L:T:" + msgId + ":" + seq + ":" + total;
+                String title = "~L:" + lmType + ":" + msgId + ":" + seq + ":" + total;
                 String body = chunks.get(seq);
                 // SENDING id: 700~ 대역 (단문/ACK와 안 겹치게). 700 + seq (조각당 구분)
                 int sendId = 700 + (seq & 0xFF);
