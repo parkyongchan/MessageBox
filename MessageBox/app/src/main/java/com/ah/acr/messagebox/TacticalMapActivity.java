@@ -91,6 +91,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private static class TacMarker {
         Marker marker;
         int type;
+        int id;  // 고유 ID (트랙용, 삭제해도 유지)
         int unitType = -1;
         int placeType = -1;  // POI 전용: -1=none, 0~3
         GeoPoint point;
@@ -120,6 +121,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private int mMarkerType = -1;
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
+    private int mNextMarkerId = 1;  // 고유 ID 카운터
 
     private android.location.LocationManager mLocMgr;
     private Marker mMyLocMarker;
@@ -510,10 +512,12 @@ public class TacticalMapActivity extends AppCompatActivity {
         marker.setPosition(p);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         marker.setTitle(MK_NAMES[type]);
+        marker.setDraggable(true);
 
         final TacMarker tm = new TacMarker(marker, type, p);
         mTacMarkers.add(tm);
         int number = mTacMarkers.size();
+        tm.id = mNextMarkerId++;
 
         Drawable icon = makeMarkerIcon(type, number, tm.unitType, tm.placeType);
         if (icon != null) marker.setIcon(icon);
@@ -537,6 +541,19 @@ public class TacticalMapActivity extends AppCompatActivity {
             return true;
         });
 
+        marker.setOnMarkerDragListener(new Marker.OnMarkerDragListener() {
+            @Override public void onMarkerDrag(Marker m) { }
+            @Override public void onMarkerDragEnd(Marker m) {
+                tm.point = m.getPosition();
+                updateLegend();
+                mMapView.invalidate();
+                Toast.makeText(TacticalMapActivity.this,
+                        String.format(Locale.US, "#%d moved: %.5f, %.5f",
+                                tm.id, m.getPosition().getLatitude(), m.getPosition().getLongitude()),
+                        Toast.LENGTH_SHORT).show();
+            }
+            @Override public void onMarkerDragStart(Marker m) { }
+        });
         mMapView.getOverlays().add(marker);
         updateLegend();
         mMapView.invalidate();
