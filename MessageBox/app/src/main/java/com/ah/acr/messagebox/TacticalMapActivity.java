@@ -773,6 +773,48 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .show();
     }
 
+    // [전술데이터] 마커/라인/메저 → 직렬화 텍스트 (프로토콜 v1.3)
+    private String serializeTactical() {
+        StringBuilder sb = new StringBuilder();
+        String myImei = com.ah.acr.messagebox.util.ImeiStorage.getLast(this);
+        if (myImei == null) myImei = "";
+        sb.append("FROM:").append(myImei);
+        sb.append(";TS:").append(System.currentTimeMillis() / 1000L);
+        // 마커: M:id,type,unit,place,lat,lon
+        for (TacMarker tm : mTacMarkers) {
+            sb.append(";M:").append(tm.id)
+              .append(",").append(tm.type)
+              .append(",").append(tm.unitType)
+              .append(",").append(tm.placeType)
+              .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLatitude()))
+              .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLongitude()));
+        }
+        // 라인: L:id,n,lat1,lon1|lat2,lon2|...
+        int lineNo = 1;
+        for (LineSet ls : mLineSets) {
+            if (ls.line == null) continue;
+            java.util.List<GeoPoint> pts = ls.line.getActualPoints();
+            sb.append(";L:").append(lineNo++).append(",").append(pts.size());
+            for (GeoPoint gp : pts) {
+                sb.append(",").append(String.format(Locale.US, "%.5f", gp.getLatitude()))
+                  .append("|").append(String.format(Locale.US, "%.5f", gp.getLongitude()));
+            }
+        }
+        // 메저: R:id,lat1,lon1|lat2,lon2
+        int rNo = 1;
+        for (MeasureSet ms : mMeasureSets) {
+            if (ms.line == null) continue;
+            java.util.List<GeoPoint> pts = ms.line.getActualPoints();
+            if (pts.size() < 2) continue;
+            sb.append(";R:").append(rNo++)
+              .append(",").append(String.format(Locale.US, "%.5f", pts.get(0).getLatitude()))
+              .append("|").append(String.format(Locale.US, "%.5f", pts.get(0).getLongitude()))
+              .append(",").append(String.format(Locale.US, "%.5f", pts.get(1).getLatitude()))
+              .append("|").append(String.format(Locale.US, "%.5f", pts.get(1).getLongitude()));
+        }
+        return sb.toString();
+    }
+
     private void sendAsPhoto() {
         Bitmap bmp = captureMapArea();
         if (bmp == null) {
