@@ -1,0 +1,66 @@
+﻿=== 웹 마커 모양을 앱에 맞추기 (project2-web, 사무실 작업) ===
+대상: C:\project2-web\src\tactical\tacticalMarkers.js
+현재: 모든 소속이 원(circle). 앱은 소속별 모양이 다름 → 웹을 앱에 맞춰야 함.
+
+makeMarkerDataUri의 베이스 도형(현재 <circle cx=50 cy=44 r=40 ...>)을
+소속(type)별로 아래 모양으로 분기. (웹 viewBox 100x140 기준, 중심 약 cx50 cy44)
+앱 viewBox는 36이므로 비율 변환(×약2.6) 또는 웹 좌표로 재작성 필요.
+
+소속별 모양 (앱 기준, 비율 맞춰 웹 좌표로 변환):
+- 0 HOSTILE 적   : 마름모 ◇  (빨강 #E53935)
+- 1 FRIENDLY 아군: 원 ○      (파랑 #1E88E5)  ← 현재 웹과 같음
+- 2 UNKNOWN 미상 : 사각 □    (노랑 #FDD835)
+- 3 NEUTRAL 중립 : 사각 □    (초록 #43A047)
+- 4 POI          : 별 ★      (흰색 #FFFFFF, 외곽선 진곤색)
+- 5 ENGAGED 교전 : 이중마름모 (주황테 #FF9800 + 빨강 #E53935)
+- 6 THREAT 위협  : 삼각 △    (주황 #FB8C00)
+
+병종 도형(unitSymbol)은 앱/웹 이미 동일 좌표 → 그대로. 베이스 프레임만 분기.
+
+앱 원본 path (viewBox 36, 중심 18):
+- 적 마름모: M18,5 L31,18 L18,31 L5,18 Z
+- 아군 원: M18,5 A13,13 0 1,0 18.01,5 Z
+- 미상/중립 사각: M6,6 L30,6 L30,30 L6,30 Z
+- POI 별: M18,4 L22,14 L33,14 L24,21 L27,32 L18,25 L9,32 L12,21 L3,14 L14,14 Z
+- 교전 외곽: M18,2 L34,18 L18,34 L2,18 Z / 내부: M18,7 L29,18 L18,29 L7,18 Z
+- 위협 삼각: M18,5 L32,30 L4,30 Z
+
+확정: A안 (앱이 기준, 웹을 앱에 맞춤). 2026-06-25 결정.
+=== 웹 tacticalMarkers.js 수정 코드 (사무실에서 적용) ===
+
+// makeMarkerDataUri 안의 베이스 도형(현재 <circle cx=50 cy=44 r=40 .../>)을
+// 아래 affilFrame(type) 호출로 교체.
+// 앱 viewBox36 → 웹(중심 50,44, 반경~40) 변환 적용한 path.
+
+// [추가] 소속별 프레임 SVG (베이스). 앱 모양과 동일.
+function affilFrame(type) {
+  const color = AFFIL_COLORS[type] || '#888';
+  const st = 'stroke="#0A1628" stroke-width="4"';
+  switch (type) {
+    case 0: // HOSTILE 마름모
+      return `<path d="M50,7 L83,44 L50,81 L17,44 Z" fill="${color}" ${st}/>`;
+    case 1: // FRIENDLY 원
+      return `<circle cx="50" cy="44" r="37" fill="${color}" ${st}/>`;
+    case 2: // UNKNOWN 사각
+      return `<rect x="15" y="9" width="70" height="70" fill="${color}" ${st}/>`;
+    case 3: // NEUTRAL 사각
+      return `<rect x="15" y="9" width="70" height="70" fill="${color}" ${st}/>`;
+    case 4: // POI 별
+      return `<path d="M50,5 L61,33 L91,33 L67,52 L75,82 L50,63 L25,82 L33,52 L9,33 L39,33 Z" fill="${color}" stroke="#0A1628" stroke-width="3"/>`;
+    case 5: // ENGAGED 이중마름모
+      return `<path d="M50,2 L86,44 L50,86 L14,44 Z" fill="none" stroke="#FF9800" stroke-width="6"/>`
+           + `<path d="M50,14 L78,44 L50,74 L22,44 Z" fill="#E53935" stroke="#0A1628" stroke-width="3"/>`;
+    case 6: // THREAT 삼각
+      return `<path d="M50,7 L85,79 L15,79 Z" fill="${color}" ${st}/>`;
+    default:
+      return `<circle cx="50" cy="44" r="37" fill="${color}" ${st}/>`;
+  }
+}
+
+// makeMarkerDataUri 내부 수정:
+//   기존: <circle cx="50" cy="44" r="40" fill="${color}" stroke="#0A1628" stroke-width="4"/>
+//   교체: ${affilFrame(type)}
+// (color 변수는 affilFrame 안에서 쓰므로 바깥 const color 줄은 둬도 무방)
+
+확정: 2026-06-25. 앱 vector → 웹 SVG 변환 (viewBox 100x140 중심50,44).
+병종 도형(unitSymbol)은 그대로 위에 얹힘.
