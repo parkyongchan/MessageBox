@@ -133,7 +133,9 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<Integer, byte[]> mSentLargeFile = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeFileName = new java.util.HashMap<>();
     private final java.util.Map<Integer, Character> mSentLargeFileType = new java.util.HashMap<>();
-    private final java.util.Map<Integer, String> mSentTacticalRaw = new java.util.HashMap<>();   // [tactical] 전술 원문(~Q: 재전송용). mSentLargeMsg엔 요약이 들어가므로 분리.
+    private final java.util.Map<Integer, String> mSentTacticalRaw = new java.util.HashMap<>();
+    // [tactical-recv] 수신 ~L:G: 조립용 — G 타입 msgId 표시 + 파싱 결과 보관
+    private final java.util.Set<Integer> mRecvTacticalMsgIds = java.util.Collections.synchronizedSet(new java.util.HashSet<>());   // [tactical] 전술 원문(~Q: 재전송용). mSentLargeMsg엔 요약이 들어가므로 분리.
     // [abortReSend] 모뎀 거부로 송신 못한 조각 seq 기록 → 송신 후 자동 재송신용
     private final java.util.Map<Integer, java.util.List<Integer>> mSentLargeFileAborted = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
@@ -3188,6 +3190,7 @@ public class MainActivity extends AppCompatActivity {
                             int seq   = Integer.parseInt(h[3]);
                             int total = Integer.parseInt(h[4]);
                             // [fileMsg 2-b] 파일/사진(~L:F:/~L:I:)이면 전용 처리. 텍스트(~L:T:)는 아래 else 기존 로직.
+                            if (h[1].equals("G")) { mRecvTacticalMsgIds.add(msgId); }
                             if (h[1].equals("F") || h[1].equals("I") || h[1].equals("V")) {
                                 handleFileChunk(h, msgId, seq, total, fileBody, codeNum);
                             } else {
@@ -3226,6 +3229,19 @@ public class MainActivity extends AppCompatActivity {
                                     String full = sb.toString();
                                     android.util.Log.d("LARGE-MSG", "✅ 조립 완료 msgId=" + msgId
                                             + " 총길이=" + full.length());
+                                    // [tactical-recv] 전술 데이터면 파싱 + 보관 (지도 표시용)
+                                    boolean _isTactical = mRecvTacticalMsgIds.remove(msgId);
+                                    if (_isTactical) {
+                                        try {
+                                            TacticalParser.TacticalData td = TacticalParser.parse(full);
+                                            TacticalStore.add(codeNum, td);
+                                            android.util.Log.d("TACTICAL-RECV", "전술 수신 파싱 OK: markers=" + td.markers.size()
+                                                    + " lines=" + td.lines.size() + " measures=" + td.measures.size()
+                                                    + " from=" + td.fromImei + " note=" + (td.note.isEmpty() ? "-" : td.note));
+                                        } catch (Exception te) {
+                                            android.util.Log.e("TACTICAL-RECV", "전술 파싱 실패", te);
+                                        }
+                                    }
                                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", full,
                                             new Date(),
                                             new Date(System.currentTimeMillis()),

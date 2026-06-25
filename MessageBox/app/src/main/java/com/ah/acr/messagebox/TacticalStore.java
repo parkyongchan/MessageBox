@@ -1,0 +1,84 @@
+package com.ah.acr.messagebox;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 수신한 전술 데이터 보관소 (메모리).
+ * 메인 지도(MapTabFragment)가 읽어서 마커/라인/메저를 표시한다.
+ *
+ * 발신자 구분: 프로토콜 5.3 — 마커는 "발신자IMEI + id"로 관리.
+ * 빈 FROM = 관제센터/서버발 (v1.4).
+ *
+ * 트랙: 같은 식별자(발신자+type+unit+id)의 마커가 여러 번 수신되면
+ *       위치 변화를 선으로 연결 (수신측 렌더링, 프로토콜 4.5).
+ */
+public class TacticalStore {
+
+    // 수신한 전술 항목 1건 (한 번의 ~L:G: 전송 = 1건)
+    public static class Entry {
+        public String codeNum;                 // 수신 경로(발신 연락처 코드)
+        public TacticalParser.TacticalData data;
+        public long recvAt;                    // 수신 시각(ms)
+    }
+
+    private static final List<Entry> sEntries = new ArrayList<>();
+
+    public static synchronized void add(String codeNum, TacticalParser.TacticalData data) {
+        Entry e = new Entry();
+        e.codeNum = codeNum;
+        e.data = data;
+        e.recvAt = System.currentTimeMillis();
+        sEntries.add(e);
+    }
+
+    public static synchronized List<Entry> getAll() {
+        return new ArrayList<>(sEntries);
+    }
+
+    public static synchronized void clear() {
+        sEntries.clear();
+    }
+
+    public static synchronized int size() {
+        return sEntries.size();
+    }
+
+    /**
+     * 모든 수신 마커를 평탄화 (지도 표시용).
+     * 발신자별 구분 키 = (fromImei) + 식별자.
+     */
+    public static synchronized List<FlatMarker> getAllMarkers() {
+        List<FlatMarker> out = new ArrayList<>();
+        for (Entry e : sEntries) {
+            if (e.data == null) continue;
+            for (TacticalParser.TMarker m : e.data.markers) {
+                FlatMarker fm = new FlatMarker();
+                fm.fromImei = e.data.fromImei;
+                fm.codeNum = e.codeNum;
+                fm.id = m.id;
+                fm.type = m.type;
+                fm.unit = m.unit;
+                fm.place = m.place;
+                fm.lat = m.lat;
+                fm.lon = m.lon;
+                fm.ts = e.data.ts;
+                fm.recvAt = e.recvAt;
+                fm.note = e.data.note;
+                fm.ident = TacticalParser.makeIdentifier(m.type, m.unit, m.place, m.id);
+                out.add(fm);
+            }
+        }
+        return out;
+    }
+
+    public static class FlatMarker {
+        public String fromImei;   // 빈 값 = 관제센터발
+        public String codeNum;
+        public int id, type, unit, place;
+        public double lat, lon;
+        public long ts, recvAt;
+        public String note;
+        public String ident;      // HD1 등
+    }
+}
