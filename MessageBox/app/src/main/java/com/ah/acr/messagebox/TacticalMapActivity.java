@@ -333,6 +333,16 @@ public class TacticalMapActivity extends AppCompatActivity {
             return;
         }
         mLegend.setVisibility(View.VISIBLE);
+        // 크기 카운터 (최상단) — 위성 전송 한계 10,000 byte
+        int tacBytes = 0;
+        try { tacBytes = serializeTactical("").getBytes(java.nio.charset.StandardCharsets.UTF_8).length; } catch (Exception e) {}
+        TextView sizeTv = new TextView(this);
+        sizeTv.setText(String.format(Locale.US, "본문 %,d / 10,000 B", tacBytes));
+        int sizeColor = (tacBytes > 10000) ? 0xFFFF5252 : (tacBytes > 8000 ? 0xFFFFB300 : 0xFF00E5D1);
+        sizeTv.setTextColor(sizeColor);
+        sizeTv.setTextSize(10f);
+        sizeTv.setTypeface(sizeTv.getTypeface(), android.graphics.Typeface.BOLD);
+        mLegend.addView(sizeTv);
         // My location row (top)
         if (hasMyLoc) {
             TextView my = new TextView(this);
@@ -887,6 +897,11 @@ public class TacticalMapActivity extends AppCompatActivity {
                             .setPositiveButton("전송", (d2, w2) -> {
                                 String note = noteInput.getText().toString();
                                 String payload = serializeTactical(note);
+                                int pbytes = payload.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                                if (pbytes > 10000) {
+                                    Toast.makeText(this, "크기 초과: " + pbytes + " / 10,000 B — 마커/메모를 줄이세요", Toast.LENGTH_LONG).show();
+                                    return;
+                                }
                                 TacticalShare.pendingTactical = payload;
                                 TacticalShare.pendingMarkerCount = mTacMarkers.size();
                                 TacticalShare.pendingLineCount = mLineSets.size();
