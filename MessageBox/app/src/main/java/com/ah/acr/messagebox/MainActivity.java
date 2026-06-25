@@ -3229,25 +3229,35 @@ public class MainActivity extends AppCompatActivity {
                                     String full = sb.toString();
                                     android.util.Log.d("LARGE-MSG", "✅ 조립 완료 msgId=" + msgId
                                             + " 총길이=" + full.length());
-                                    // [tactical-recv] 전술 데이터면 파싱 + 보관 (지도 표시용)
+                                    // [tactical-recv] 전술 데이터면 파싱 + 보관 (지도 표시용). 채팅엔 요약 표시.
                                     boolean _isTactical = mRecvTacticalMsgIds.remove(msgId);
+                                    String tacticalSummary = null;
                                     if (_isTactical) {
                                         try {
                                             TacticalParser.TacticalData td = TacticalParser.parse(full);
                                             TacticalStore.add(codeNum, td);
+                                            StringBuilder sm = new StringBuilder();
+                                            sm.append("[전술] 마커 ").append(td.markers.size())
+                                              .append(", 라인 ").append(td.lines.size())
+                                              .append(", 메저 ").append(td.measures.size());
+                                            if (td.note != null && !td.note.isEmpty()) sm.append("\n메모: ").append(td.note);
+                                            tacticalSummary = sm.toString();
                                             android.util.Log.d("TACTICAL-RECV", "전술 수신 파싱 OK: markers=" + td.markers.size()
                                                     + " lines=" + td.lines.size() + " measures=" + td.measures.size()
                                                     + " from=" + td.fromImei + " note=" + (td.note.isEmpty() ? "-" : td.note));
                                         } catch (Exception te) {
                                             android.util.Log.e("TACTICAL-RECV", "전술 파싱 실패", te);
+                                            tacticalSummary = "[전술] 데이터 수신 (파싱 실패)";
                                         }
                                     }
-                                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", full,
+                                    // 전술이면 채팅 본문 = 요약, 아니면 원문
+                                    String bubbleBody = (tacticalSummary != null) ? tacticalSummary : full;
+                                    MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", bubbleBody,
                                             new Date(),
                                             new Date(System.currentTimeMillis()),
                                             new Date(System.currentTimeMillis()),
                                             false, false, false);
-                                    insertMsgWithDedupAndEcho(addMsg, codeNum, full);
+                                    insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
                                     mLargeMsgBuf.remove(msgId);
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);
