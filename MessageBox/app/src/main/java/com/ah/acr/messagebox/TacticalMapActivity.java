@@ -142,6 +142,8 @@ public class TacticalMapActivity extends AppCompatActivity {
     private android.location.LocationManager mLocMgr;
     private Marker mMyLocMarker;
     private boolean mMyLocOn = false;
+    private int mMyLocType = 1;  // 발신자 위치 소속 (기본 아군)
+    private int mMyLocUnit = 6;  // 발신자 위치 병종 (기본 HQ 본부)
     private boolean mMeasureMode = false;
     private GeoPoint mMeasureFirst = null;
     private final java.util.List<MeasureSet> mMeasureSets = new java.util.ArrayList<>();
@@ -831,16 +833,63 @@ public class TacticalMapActivity extends AppCompatActivity {
         GeoPoint p = new GeoPoint(loc.getLatitude(), loc.getLongitude());
         if (mMyLocMarker == null) {
             mMyLocMarker = new Marker(mMapView);
-            mMyLocMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+            mMyLocMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
             mMyLocMarker.setTitle("MY LOCATION");
-            Drawable dot = ContextCompat.getDrawable(this, R.drawable.ic_my_location_dot);
-            if (dot != null) mMyLocMarker.setIcon(dot);
+            updateMyLocIcon();
+            mMyLocMarker.setOnMarkerClickListener((m, mv) -> {
+                final String[] menu = { "발신자 소속 변경", "발신자 병종 변경", "취소" };
+                new AlertDialog.Builder(this)
+                        .setTitle("내 위치 (발신자)")
+                        .setItems(menu, (d, w) -> {
+                            if (w == 0) showMyLocAffilDialog();
+                            else if (w == 1) showMyLocUnitDialog();
+                        })
+                        .show();
+                return true;
+            });
             mMapView.getOverlays().add(mMyLocMarker);
         }
         mMyLocMarker.setPosition(p);
         mMapView.getController().animateTo(p);
         mMapView.invalidate();
         updateLegend();
+    }
+
+    // 내위치(발신자) 아이콘을 전술 마커로 갱신 (소속/병종 반영)
+    private void updateMyLocIcon() {
+        if (mMyLocMarker == null) return;
+        Drawable ic = TacticalMarkerIcon.make(this, mMyLocType, 0, mMyLocUnit, -1);
+        if (ic != null) mMyLocMarker.setIcon(ic);
+        mMyLocMarker.setTitle("발신자: " + MK_NAMES[mMyLocType]
+                + (mMyLocUnit >= 0 ? " [" + UNIT_ABBR[mMyLocUnit] + "]" : ""));
+    }
+
+    private void showMyLocAffilDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("발신자 소속")
+                .setItems(MK_NAMES, (d, w) -> {
+                    mMyLocType = w;
+                    if (w == 4) mMyLocUnit = -1; // POI면 병종 없음
+                    updateMyLocIcon();
+                    mMapView.invalidate();
+                    updateLegend();
+                })
+                .show();
+    }
+
+    private void showMyLocUnitDialog() {
+        String[] opts = new String[UNIT_NAMES.length + 1];
+        opts[0] = "None";
+        for (int k = 0; k < UNIT_NAMES.length; k++) opts[k + 1] = UNIT_NAMES[k];
+        new AlertDialog.Builder(this)
+                .setTitle("발신자 병종")
+                .setItems(opts, (d, w) -> {
+                    mMyLocUnit = w - 1;
+                    updateMyLocIcon();
+                    mMapView.invalidate();
+                    updateLegend();
+                })
+                .show();
     }
 
     @Override
@@ -931,6 +980,14 @@ public class TacticalMapActivity extends AppCompatActivity {
               .append(",").append(tm.placeType)
               .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLatitude()))
               .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLongitude()));
+        }
+        // 발신자 위치 (내위치 ON) → 아군(1) HQ(6) 마커로 추가. 웹과 동일 코드표
+        if (mMyLocOn && mMyLocMarker != null) {
+            GeoPoint mp = mMyLocMarker.getPosition();
+            int sid = mTacMarkers.size() + 1;
+            sb.append(";M:").append(sid).append(",").append(mMyLocType).append(",").append(mMyLocUnit).append(",-1,")
+              .append(String.format(Locale.US, "%.5f", mp.getLatitude()))
+              .append(",").append(String.format(Locale.US, "%.5f", mp.getLongitude()));
         }
         // 라인: L:id,n,lat1,lon1|lat2,lon2|...
         int lineNo = 1;
