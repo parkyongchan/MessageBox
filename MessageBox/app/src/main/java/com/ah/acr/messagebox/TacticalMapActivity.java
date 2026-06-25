@@ -793,20 +793,32 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .setTitle("Select Recipient")
                 .setItems(names, (dialog, which) -> {
                     AddressEntity sel = mAddressList.get(which);
-                    String payload = serializeTactical();
-                    TacticalShare.pendingTactical = payload;
-                    TacticalShare.pendingMarkerCount = mTacMarkers.size();
-                    TacticalShare.pendingLineCount = mLineSets.size();
-                    TacticalShare.pendingCodeNum = sel.getNumbers();
-                    TacticalShare.pendingName = names[which];
-                    Toast.makeText(this, "Opening chat: " + names[which], Toast.LENGTH_SHORT).show();
-                    finish();
+                    // 전술 메모 입력 다이얼로그 (지시사항, 선택)
+                    final android.widget.EditText noteInput = new android.widget.EditText(this);
+                    noteInput.setHint("지시사항 메모 (선택)");
+                    noteInput.setMaxLines(3);
+                    new AlertDialog.Builder(this)
+                            .setTitle("전술 메모")
+                            .setView(noteInput)
+                            .setPositiveButton("전송", (d2, w2) -> {
+                                String note = noteInput.getText().toString();
+                                String payload = serializeTactical(note);
+                                TacticalShare.pendingTactical = payload;
+                                TacticalShare.pendingMarkerCount = mTacMarkers.size();
+                                TacticalShare.pendingLineCount = mLineSets.size();
+                                TacticalShare.pendingCodeNum = sel.getNumbers();
+                                TacticalShare.pendingName = names[which];
+                                Toast.makeText(this, "Opening chat: " + names[which], Toast.LENGTH_SHORT).show();
+                                finish();
+                            })
+                            .setNegativeButton("취소", null)
+                            .show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private String serializeTactical() {
+    private String serializeTactical(String note) {
         StringBuilder sb = new StringBuilder();
         String myImei = com.ah.acr.messagebox.util.ImeiStorage.getLast(this);
         if (myImei == null) myImei = "";
@@ -845,6 +857,10 @@ public class TacticalMapActivity extends AppCompatActivity {
               .append(",").append(String.format(Locale.US, "%.5f", pts.get(0).getLongitude()))
               .append("|").append(String.format(Locale.US, "%.5f", pts.get(1).getLatitude()))
               .append(",").append(String.format(Locale.US, "%.5f", pts.get(1).getLongitude()));
+        }
+        // 메모(N:) — 페이로드 맨 마지막 (프로토콜 v1.4)
+        if (note != null && !note.trim().isEmpty()) {
+            sb.append(";N:").append(note.trim());
         }
         return sb.toString();
     }
