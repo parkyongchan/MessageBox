@@ -3235,7 +3235,8 @@ public class MainActivity extends AppCompatActivity {
                                     if (_isTactical) {
                                         try {
                                             TacticalParser.TacticalData td = TacticalParser.parse(full);
-                                            TacticalStore.add(codeNum, td);
+                                            final String _payload = full; final String _code = codeNum;
+                                            new Thread(() -> TacticalStore.addAndPersist(getApplicationContext(), _code, _payload, false)).start();
                                             StringBuilder sm = new StringBuilder();
                                             sm.append("[전술] 마커 ").append(td.markers.size())
                                               .append(", 라인 ").append(td.lines.size())

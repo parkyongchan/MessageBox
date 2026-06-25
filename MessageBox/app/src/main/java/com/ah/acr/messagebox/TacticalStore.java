@@ -40,6 +40,56 @@ public class TacticalStore {
         sEntries.clear();
     }
 
+    // ── DB 연동 (영속화) ──────────────────────────────
+    public static void addAndPersist(android.content.Context ctx, String codeNum,
+                                     String payload, boolean isSend) {
+        try {
+            com.ah.acr.messagebox.database.TacticalRecvEntity ent =
+                    new com.ah.acr.messagebox.database.TacticalRecvEntity();
+            ent.setCodeNum(codeNum);
+            ent.setPayload(payload);
+            ent.setSend(isSend);
+            ent.setRecvAt(System.currentTimeMillis());
+            TacticalParser.TacticalData td = TacticalParser.parse(payload);
+            ent.setFromImei(td.fromImei);
+            com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+                    .getDatabase(ctx).tacticalRecvDao().insert(ent);
+            add(codeNum, td);
+        } catch (Exception e) {
+            android.util.Log.e("TACTICAL-STORE", "DB 저장 실패", e);
+        }
+    }
+
+    public static synchronized void loadFromDb(android.content.Context ctx) {
+        try {
+            java.util.List<com.ah.acr.messagebox.database.TacticalRecvEntity> rows =
+                    com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+                            .getDatabase(ctx).tacticalRecvDao().getAllSync();
+            sEntries.clear();
+            for (com.ah.acr.messagebox.database.TacticalRecvEntity r : rows) {
+                TacticalParser.TacticalData td = TacticalParser.parse(r.getPayload());
+                Entry e = new Entry();
+                e.codeNum = r.getCodeNum();
+                e.data = td;
+                e.recvAt = r.getRecvAt();
+                sEntries.add(e);
+            }
+            android.util.Log.d("TACTICAL-STORE", "DB 로드: " + sEntries.size() + "건");
+        } catch (Exception e) {
+            android.util.Log.e("TACTICAL-STORE", "DB 로드 실패", e);
+        }
+    }
+
+    public static void clearAll(android.content.Context ctx) {
+        try {
+            com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+                    .getDatabase(ctx).tacticalRecvDao().deleteAll();
+        } catch (Exception e) {
+            android.util.Log.e("TACTICAL-STORE", "DB 삭제 실패", e);
+        }
+        clear();
+    }
+
     public static synchronized int size() {
         return sEntries.size();
     }

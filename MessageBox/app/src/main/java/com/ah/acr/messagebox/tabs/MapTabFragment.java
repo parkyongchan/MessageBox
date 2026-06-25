@@ -208,39 +208,39 @@ public class MapTabFragment extends Fragment {
 
 
     private void fitAllMarkers() {
-        if (mMarkers.isEmpty()) {
+        // [tactical] 통합 fit: 위치 마커 + 전술 마커 + 전술 라인 점 전부 포함
+        java.util.List<GeoPoint> allPts = new ArrayList<>();
+        for (Marker mk : mMarkers) allPts.add(mk.getPosition());
+        for (Marker mk : mTacticalMarkers) allPts.add(mk.getPosition());
+        for (Polyline pl : mTacticalLines) {
+            if (pl.getActualPoints() != null) allPts.addAll(pl.getActualPoints());
+        }
+        if (allPts.isEmpty()) {
             Toast.makeText(getContext(),
                     getString(R.string.devices_toast_no_markers),
                     Toast.LENGTH_SHORT).show();
             return;
         }
-
-        if (mMarkers.size() == 1) {
-            GeoPoint point = mMarkers.get(0).getPosition();
-            mMapView.getController().animateTo(point);
+        if (allPts.size() == 1) {
+            mMapView.getController().animateTo(allPts.get(0));
             mMapView.getController().setZoom(DEFAULT_ZOOM_SINGLE);
             return;
         }
-
         double north = -90, south = 90, east = -180, west = 180;
-        for (Marker marker : mMarkers) {
-            GeoPoint p = marker.getPosition();
+        for (GeoPoint p : allPts) {
             if (p.getLatitude() > north) north = p.getLatitude();
             if (p.getLatitude() < south) south = p.getLatitude();
             if (p.getLongitude() > east) east = p.getLongitude();
             if (p.getLongitude() < west) west = p.getLongitude();
         }
-
         double padLat = (north - south) * 0.2;
         double padLng = (east - west) * 0.2;
         if (padLat < 0.001) padLat = 0.01;
         if (padLng < 0.001) padLng = 0.01;
-
         BoundingBox box = new BoundingBox(
                 north + padLat, east + padLng,
                 south - padLat, west - padLng
         );
-
         mMapView.post(() -> mMapView.zoomToBoundingBox(box, true, 50));
     }
 
@@ -340,6 +340,16 @@ public class MapTabFragment extends Fragment {
                 sn.append("\n발신: ").append(from);
                 if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\n메모: ").append(e.data.note);
                 mk.setSnippet(sn.toString());
+                // 전술 마커 클릭 토글: 열려있으면 닫고, 아니면 정보 표시
+                mk.setOnMarkerClickListener((m2, mv2) -> {
+                    if (m2.isInfoWindowShown()) {
+                        m2.closeInfoWindow();
+                    } else {
+                        org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv2);
+                        m2.showInfoWindow();
+                    }
+                    return true;
+                });
                 mTacticalMarkers.add(mk);
                 mMapView.getOverlays().add(mk);
             }
@@ -365,6 +375,10 @@ public class MapTabFragment extends Fragment {
             }
         }
         mMapView.invalidate();
+        // renderTacticalOverlays 후 자동 fit (전술 표시될 때 전체 보이게)
+        if (!mTacticalMarkers.isEmpty() || !mTacticalLines.isEmpty()) {
+            mMapView.post(this::fitAllMarkers);
+        }
     }
 
     private void showMarkerDetailDialog(LocationEntity loc, String displayName) {
@@ -993,6 +1007,11 @@ public class MapTabFragment extends Fragment {
     public void onResume() {
         super.onResume();
         if (mMapView != null) mMapView.onResume();
+        // 전술 데이터 DB 로드 후 지도에 렌더 (재시작/탭전환에도 유지)
+        new Thread(() -> {
+            TacticalStore.loadFromDb(getContext());
+            if (getActivity() != null) getActivity().runOnUiThread(this::renderTacticalOverlays);
+        }).start();
     }
 
     @Override

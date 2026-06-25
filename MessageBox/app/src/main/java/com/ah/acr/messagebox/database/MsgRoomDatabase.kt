@@ -16,9 +16,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MyTrackEntity::class,
         MyTrackPointEntity::class,
         SatTrackEntity::class,
-        SatTrackPointEntity::class
+        SatTrackPointEntity::class,
+        TacticalRecvEntity::class
     ],
-    version = 7,   // v6 -> v7: ack_state column (ACK V/VV state, isSend와 분리)
+    version = 8,   // v7 -> v8: tactical_recv 테이블 추가 (전술 데이터 영속화)   // v6 -> v7: ack_state column (ACK V/VV state, isSend와 분리)
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -29,6 +30,7 @@ abstract class MsgRoomDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
     abstract fun myTrackDao(): MyTrackDao
     abstract fun satTrackDao(): SatTrackDao
+    abstract fun tacticalRecvDao(): TacticalRecvDao
 
     companion object {
         @Volatile
@@ -68,6 +70,19 @@ abstract class MsgRoomDatabase : RoomDatabase() {
             }
         }
 
+        // v7 -> v8: tactical_recv 테이블 (전술 데이터 영속화)
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS tactical_recv (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "code_num TEXT, from_imei TEXT, payload TEXT, " +
+                    "is_send INTEGER NOT NULL DEFAULT 0, " +
+                    "recv_at INTEGER NOT NULL DEFAULT 0)"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): MsgRoomDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -75,7 +90,7 @@ abstract class MsgRoomDatabase : RoomDatabase() {
                     MsgRoomDatabase::class.java,
                     "msgbox.db"
                 )
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)        // ⭐ 정식 마이그레이션 등록
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)        // ⭐ 정식 마이그레이션 등록
                     .fallbackToDestructiveMigration()    // 보험용 (마이그레이션 실패 시에만 작동)
                     .build()
                 INSTANCE = instance
