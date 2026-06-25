@@ -7,6 +7,9 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import com.ah.acr.messagebox.TacticalStore;
+import com.ah.acr.messagebox.TacticalParser;
+import com.ah.acr.messagebox.TacticalMarkerIcon;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -50,6 +53,7 @@ import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -87,6 +91,10 @@ public class MapTabFragment extends Fragment {
 
     private MapView mMapView;
     private final List<Marker> mMarkers = new ArrayList<>();
+    // [tactical] 전술 오버레이 (위치 마커와 분리 관리, 필터로 토글)
+    private final List<Marker> mTacticalMarkers = new ArrayList<>();
+    private final List<Polyline> mTacticalLines = new ArrayList<>();
+    private int mCurrentMode = MODE_ALL;
     private boolean mInitialFitDone = false;
 
     private final SimpleDateFormat dateFmt =
@@ -95,6 +103,7 @@ public class MapTabFragment extends Fragment {
     private static final int MODE_ALL = 0;
     private static final int MODE_TRACK = 2;
     private static final int MODE_SOS = 4;
+    private static final int MODE_TACTICAL = 6;
 
     private boolean mIsSearchMode = false;
 
@@ -297,8 +306,66 @@ public class MapTabFragment extends Fragment {
             mInitialFitDone = true;
             mMapView.post(this::fitAllMarkers);
         }
+        renderTacticalOverlays(); // refreshMarkers 후 전술도 다시 그림
     }
 
+
+    // [tactical] 전술 오버레이 렌더 (TacticalStore 읽어 마커/라인/메저 표시)
+    private void renderTacticalOverlays() {
+        if (mMapView == null) return;
+        for (Marker m : mTacticalMarkers) mMapView.getOverlays().remove(m);
+        for (Polyline p : mTacticalLines) mMapView.getOverlays().remove(p);
+        mTacticalMarkers.clear();
+        mTacticalLines.clear();
+
+        if (mCurrentMode != MODE_ALL && mCurrentMode != MODE_TACTICAL) {
+            mMapView.invalidate();
+            return;
+        }
+
+        java.util.List<TacticalStore.Entry> entries = TacticalStore.getAll();
+        for (TacticalStore.Entry e : entries) {
+            if (e.data == null) continue;
+            for (TacticalParser.TMarker tm : e.data.markers) {
+                Marker mk = new Marker(mMapView);
+                mk.setPosition(new GeoPoint(tm.lat, tm.lon));
+                mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                Drawable ic = TacticalMarkerIcon.make(getContext(), tm.type, tm.id, tm.unit, tm.place);
+                if (ic != null) mk.setIcon(ic);
+                String ident = TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
+                mk.setTitle(ident);
+                StringBuilder sn = new StringBuilder();
+                sn.append(String.format(Locale.US, "%.5f, %.5f", tm.lat, tm.lon));
+                String from = (e.data.fromImei == null || e.data.fromImei.isEmpty()) ? "관제센터" : e.data.fromImei;
+                sn.append("\n발신: ").append(from);
+                if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\n메모: ").append(e.data.note);
+                mk.setSnippet(sn.toString());
+                mTacticalMarkers.add(mk);
+                mMapView.getOverlays().add(mk);
+            }
+            for (TacticalParser.TLine ln : e.data.lines) {
+                Polyline pl = new Polyline(mMapView);
+                java.util.List<GeoPoint> pts = new ArrayList<>();
+                for (double[] p : ln.points) pts.add(new GeoPoint(p[0], p[1]));
+                pl.setPoints(pts);
+                pl.getOutlinePaint().setColor(0xFF00E5FF);
+                pl.getOutlinePaint().setStrokeWidth(6f);
+                mTacticalLines.add(pl);
+                mMapView.getOverlays().add(pl);
+            }
+            for (TacticalParser.TMeasure ms : e.data.measures) {
+                Polyline pl = new Polyline(mMapView);
+                java.util.List<GeoPoint> pts = new ArrayList<>();
+                for (double[] p : ms.points) pts.add(new GeoPoint(p[0], p[1]));
+                pl.setPoints(pts);
+                pl.getOutlinePaint().setColor(0xFFFF6D00);
+                pl.getOutlinePaint().setStrokeWidth(5f);
+                mTacticalLines.add(pl);
+                mMapView.getOverlays().add(pl);
+            }
+        }
+        mMapView.invalidate();
+    }
 
     private void showMarkerDetailDialog(LocationEntity loc, String displayName) {
         SimpleDateFormat fmt = new SimpleDateFormat(
@@ -558,7 +625,9 @@ public class MapTabFragment extends Fragment {
         chip.setSelected(true);
 
         mInitialFitDone = false;
+        mCurrentMode = mode;
         locationViewModel.setFilterMode(mode);
+        renderTacticalOverlays();
     }
 
 
