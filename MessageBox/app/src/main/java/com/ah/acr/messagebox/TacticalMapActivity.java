@@ -131,6 +131,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private LinearLayout mLegend;
 
     private int mMarkerType = -1;
+    private TacMarker mMovingMarker = null; // 선택 후 이동 대기 중인 마커
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
     private int mNextMarkerId = 1;  // 고유 ID 카운터
@@ -207,6 +208,18 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         MapEventsReceiver receiver = new MapEventsReceiver() {
             @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
+                if (mMovingMarker != null) {
+                    mMovingMarker.point = p;
+                    if (mMovingMarker.marker != null) mMovingMarker.marker.setPosition(p);
+                    for (MarkerData md : sMarkerData) {
+                        if (md.id == mMovingMarker.id) { md.lat = p.getLatitude(); md.lon = p.getLongitude(); break; }
+                    }
+                    Toast.makeText(TacticalMapActivity.this, "#" + mMovingMarker.id + " 이동 완료", Toast.LENGTH_SHORT).show();
+                    mMovingMarker = null;
+                    updateLegend();
+                    mMapView.invalidate();
+                    return true;
+                }
                 if (mLineMode) {
                     addLinePoint(p);
                     return true;
@@ -543,24 +556,40 @@ public class TacticalMapActivity extends AppCompatActivity {
 
         marker.setOnMarkerClickListener((m, mv) -> {
             int idx = mTacMarkers.indexOf(tm) + 1;
+            String info = String.format(Locale.US, "#%d %s\nLat %.5f, Lon %.5f",
+                    idx, m.getTitle(), m.getPosition().getLatitude(), m.getPosition().getLongitude());
+            final String[] menu = { "이동", "소속 변경", "병종/지점 변경", "삭제", "취소" };
             new AlertDialog.Builder(this)
-                    .setTitle("#" + idx + " " + m.getTitle())
-                    .setMessage(String.format(Locale.US, "Lat %.5f\nLon %.5f",
-                            m.getPosition().getLatitude(), m.getPosition().getLongitude()))
-                    .setPositiveButton("OK", null)
-                    .setNeutralButton("Unit Type", (d, w) -> showUnitTypeDialog(tm))
-                    .setNegativeButton("Delete", (d, w) -> {
-                        mMapView.getOverlays().remove(m);
-                        mTacMarkers.remove(tm);
-                        for (int k = sMarkerData.size() - 1; k >= 0; k--) {
-                            if (sMarkerData.get(k).id == tm.id) { sMarkerData.remove(k); break; }
+                    .setTitle(info)
+                    .setItems(menu, (d, w) -> {
+                        switch (w) {
+                            case 0: // 이동
+                                mMovingMarker = tm;
+                                Toast.makeText(this, "지도를 탭하여 이동할 위치를 지정하세요", Toast.LENGTH_SHORT).show();
+                                break;
+                            case 1: // 소속 변경
+                                showAffilChangeDialog(tm);
+                                break;
+                            case 2: // 병종/지점 변경 (POI면 지점, 아니면 병종)
+                                if (tm.type == 4) showPlaceTypeDialog(tm);
+                                else showUnitTypeDialog(tm);
+                                break;
+                            case 3: // 삭제
+                                mMapView.getOverlays().remove(m);
+                                mTacMarkers.remove(tm);
+                                for (int k = sMarkerData.size() - 1; k >= 0; k--) {
+                                    if (sMarkerData.get(k).id == tm.id) { sMarkerData.remove(k); break; }
+                                }
+                                rebuildAllMarkerIcons();
+                                updateLegend();
+                                mMapView.invalidate();
+                                break;
+                            default: // 취소
+                                break;
                         }
-                        rebuildAllMarkerIcons();
-                        updateLegend();
-                        mMapView.invalidate();
                     })
                     .show();
-            return true;
+            return true; // 전술 마커 메뉴
         });
 
         marker.setOnMarkerDragListener(new Marker.OnMarkerDragListener() {
@@ -605,6 +634,25 @@ public class TacticalMapActivity extends AppCompatActivity {
         mMapView.invalidate();
     }
 
+    private void showAffilChangeDialog(TacMarker tm) {
+        new AlertDialog.Builder(this)
+                .setTitle("소속 변경")
+                .setItems(MK_NAMES, (d, which) -> {
+                    tm.type = which;
+                    if (which == 4) {
+                        tm.unitType = -1;
+                        if (tm.placeType < 0) tm.placeType = 0;
+                    } else {
+                        tm.placeType = -1;
+                    }
+                    if (tm.marker != null) tm.marker.setTitle(MK_NAMES[which]);
+                    rebuildAllMarkerIcons();
+                    updateLegend();
+                    mMapView.invalidate();
+                    Toast.makeText(this, "소속 변경: " + MK_NAMES[which], Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
     private void showPlaceTypeDialog(TacMarker tm) {
         String[] opts = new String[PLACE_NAMES.length + 1];
         opts[0] = "None (없음)";
