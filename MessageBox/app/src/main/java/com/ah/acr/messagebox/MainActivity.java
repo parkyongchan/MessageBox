@@ -3238,17 +3238,17 @@ public class MainActivity extends AppCompatActivity {
                                             final String _payload = full; final String _code = codeNum;
                                             new Thread(() -> TacticalStore.addAndPersist(getApplicationContext(), _code, _payload, false)).start();
                                             StringBuilder sm = new StringBuilder();
-                                            sm.append("[전술] 마커 ").append(td.markers.size())
-                                              .append(", 라인 ").append(td.lines.size())
-                                              .append(", 메저 ").append(td.measures.size());
-                                            if (td.note != null && !td.note.isEmpty()) sm.append("\n메모: ").append(td.note);
+                                            sm.append("[TAC] markers ").append(td.markers.size())
+                                              .append(", lines ").append(td.lines.size())
+                                              .append(", measures ").append(td.measures.size());
+                                            if (td.note != null && !td.note.isEmpty()) sm.append("\nNote: ").append(td.note);
                                             tacticalSummary = sm.toString();
                                             android.util.Log.d("TACTICAL-RECV", "전술 수신 파싱 OK: markers=" + td.markers.size()
                                                     + " lines=" + td.lines.size() + " measures=" + td.measures.size()
                                                     + " from=" + td.fromImei + " note=" + (td.note.isEmpty() ? "-" : td.note));
                                         } catch (Exception te) {
                                             android.util.Log.e("TACTICAL-RECV", "전술 파싱 실패", te);
-                                            tacticalSummary = "[전술] 데이터 수신 (파싱 실패)";
+                                            tacticalSummary = "[TAC] data received (parse failed)";
                                         }
                                     }
                                     // 전술이면 채팅 본문 = 요약, 아니면 원문

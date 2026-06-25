@@ -218,7 +218,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                     for (MarkerData md : sMarkerData) {
                         if (md.id == mMovingMarker.id) { md.lat = p.getLatitude(); md.lon = p.getLongitude(); break; }
                     }
-                    Toast.makeText(TacticalMapActivity.this, "#" + mMovingMarker.id + " 이동 완료", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TacticalMapActivity.this, "#" + mMovingMarker.id + " moved", Toast.LENGTH_SHORT).show();
                     mMovingMarker = null;
                     updateLegend();
                     mMapView.invalidate();
@@ -339,7 +339,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         int tacBytes = 0;
         try { tacBytes = serializeTactical("").getBytes(java.nio.charset.StandardCharsets.UTF_8).length; } catch (Exception e) {}
         TextView sizeTv = new TextView(this);
-        sizeTv.setText(String.format(Locale.US, "본문 %,d / 10,000 B", tacBytes));
+        sizeTv.setText(String.format(Locale.US, "Body %,d / 10,000 B", tacBytes));
         int sizeColor = (tacBytes > 10000) ? 0xFFFF5252 : (tacBytes > 8000 ? 0xFFFFB300 : 0xFF00E5D1);
         sizeTv.setTextColor(sizeColor);
         sizeTv.setTextSize(10f);
@@ -415,11 +415,11 @@ public class TacticalMapActivity extends AppCompatActivity {
             opts[0] = "None";
             for (int k = 0; k < PLACE_NAMES.length; k++) opts[k + 1] = PLACE_NAMES[k];
             new AlertDialog.Builder(this)
-                    .setTitle("지점 선택")
+                    .setTitle("Select Place")
                     .setItems(opts, (d, w) -> {
                         mMarkerPlace = w - 1;  // 0=None→-1
                         mMarkerUnit = -1;
-                        Toast.makeText(this, MK_NAMES[type] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, MK_NAMES[type] + " - tap the map", Toast.LENGTH_SHORT).show();
                     })
                     .show();
         } else {
@@ -428,11 +428,11 @@ public class TacticalMapActivity extends AppCompatActivity {
             opts[0] = "None";
             for (int k = 0; k < UNIT_NAMES.length; k++) opts[k + 1] = UNIT_NAMES[k];
             new AlertDialog.Builder(this)
-                    .setTitle("병종 선택")
+                    .setTitle("Select Unit")
                     .setItems(opts, (d, w) -> {
                         mMarkerUnit = w - 1;   // 0=None→-1
                         mMarkerPlace = -1;
-                        Toast.makeText(this, MK_NAMES[type] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, MK_NAMES[type] + " - tap the map", Toast.LENGTH_SHORT).show();
                     })
                     .show();
         }
@@ -606,14 +606,14 @@ public class TacticalMapActivity extends AppCompatActivity {
             int idx = mTacMarkers.indexOf(tm) + 1;
             String info = String.format(Locale.US, "#%d %s\nLat %.5f, Lon %.5f",
                     idx, m.getTitle(), m.getPosition().getLatitude(), m.getPosition().getLongitude());
-            final String[] menu = { "이동", "소속 변경", "병종/지점 변경", "삭제", "취소" };
+            final String[] menu = { "Move", "Change Affiliation", "Change Unit/Place", "Delete", "Cancel" };
             new AlertDialog.Builder(this)
                     .setTitle(info)
                     .setItems(menu, (d, w) -> {
                         switch (w) {
                             case 0: // 이동
                                 mMovingMarker = tm;
-                                Toast.makeText(this, "지도를 탭하여 이동할 위치를 지정하세요", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, "Tap the map to set new position", Toast.LENGTH_SHORT).show();
                                 break;
                             case 1: // 소속 변경
                                 showAffilChangeDialog(tm);
@@ -684,7 +684,7 @@ public class TacticalMapActivity extends AppCompatActivity {
 
     private void showAffilChangeDialog(TacMarker tm) {
         new AlertDialog.Builder(this)
-                .setTitle("소속 변경")
+                .setTitle("Change Affiliation")
                 .setItems(MK_NAMES, (d, which) -> {
                     tm.type = which;
                     if (which == 4) {
@@ -697,7 +697,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                     rebuildAllMarkerIcons();
                     updateLegend();
                     mMapView.invalidate();
-                    Toast.makeText(this, "소속 변경: " + MK_NAMES[which], Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Affiliation: " + MK_NAMES[which], Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }
@@ -837,9 +837,9 @@ public class TacticalMapActivity extends AppCompatActivity {
             mMyLocMarker.setTitle("MY LOCATION");
             updateMyLocIcon();
             mMyLocMarker.setOnMarkerClickListener((m, mv) -> {
-                final String[] menu = { "발신자 소속 변경", "발신자 병종 변경", "취소" };
+                final String[] menu = { "Sender Affiliation", "Sender Unit", "Cancel" };
                 new AlertDialog.Builder(this)
-                        .setTitle("내 위치 (발신자)")
+                        .setTitle("My Location (Sender)")
                         .setItems(menu, (d, w) -> {
                             if (w == 0) showMyLocAffilDialog();
                             else if (w == 1) showMyLocUnitDialog();
@@ -860,13 +860,13 @@ public class TacticalMapActivity extends AppCompatActivity {
         if (mMyLocMarker == null) return;
         Drawable ic = TacticalMarkerIcon.make(this, mMyLocType, 0, mMyLocUnit, -1);
         if (ic != null) mMyLocMarker.setIcon(ic);
-        mMyLocMarker.setTitle("발신자: " + MK_NAMES[mMyLocType]
+        mMyLocMarker.setTitle("Sender: " + MK_NAMES[mMyLocType]
                 + (mMyLocUnit >= 0 ? " [" + UNIT_ABBR[mMyLocUnit] + "]" : ""));
     }
 
     private void showMyLocAffilDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("발신자 소속")
+                .setTitle("Sender Affiliation")
                 .setItems(MK_NAMES, (d, w) -> {
                     mMyLocType = w;
                     if (w == 4) mMyLocUnit = -1; // POI면 병종 없음
@@ -882,7 +882,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         opts[0] = "None";
         for (int k = 0; k < UNIT_NAMES.length; k++) opts[k + 1] = UNIT_NAMES[k];
         new AlertDialog.Builder(this)
-                .setTitle("발신자 병종")
+                .setTitle("Sender Unit")
                 .setItems(opts, (d, w) -> {
                     mMyLocUnit = w - 1;
                     updateMyLocIcon();
@@ -938,17 +938,17 @@ public class TacticalMapActivity extends AppCompatActivity {
                     AddressEntity sel = mAddressList.get(which);
                     // 전술 메모 입력 다이얼로그 (지시사항, 선택)
                     final android.widget.EditText noteInput = new android.widget.EditText(this);
-                    noteInput.setHint("지시사항 메모 (선택)");
+                    noteInput.setHint("Order note (optional)");
                     noteInput.setMaxLines(3);
                     new AlertDialog.Builder(this)
-                            .setTitle("전술 메모")
+                            .setTitle("Tactical Note")
                             .setView(noteInput)
-                            .setPositiveButton("전송", (d2, w2) -> {
+                            .setPositiveButton("Send", (d2, w2) -> {
                                 String note = noteInput.getText().toString();
                                 String payload = serializeTactical(note);
                                 int pbytes = payload.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
                                 if (pbytes > 10000) {
-                                    Toast.makeText(this, "크기 초과: " + pbytes + " / 10,000 B — 마커/메모를 줄이세요", Toast.LENGTH_LONG).show();
+                                    Toast.makeText(this, "Size exceeded: " + pbytes + " / 10,000 B - reduce markers/note", Toast.LENGTH_LONG).show();
                                     return;
                                 }
                                 TacticalShare.pendingTactical = payload;
@@ -959,7 +959,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                                 Toast.makeText(this, "Opening chat: " + names[which], Toast.LENGTH_SHORT).show();
                                 finish();
                             })
-                            .setNegativeButton("취소", null)
+                            .setNegativeButton("Cancel", null)
                             .show();
                 })
                 .setNegativeButton("Cancel", null)

@@ -336,9 +336,9 @@ public class MapTabFragment extends Fragment {
                 mk.setTitle(ident);
                 StringBuilder sn = new StringBuilder();
                 sn.append(String.format(Locale.US, "%.5f, %.5f", tm.lat, tm.lon));
-                String from = (e.data.fromImei == null || e.data.fromImei.isEmpty()) ? "관제센터" : e.data.fromImei;
-                sn.append("\n발신: ").append(from);
-                if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\n메모: ").append(e.data.note);
+                String from = (e.data.fromImei == null || e.data.fromImei.isEmpty()) ? "HQ/Control" : e.data.fromImei;
+                sn.append("\nFrom: ").append(from);
+                if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\nNote: ").append(e.data.note);
                 mk.setSnippet(sn.toString());
                 // 전술 마커 클릭 토글: 열려있으면 닫고, 아니면 정보 표시
                 mk.setOnMarkerClickListener((m2, mv2) -> {
@@ -616,6 +616,7 @@ public class MapTabFragment extends Fragment {
         binding.chipAll.setOnClickListener(v -> selectModeChip(v, MODE_ALL));
         binding.chipTrack.setOnClickListener(v -> selectModeChip(v, MODE_TRACK));
         binding.chipSos.setOnClickListener(v -> selectModeChip(v, MODE_SOS));
+        binding.chipTactical.setOnClickListener(v -> selectModeChip(v, MODE_TACTICAL));
     }
 
     private void selectQuickDate(View chip, int value, boolean isHours) {
@@ -636,6 +637,7 @@ public class MapTabFragment extends Fragment {
         binding.chipAll.setSelected(false);
         binding.chipTrack.setSelected(false);
         binding.chipSos.setSelected(false);
+        binding.chipTactical.setSelected(false);
         chip.setSelected(true);
 
         mInitialFitDone = false;

@@ -330,6 +330,20 @@
                 android:background="@drawable/bg_filter_chip"
                 android:textColor="@color/filter_chip_text_color"
                 android:clickable="true"
+                android:focusable="true"
+                android:layout_marginEnd="2dp" />
+            <TextView
+                android:id="@+id/chip_tactical"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="TAC"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_filter_chip"
+                android:textColor="@color/filter_chip_text_color"
+                android:clickable="true"
                 android:focusable="true" />
 
         </LinearLayout>
