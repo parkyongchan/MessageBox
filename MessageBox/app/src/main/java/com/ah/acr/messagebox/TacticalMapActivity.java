@@ -132,6 +132,8 @@ public class TacticalMapActivity extends AppCompatActivity {
 
     private int mMarkerType = -1;
     private TacMarker mMovingMarker = null; // 선택 후 이동 대기 중인 마커
+    private int mMarkerUnit = -1;
+    private int mMarkerPlace = -1;
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
     private int mNextMarkerId = 1;  // 고유 ID 카운터
@@ -383,14 +385,45 @@ public class TacticalMapActivity extends AppCompatActivity {
                 .setItems(MK_NAMES, (dialog, which) -> {
                     mMarkerType = which;
                     mToolMarker.setTextColor(0xFFFFEB3B);
-                    Toast.makeText(this,
-                            MK_NAMES[which] + " - tap the map", Toast.LENGTH_SHORT).show();
+                    // 소속 선택 후 병종(또는 POI면 지점) 선택 이어서
+                    selectMarkerUnitThenPlace(which);
                 })
                 .setNegativeButton("Cancel", (d, w) -> {
                     mMarkerType = -1;
                     mToolMarker.setTextColor(0xFF00E5D1);
                 })
                 .show();
+    }
+
+    // 소속 선택 후 병종(일반) 또는 지점(POI) 선택 → 찍기 모드 진입
+    private void selectMarkerUnitThenPlace(int type) {
+        if (type == 4) {
+            // POI → 지점 선택
+            String[] opts = new String[PLACE_NAMES.length + 1];
+            opts[0] = "None";
+            for (int k = 0; k < PLACE_NAMES.length; k++) opts[k + 1] = PLACE_NAMES[k];
+            new AlertDialog.Builder(this)
+                    .setTitle("지점 선택")
+                    .setItems(opts, (d, w) -> {
+                        mMarkerPlace = w - 1;  // 0=None→-1
+                        mMarkerUnit = -1;
+                        Toast.makeText(this, MK_NAMES[type] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                    })
+                    .show();
+        } else {
+            // 일반 → 병종 선택
+            String[] opts = new String[UNIT_NAMES.length + 1];
+            opts[0] = "None";
+            for (int k = 0; k < UNIT_NAMES.length; k++) opts[k + 1] = UNIT_NAMES[k];
+            new AlertDialog.Builder(this)
+                    .setTitle("병종 선택")
+                    .setItems(opts, (d, w) -> {
+                        mMarkerUnit = w - 1;   // 0=None→-1
+                        mMarkerPlace = -1;
+                        Toast.makeText(this, MK_NAMES[type] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                    })
+                    .show();
+        }
     }
 
     private Drawable makeMarkerIcon(int type, int number, int unitType, int placeType) {
@@ -546,6 +579,9 @@ public class TacticalMapActivity extends AppCompatActivity {
         mTacMarkers.add(tm);
         int number = mTacMarkers.size();
         if (!mRestoring) {
+            // 찍을 때 선택해 둔 병종/지점 적용 (소속 선택 후 정한 값)
+            tm.unitType = mMarkerUnit;
+            tm.placeType = mMarkerPlace;
             tm.id = sNextMarkerId++;
             sMarkerData.add(new MarkerData(tm.id, type, tm.unitType, tm.placeType,
                     p.getLatitude(), p.getLongitude()));
