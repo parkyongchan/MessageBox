@@ -20,14 +20,19 @@ public class TacticalStore {
         public String codeNum;                 // 수신 경로(발신 연락처 코드)
         public TacticalParser.TacticalData data;
         public long recvAt;                    // 수신 시각(ms)
+        public String payload;                 // 원본 payload (상세 화면용)
     }
 
     private static final List<Entry> sEntries = new ArrayList<>();
 
     public static synchronized void add(String codeNum, TacticalParser.TacticalData data) {
+        add(codeNum, data, null);
+    }
+    public static synchronized void add(String codeNum, TacticalParser.TacticalData data, String payload) {
         Entry e = new Entry();
         e.codeNum = codeNum;
         e.data = data;
+        e.payload = payload;
         e.recvAt = System.currentTimeMillis();
         sEntries.add(e);
     }
@@ -54,7 +59,7 @@ public class TacticalStore {
             ent.setFromImei(td.fromImei);
             com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
                     .getDatabase(ctx).tacticalRecvDao().insert(ent);
-            add(codeNum, td);
+            add(codeNum, td, payload);
         } catch (Exception e) {
             android.util.Log.e("TACTICAL-STORE", "DB 저장 실패", e);
         }
@@ -71,6 +76,7 @@ public class TacticalStore {
                 Entry e = new Entry();
                 e.codeNum = r.getCodeNum();
                 e.data = td;
+                e.payload = r.getPayload();
                 e.recvAt = r.getRecvAt();
                 sEntries.add(e);
             }

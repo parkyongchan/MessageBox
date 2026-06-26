@@ -589,9 +589,16 @@ public class MapTabFragment extends Fragment {
                     }
                 }
                 @Override public void onTacticalDetail(TacticalStore.Entry e) {
-                    // 2단계: 상세 화면 (지금은 안내)
-                    android.widget.Toast.makeText(getContext(),
-                        "Tactical detail (coming soon)", android.widget.Toast.LENGTH_SHORT).show();
+                    // [TAC 상세] 그 전술 그룹을 상세 화면으로 (원본 payload 전달)
+                    if (e.data == null || e.payload == null) return;
+                    String fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+                    try {
+                        com.ah.acr.messagebox.tabs.TacticalDetailFragment dlg =
+                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(e.payload, fromImei);
+                        dlg.show(getParentFragmentManager(), "TacticalDetail");
+                    } catch (Exception ex) {
+                        android.util.Log.e(TAG, "TacticalDetail open failed: " + ex.getMessage(), ex);
+                    }
                 }
             });
     }
