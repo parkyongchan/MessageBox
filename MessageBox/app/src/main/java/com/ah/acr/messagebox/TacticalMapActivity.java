@@ -183,7 +183,12 @@ public class TacticalMapActivity extends AppCompatActivity {
         setupActionStubs();
         setupMyLocation();
 
-        restoreMarkers();  // 앱 종료 전 마커 복원
+        // [draft] 앱 재시작으로 메모리(sMarkerData)가 비었으면 prefs에서 복원, 아니면 메모리 복원
+        if (sMarkerData.isEmpty()) {
+            loadDraft();
+        } else {
+            restoreMarkers();  // 앱 살아있는 동안 재진입 - 메모리 복원
+        }
         mAddressVM = new ViewModelProvider(this).get(AddressViewModel.class);
         mAddressVM.getAllAddress().observe(this, list -> {
             if (list != null) mAddressList = list;
@@ -1299,6 +1304,9 @@ public class TacticalMapActivity extends AppCompatActivity {
         TextView save = findViewById(R.id.tac_act_save);
         if (save != null) save.setOnClickListener(v -> captureAndSave());
 
+        TextView saveDraftBtn = findViewById(R.id.tac_act_savedraft);
+        if (saveDraftBtn != null) saveDraftBtn.setOnClickListener(v -> saveDraft());
+
         TextView share = findViewById(R.id.tac_act_share);
         if (share != null) share.setOnClickListener(v -> shareCapture());
 
@@ -1343,6 +1351,39 @@ public class TacticalMapActivity extends AppCompatActivity {
             startActivity(Intent.createChooser(intent, "Share Tactical Map"));
         } catch (Exception e) {
             Toast.makeText(this, "Share failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // [draft] 작도(송신용 전술)를 prefs에 직렬화 저장
+    private void saveDraft() {
+        if (mTacMarkers.isEmpty() && mLineSets.isEmpty() && mMeasureSets.isEmpty()) {
+            Toast.makeText(this, "No tactical data to save", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String draft = serializeTactical("");
+        getSharedPreferences("tactical_draft", MODE_PRIVATE)
+                .edit().putString("draft", draft).apply();
+        Toast.makeText(this, "Draft saved", Toast.LENGTH_SHORT).show();
+    }
+
+    // [draft] prefs에서 작도(마커) 복원. 웹과 동일하게 마커만.
+    private void loadDraft() {
+        String draft = getSharedPreferences("tactical_draft", MODE_PRIVATE)
+                .getString("draft", null);
+        if (draft == null || draft.isEmpty()) return;
+        try {
+            TacticalParser.TacticalData td = TacticalParser.parse(draft);
+            if (td.markers.isEmpty()) return;
+            sMarkerData.clear();
+            int maxId = 0;
+            for (TacticalParser.TMarker m : td.markers) {
+                sMarkerData.add(new MarkerData(m.id, m.type, m.unit, m.place, m.lat, m.lon));
+                if (m.id > maxId) maxId = m.id;
+            }
+            if (maxId >= sNextMarkerId) sNextMarkerId = maxId + 1;
+            restoreMarkers();
+        } catch (Exception e) {
+            android.util.Log.e("TACTICAL-DRAFT", "복원 실패", e);
         }
     }
 
