@@ -323,7 +323,16 @@ public class MapTabFragment extends Fragment {
             return;
         }
 
-        java.util.List<TacticalStore.Entry> entries = TacticalStore.getAll();
+        java.util.List<TacticalStore.Entry> allEntries = TacticalStore.getAll();
+        // [장비별 최신 1건] 발신자(fromImei)별로 recvAt 최신 1건만 (웹과 동일, 과거 전송 제외)
+        java.util.Map<String, TacticalStore.Entry> latestByImei = new java.util.HashMap<>();
+        for (TacticalStore.Entry e : allEntries) {
+            if (e.data == null) continue;
+            String key = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            TacticalStore.Entry cur = latestByImei.get(key);
+            if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
+        }
+        java.util.List<TacticalStore.Entry> entries = new java.util.ArrayList<>(latestByImei.values());
         for (TacticalStore.Entry e : entries) {
             if (e.data == null) continue;
             for (TacticalParser.TMarker tm : e.data.markers) {
