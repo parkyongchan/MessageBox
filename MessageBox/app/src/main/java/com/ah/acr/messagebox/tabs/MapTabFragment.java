@@ -85,6 +85,7 @@ public class MapTabFragment extends Fragment {
 
     private FragmentMapTabBinding binding;
     private LocationAdapter mAdapter;
+    private com.ah.acr.messagebox.adapter.TacticalListAdapter mTacticalAdapter;
     private LocationViewModel locationViewModel;
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
@@ -577,6 +578,22 @@ public class MapTabFragment extends Fragment {
         RecyclerView recyclerView = binding.listLocation;
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(mAdapter);
+
+        mTacticalAdapter = new com.ah.acr.messagebox.adapter.TacticalListAdapter(
+            new com.ah.acr.messagebox.adapter.TacticalListAdapter.OnTacticalClickListener() {
+                @Override public void onTacticalClick(TacticalStore.Entry e) {
+                    // 지도에서 그 전술 첫 마커 위치로 이동
+                    if (e.data != null && e.data.markers != null && !e.data.markers.isEmpty()) {
+                        TacticalParser.TMarker m0 = e.data.markers.get(0);
+                        mMapView.getController().animateTo(new GeoPoint(m0.lat, m0.lon));
+                    }
+                }
+                @Override public void onTacticalDetail(TacticalStore.Entry e) {
+                    // 2단계: 상세 화면 (지금은 안내)
+                    android.widget.Toast.makeText(getContext(),
+                        "Tactical detail (coming soon)", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
     }
 
 
@@ -653,6 +670,29 @@ public class MapTabFragment extends Fragment {
         mCurrentMode = mode;
         locationViewModel.setFilterMode(mode);
         renderTacticalOverlays();
+
+        // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
+        if (mode == MODE_TACTICAL) {
+            binding.listLocation.setAdapter(mTacticalAdapter);
+            java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries();
+            mTacticalAdapter.submit(latest);
+            binding.listLocation.setVisibility(latest.isEmpty() ? View.GONE : View.VISIBLE);
+            binding.emptyState.setVisibility(latest.isEmpty() ? View.VISIBLE : View.GONE);
+        } else {
+            binding.listLocation.setAdapter(mAdapter);
+        }
+    }
+
+    /** [TAC 목록] 발신자(fromImei)별 최신 전술 1건씩. renderTacticalOverlays와 동일 기준. */
+    private java.util.List<TacticalStore.Entry> getLatestTacticalEntries() {
+        java.util.Map<String, TacticalStore.Entry> latestByImei = new java.util.HashMap<>();
+        for (TacticalStore.Entry e : TacticalStore.getAll()) {
+            if (e.data == null) continue;
+            String key = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            TacticalStore.Entry cur = latestByImei.get(key);
+            if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
+        }
+        return new java.util.ArrayList<>(latestByImei.values());
     }
 
 

@@ -1,0 +1,79 @@
+package com.ah.acr.messagebox.adapter;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+import com.ah.acr.messagebox.R;
+import com.ah.acr.messagebox.TacticalStore;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/** TAC 목록 어댑터 — 장비별 최신 전술 1건씩 표시. */
+public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapter.VH> {
+
+    public interface OnTacticalClickListener {
+        void onTacticalClick(TacticalStore.Entry entry);   // 항목 클릭 → 지도 이동
+        void onTacticalDetail(TacticalStore.Entry entry);  // 상세 아이콘 클릭
+    }
+
+    private final List<TacticalStore.Entry> items = new ArrayList<>();
+    private final OnTacticalClickListener listener;
+    private final SimpleDateFormat sdf = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+
+    public TacticalListAdapter(OnTacticalClickListener listener) {
+        this.listener = listener;
+    }
+
+    public void submit(List<TacticalStore.Entry> list) {
+        items.clear();
+        if (list != null) items.addAll(list);
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    @Override
+    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_tactical, parent, false);
+        return new VH(v);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull VH h, int position) {
+        TacticalStore.Entry e = items.get(position);
+        String from = (e.data != null && e.data.fromImei != null && !e.data.fromImei.isEmpty())
+                ? e.data.fromImei : "Control";
+        h.from.setText("TACTICAL — " + from);
+
+        int mCnt = (e.data != null && e.data.markers != null) ? e.data.markers.size() : 0;
+        int lCnt = (e.data != null && e.data.lines != null) ? e.data.lines.size() : 0;
+        int rCnt = (e.data != null && e.data.measures != null) ? e.data.measures.size() : 0;
+        h.summary.setText("markers " + mCnt + ", lines " + lCnt + ", measures " + rCnt);
+
+        h.time.setText(sdf.format(new java.util.Date(e.recvAt)));
+
+        h.itemView.setOnClickListener(v -> { if (listener != null) listener.onTacticalClick(e); });
+        h.detail.setOnClickListener(v -> { if (listener != null) listener.onTacticalDetail(e); });
+    }
+
+    @Override
+    public int getItemCount() { return items.size(); }
+
+    static class VH extends RecyclerView.ViewHolder {
+        final TextView from, summary, time;
+        final ImageView detail;
+        VH(@NonNull View v) {
+            super(v);
+            from = v.findViewById(R.id.tac_item_from);
+            summary = v.findViewById(R.id.tac_item_summary);
+            time = v.findViewById(R.id.tac_item_time);
+            detail = v.findViewById(R.id.tac_item_detail);
+        }
+    }
+}
