@@ -106,6 +106,11 @@ public class MainActivity extends AppCompatActivity {
 
     private Handler mSyncHandler;
     private Runnable mBroadRetryRunnable;
+    // [outboxStuck] outbox 좀비 감지 (오래 안 빠지는 미발신)
+    private int mLastOutboxVal = -1;
+    private long mOutboxStuckSince = 0;
+    private long mOutboxWarnedAt = 0;
+    private static final long OUTBOX_STUCK_MS = 30 * 60 * 1000L; // 30분
     private Runnable mInfoRetryRunnable;
     private long mLastBroadReceivedTime = 0;
     private long mLastInfoReceivedTime = 0;
@@ -571,6 +576,42 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // [outboxStuck] outbox가 30분 이상 같은 값으로 안 빠지면 좀비 의심 → 경고
+    private void checkOutboxStuck(int outbox) {
+        long now = System.currentTimeMillis();
+        if (outbox <= 0) {
+            mOutboxStuckSince = 0;
+            mLastOutboxVal = outbox;
+            binding.statusArea.textMainOutbox.setTextColor(0xFFFF5252); // 기본 빨강 유지
+            return;
+        }
+        if (outbox == mLastOutboxVal) {
+            if (mOutboxStuckSince == 0) mOutboxStuckSince = now;
+            long stuck = now - mOutboxStuckSince;
+            if (stuck > OUTBOX_STUCK_MS) {
+                // 깜빡임 강조
+                binding.statusArea.textMainOutbox.setTextColor(
+                        (now / 600 % 2 == 0) ? 0xFFFF1744 : 0xFFFFFFFF);
+                // 경고 Toast (10분에 한 번만)
+                if (now - mOutboxWarnedAt > 10 * 60 * 1000L) {
+                    mOutboxWarnedAt = now;
+                    Toast.makeText(this,
+                            "Send stuck: outbox " + outbox + " not clearing for "
+                                    + (stuck / 60000) + " min (satellite/modem). Check & resend or clear.",
+                            Toast.LENGTH_LONG).show();
+                }
+            } else {
+                binding.statusArea.textMainOutbox.setTextColor(0xFFFF5252);
+            }
+        } else {
+            // 값이 바뀜 = 빠지는 중 → 리셋
+            mOutboxStuckSince = now;
+            mOutboxWarnedAt = 0;
+            binding.statusArea.textMainOutbox.setTextColor(0xFFFF5252);
+        }
+        mLastOutboxVal = outbox;
+    }
+
     private void updateTrackButtonUI(boolean isActive) {
         mIsTrackingMode = isActive;
         if (isActive) {
@@ -915,6 +956,7 @@ public class MainActivity extends AppCompatActivity {
             updateSignalBar(status.getSignal());
             binding.statusArea.textMainInbox.setText(String.valueOf(status.getInBox()));
             binding.statusArea.textMainOutbox.setText(String.valueOf(status.getOutBox()));
+            checkOutboxStuck(status.getOutBox());
 
             updateTrackButtonUI(status.isTrackingMode());
             updateSosButtonUI(status.isSosMode());
