@@ -594,7 +594,7 @@ public class MapTabFragment extends Fragment {
                     String fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
                     try {
                         com.ah.acr.messagebox.tabs.TacticalDetailFragment dlg =
-                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(e.payload, fromImei);
+                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei);
                         dlg.show(getParentFragmentManager(), "TacticalDetail");
                     } catch (Exception ex) {
                         android.util.Log.e(TAG, "TacticalDetail open failed: " + ex.getMessage(), ex);
@@ -610,6 +610,8 @@ public class MapTabFragment extends Fragment {
                 new Observer<List<LocationWithAddress>>() {
                     @Override
                     public void onChanged(List<LocationWithAddress> locations) {
+                        refreshMarkers(locations); // [지도항상] TAC 모드여도 위치 마커 정리(옛 SOS 제거)
+                        if (mCurrentMode == MODE_TACTICAL) { mMapView.invalidate(); return; } // [TAC가드] 목록은 TAC 유지
                         mAdapter.submitList(locations);
 
                         int count = locations != null ? locations.size() : 0;
@@ -624,7 +626,7 @@ public class MapTabFragment extends Fragment {
                             binding.emptyState.setVisibility(View.GONE);
                         }
 
-                        refreshMarkers(locations);
+
                     }
                 }
         );
@@ -699,7 +701,8 @@ public class MapTabFragment extends Fragment {
             TacticalStore.Entry cur = latestByImei.get(key);
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }
-        return new java.util.ArrayList<>(latestByImei.values());
+        java.util.List<TacticalStore.Entry> result = new java.util.ArrayList<>(latestByImei.values());
+        return result;
     }
 
 

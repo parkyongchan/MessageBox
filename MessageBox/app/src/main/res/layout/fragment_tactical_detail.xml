@@ -13,7 +13,6 @@
         android:gravity="center_vertical"
         android:background="#0D1628"
         android:paddingHorizontal="14dp">
-
         <TextView
             android:id="@+id/tac_detail_title"
             android:layout_width="0dp"
@@ -23,33 +22,93 @@
             android:textColor="#00E5D1"
             android:textSize="13sp"
             android:textStyle="bold" />
-
+        <TextView
+            android:id="@+id/tac_detail_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EXPORT"
+            android:textColor="#00E5D1"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginEnd="8dp" />
         <TextView
             android:id="@+id/tac_detail_close"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="✕"
+            android:text="CLOSE"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:paddingHorizontal="8dp" />
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp" />
     </LinearLayout>
 
-    <!-- Map -->
-    <org.osmdroid.views.MapView
-        android:id="@+id/tac_detail_map"
+    <!-- Map + overlay controls -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3" />
+        android:layout_weight="3">
 
-    <!-- Element list (CLASS/ID/AFFIL/LAT/LON/KIND) -->
+        <org.osmdroid.views.MapView
+            android:id="@+id/tac_detail_map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Online/Offline toggle (top-left) -->
+        <include
+            layout="@layout/view_map_mode_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="10dp" />
+
+        <!-- Zoom controls (right) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/tac_detail_zoom_in"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@android:drawable/ic_input_add"
+                android:contentDescription="Zoom in" />
+
+            <ImageButton
+                android:id="@+id/tac_detail_zoom_out"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@android:drawable/ic_delete"
+                android:contentDescription="Zoom out" />
+
+            <ImageButton
+                android:id="@+id/tac_detail_fit"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@android:drawable/ic_menu_crop"
+                android:contentDescription="Fit all" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Element list -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
         android:orientation="vertical"
         android:background="#0D1628">
-
-        <!-- Column header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -63,7 +122,6 @@
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.4" android:text="LAT" android:textColor="#4B6483" android:textSize="9sp" android:textStyle="bold" />
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.4" android:text="LON" android:textColor="#4B6483" android:textSize="9sp" android:textStyle="bold" />
         </LinearLayout>
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/tac_detail_list"
             android:layout_width="match_parent"
