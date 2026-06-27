@@ -47,6 +47,90 @@
             android:paddingVertical="6dp" />
     </LinearLayout>
 
+    <!-- Date range bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#0D1628"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="6dp">
+
+        <TextView
+            android:id="@+id/tac_start_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Start"
+            android:textColor="#9FB3C8"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:background="@drawable/bg_map_button"
+            android:paddingVertical="6dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="~"
+            android:textColor="#4B6483"
+            android:paddingHorizontal="6dp" />
+
+        <TextView
+            android:id="@+id/tac_end_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="End"
+            android:textColor="#9FB3C8"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:background="@drawable/bg_map_button"
+            android:paddingVertical="6dp" />
+
+        <TextView
+            android:id="@+id/tac_date_apply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Apply"
+            android:textColor="#00E5D1"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginStart="6dp" />
+
+        <TextView
+            android:id="@+id/tac_date_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="All"
+            android:textColor="#9FB3C8"
+            android:textSize="11sp"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:layout_marginStart="6dp" />
+    </LinearLayout>
+
+    <!-- Quick period chips -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#0D1628"
+        android:paddingHorizontal="10dp"
+        android:paddingBottom="6dp">
+
+        <TextView android:id="@+id/tac_chip_24h" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="24h" android:textColor="#9FB3C8" android:textSize="11sp" android:gravity="center" android:background="@drawable/bg_map_button" android:paddingVertical="5dp" android:layout_marginEnd="4dp" />
+        <TextView android:id="@+id/tac_chip_48h" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="48h" android:textColor="#9FB3C8" android:textSize="11sp" android:gravity="center" android:background="@drawable/bg_map_button" android:paddingVertical="5dp" android:layout_marginEnd="4dp" />
+        <TextView android:id="@+id/tac_chip_3d" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="3d" android:textColor="#9FB3C8" android:textSize="11sp" android:gravity="center" android:background="@drawable/bg_map_button" android:paddingVertical="5dp" android:layout_marginEnd="4dp" />
+        <TextView android:id="@+id/tac_chip_7d" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="7d" android:textColor="#9FB3C8" android:textSize="11sp" android:gravity="center" android:background="@drawable/bg_map_button" android:paddingVertical="5dp" android:layout_marginEnd="4dp" />
+        <TextView android:id="@+id/tac_chip_30d" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="30d" android:textColor="#9FB3C8" android:textSize="11sp" android:gravity="center" android:background="@drawable/bg_map_button" android:paddingVertical="5dp" />
+    </LinearLayout>
+
     <!-- Map + overlay controls -->
     <FrameLayout
         android:layout_width="match_parent"

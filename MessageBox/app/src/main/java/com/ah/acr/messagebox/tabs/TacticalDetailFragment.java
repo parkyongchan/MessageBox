@@ -95,6 +95,7 @@ public class TacticalDetailFragment extends DialogFragment {
             coordBtn.setColorFilter(showList[0] ? 0xFFFFEB3B : 0xFF95B0D4);
         });
         coordBtn.setColorFilter(0xFFFFEB3B); // 초기 ON
+        setupDateBar(root);
 
         // 줌 인/아웃/fit
         root.findViewById(R.id.tac_detail_zoom_in).setOnClickListener(v -> {
@@ -358,6 +359,118 @@ public class TacticalDetailFragment extends DialogFragment {
             int cur = (mPlayIndex < 0) ? mAllSets.size() : (mPlayIndex + 1);
             tv.setText(cur + "/" + mAllSets.size());
         }
+    }
+
+    private final java.text.SimpleDateFormat mDateFmt =
+            new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+    private java.util.Calendar mStartCal, mEndCal;
+    private android.widget.TextView mTvStart, mTvEnd;
+
+    private void setupDateBar(View root) {
+        android.widget.TextView tvStart = root.findViewById(R.id.tac_start_date);
+        android.widget.TextView tvEnd = root.findViewById(R.id.tac_end_date);
+        mTvStart = tvStart; mTvEnd = tvEnd;
+        android.widget.TextView btnApply = root.findViewById(R.id.tac_date_apply);
+        android.widget.TextView btnAll = root.findViewById(R.id.tac_date_all);
+
+        // 초기값: 이력 첫/끝 날짜
+        if (!mAllSets.isEmpty()) {
+            mStartCal = java.util.Calendar.getInstance();
+            mStartCal.setTimeInMillis(mAllSets.get(0).recvAt);
+            mEndCal = java.util.Calendar.getInstance();
+            mEndCal.setTimeInMillis(mAllSets.get(mAllSets.size() - 1).recvAt);
+            tvStart.setText(mDateFmt.format(mStartCal.getTime()));
+            tvEnd.setText(mDateFmt.format(mEndCal.getTime()));
+        }
+
+        tvStart.setOnClickListener(v -> pickDate(true, tvStart));
+        tvEnd.setOnClickListener(v -> pickDate(false, tvEnd));
+
+        btnApply.setOnClickListener(v -> {
+            if (mStartCal == null || mEndCal == null) return;
+            long s = startOfDay(mStartCal);
+            long e = endOfDay(mEndCal);
+            applyDateFilter(s, e);
+        });
+
+        btnAll.setOnClickListener(v -> {
+            mSets = new java.util.ArrayList<>(mAllSets);
+            mPlayIndex = -1;
+            stopPlay();
+            renderHistory();
+            buildRows();
+            updateProgress();
+        });
+
+        // 빠른 칩 (현재 시각 기준)
+        root.findViewById(R.id.tac_chip_24h).setOnClickListener(v -> filterRecentHours(24));
+        root.findViewById(R.id.tac_chip_48h).setOnClickListener(v -> filterRecentHours(48));
+        root.findViewById(R.id.tac_chip_3d).setOnClickListener(v -> filterRecentHours(24 * 3));
+        root.findViewById(R.id.tac_chip_7d).setOnClickListener(v -> filterRecentHours(24 * 7));
+        root.findViewById(R.id.tac_chip_30d).setOnClickListener(v -> filterRecentHours(24 * 30));
+    }
+
+    private void filterRecentHours(int hours) {
+        long now = System.currentTimeMillis();
+        long from = now - (long) hours * 3600_000L;
+        // 날짜 표시 + Calendar 갱신
+        mStartCal = java.util.Calendar.getInstance();
+        mStartCal.setTimeInMillis(from);
+        mEndCal = java.util.Calendar.getInstance();
+        mEndCal.setTimeInMillis(now);
+        if (mTvStart != null) mTvStart.setText(mDateFmt.format(mStartCal.getTime()));
+        if (mTvEnd != null) mTvEnd.setText(mDateFmt.format(mEndCal.getTime()));
+        applyDateFilter(from, now);
+    }
+
+    private void pickDate(boolean isStart, android.widget.TextView tv) {
+        java.util.Calendar base = isStart ? mStartCal : mEndCal;
+        if (base == null) base = java.util.Calendar.getInstance();
+        new android.app.DatePickerDialog(requireContext(),
+                (view, y, m, d) -> {
+                    java.util.Calendar c = java.util.Calendar.getInstance();
+                    c.set(y, m, d);
+                    if (isStart) mStartCal = c; else mEndCal = c;
+                    tv.setText(mDateFmt.format(c.getTime()));
+                },
+                base.get(java.util.Calendar.YEAR),
+                base.get(java.util.Calendar.MONTH),
+                base.get(java.util.Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private long startOfDay(java.util.Calendar cal) {
+        java.util.Calendar c = (java.util.Calendar) cal.clone();
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        c.set(java.util.Calendar.MINUTE, 0);
+        c.set(java.util.Calendar.SECOND, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
+    }
+
+    private long endOfDay(java.util.Calendar cal) {
+        java.util.Calendar c = (java.util.Calendar) cal.clone();
+        c.set(java.util.Calendar.HOUR_OF_DAY, 23);
+        c.set(java.util.Calendar.MINUTE, 59);
+        c.set(java.util.Calendar.SECOND, 59);
+        c.set(java.util.Calendar.MILLISECOND, 999);
+        return c.getTimeInMillis();
+    }
+
+    private void applyDateFilter(long startMs, long endMs) {
+        java.util.List<TacticalStore.Entry> filtered = new java.util.ArrayList<>();
+        for (TacticalStore.Entry e : mAllSets) {
+            if (e.recvAt >= startMs && e.recvAt <= endMs) filtered.add(e);
+        }
+        if (filtered.isEmpty()) {
+            android.widget.Toast.makeText(getContext(), "해당 기간 데이터 없음", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        mSets = filtered;
+        mPlayIndex = -1;
+        stopPlay();
+        renderHistory();
+        buildRows();
+        updateProgress();
     }
 
     private void fitAll() {
