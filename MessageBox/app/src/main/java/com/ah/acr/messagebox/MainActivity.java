@@ -212,6 +212,23 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // [최초 1회] 메시지 설정 기본값 (설치 후 첫 실행)
+        {
+            android.content.SharedPreferences _p = android.preference.PreferenceManager
+                    .getDefaultSharedPreferences(this);
+            if (!_p.getBoolean("pref_defaults_initialized", false)) {
+                _p.edit()
+                    .putBoolean("pref_ack_short", true)
+                    .putBoolean("pref_ack_large", true)
+                    .putBoolean("pref_ack_media", true)
+                    .putBoolean("pref_integrity_short", true)
+                    .putBoolean("pref_integrity_large", true)
+                    .putBoolean("pref_resend_auto", true)
+                    .putInt("pref_resend_interval", 2)
+                    .putBoolean("pref_defaults_initialized", true)
+                    .apply();
+            }
+        }
 
         // Debug log - check actual Locale and resource values
         try {
