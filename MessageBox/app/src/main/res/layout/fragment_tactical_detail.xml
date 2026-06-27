@@ -99,6 +99,15 @@
                 android:background="@drawable/bg_map_button"
                 android:src="@android:drawable/ic_menu_crop"
                 android:contentDescription="Fit all" />
+
+            <ImageButton
+                android:id="@+id/tac_detail_coord"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@android:drawable/ic_menu_sort_by_size"
+                android:contentDescription="Toggle list" />
         </LinearLayout>
         <!-- Playback controls (bottom center) -->
         <LinearLayout
@@ -151,6 +160,7 @@
 
     <!-- Element list -->
     <LinearLayout
+        android:id="@+id/tac_detail_list_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1.3"

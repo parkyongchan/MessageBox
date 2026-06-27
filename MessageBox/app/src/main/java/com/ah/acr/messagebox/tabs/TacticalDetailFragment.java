@@ -85,6 +85,16 @@ public class TacticalDetailFragment extends DialogFragment {
         root.findViewById(R.id.tac_detail_play).setOnClickListener(v -> togglePlay());
         root.findViewById(R.id.tac_detail_prev).setOnClickListener(v -> { stopPlay(); stepPlay(-1); });
         root.findViewById(R.id.tac_detail_next).setOnClickListener(v -> { stopPlay(); stepPlay(1); });
+        // coord: 하단 목록 접기/펴기
+        final View listContainer = root.findViewById(R.id.tac_detail_list_container);
+        final android.widget.ImageButton coordBtn = root.findViewById(R.id.tac_detail_coord);
+        final boolean[] showList = {true};
+        coordBtn.setOnClickListener(v -> {
+            showList[0] = !showList[0];
+            listContainer.setVisibility(showList[0] ? View.VISIBLE : View.GONE);
+            coordBtn.setColorFilter(showList[0] ? 0xFFFFEB3B : 0xFF95B0D4);
+        });
+        coordBtn.setColorFilter(0xFFFFEB3B); // 초기 ON
 
         // 줌 인/아웃/fit
         root.findViewById(R.id.tac_detail_zoom_in).setOnClickListener(v -> {
