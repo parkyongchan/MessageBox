@@ -205,6 +205,9 @@ public class MapTabFragment extends Fragment {
             if (mMapView != null) mMapView.getController().zoomOut();
         });
         binding.btnFitAll.setOnClickListener(v -> fitAllMarkers());
+        if (binding.btnFullscreen != null) {
+            binding.btnFullscreen.setOnClickListener(v -> toggleFullscreen());
+        }
     }
 
 
@@ -603,6 +606,25 @@ public class MapTabFragment extends Fragment {
             });
     }
 
+
+    private boolean mFullscreen = false;
+    private void toggleFullscreen() {
+        mFullscreen = !mFullscreen;
+        if (getActivity() != null) {
+            View header = getActivity().findViewById(R.id.header_area);
+            View status = getActivity().findViewById(R.id.status_area);
+            View bottomNav = getActivity().findViewById(R.id.bottom_nav);
+            if (header != null) header.setVisibility(mFullscreen ? View.GONE : View.VISIBLE);
+            if (status != null) status.setVisibility(mFullscreen ? View.GONE : View.VISIBLE);
+            if (bottomNav != null) bottomNav.setVisibility(mFullscreen ? View.GONE : View.VISIBLE);
+        }
+        // 풀스크린 버튼 아이콘 토글
+        if (binding.btnFullscreen != null) {
+            binding.btnFullscreen.setImageResource(mFullscreen
+                ? android.R.drawable.ic_menu_close_clear_cancel
+                : android.R.drawable.ic_menu_crop);
+        }
+    }
 
     private void observeData() {
         locationViewModel.getFilteredLocations().observe(
