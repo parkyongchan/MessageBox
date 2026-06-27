@@ -34,9 +34,14 @@ public class TacticalDetailFragment extends DialogFragment {
     private static final String ARG_PAYLOAD = "payload";
     private static final String ARG_FROM = "fromImei";
     private static final String[] AFFIL = {"HOSTILE","FRIENDLY","UNKNOWN","NEUTRAL","POI","ENGAGED","THREAT"};
+    private static final int[] SET_COLORS = {0xFF00E5FF, 0xFFFF6D00, 0xFFFFEB3B, 0xFF76FF03, 0xFFE040FB, 0xFFFF4081, 0xFF40C4FF, 0xFFB388FF};
 
     private MapView mMapView;
-    private java.util.List<TacticalStore.Entry> mSets = new java.util.ArrayList<>(); // 그 장비 전술 이력(시간순)
+    private java.util.List<TacticalStore.Entry> mSets = new java.util.ArrayList<>();
+    private java.util.List<TacticalStore.Entry> mAllSets = new java.util.ArrayList<>(); // 전체 백업(재생용)
+    private int mPlayIndex = -1;
+    private boolean mPlaying = false;
+    private final android.os.Handler mPlayH = new android.os.Handler(android.os.Looper.getMainLooper()); // 그 장비 전술 이력(시간순)
     private TacticalElementAdapter mAdapter;
 
     public static TacticalDetailFragment newInstance(String fromImei) {
@@ -70,12 +75,16 @@ public class TacticalDetailFragment extends DialogFragment {
             if (k.equals(fKey)) mSets.add(e);
         }
         java.util.Collections.sort(mSets, (x, y) -> Long.compare(x.recvAt, y.recvAt));
+        mAllSets = new java.util.ArrayList<>(mSets);
 
         android.widget.TextView title = root.findViewById(R.id.tac_detail_title);
         title.setText("TACTICAL — " + ((fromImei == null || fromImei.isEmpty()) ? "Control" : fromImei));
 
         root.findViewById(R.id.tac_detail_close).setOnClickListener(v -> dismiss());
         root.findViewById(R.id.tac_detail_export).setOnClickListener(v -> showExportDialog());
+        root.findViewById(R.id.tac_detail_play).setOnClickListener(v -> togglePlay());
+        root.findViewById(R.id.tac_detail_prev).setOnClickListener(v -> { stopPlay(); stepPlay(-1); });
+        root.findViewById(R.id.tac_detail_next).setOnClickListener(v -> { stopPlay(); stepPlay(1); });
 
         // 줌 인/아웃/fit
         root.findViewById(R.id.tac_detail_zoom_in).setOnClickListener(v -> {
@@ -124,6 +133,7 @@ public class TacticalDetailFragment extends DialogFragment {
 
     private void renderHistory() {
         if (mSets.isEmpty() || mMapView == null) return;
+        mMapView.getOverlays().clear();
         java.util.List<GeoPoint> all = new java.util.ArrayList<>();
 
         java.util.LinkedHashMap<String, java.util.List<Object[]>> groups = new java.util.LinkedHashMap<>();
@@ -267,6 +277,79 @@ public class TacticalDetailFragment extends DialogFragment {
         }
     }
 
+    private final Runnable mPlayRunnable = new Runnable() {
+        @Override public void run() {
+            if (!mPlaying) return;
+            if (mPlayIndex < mAllSets.size() - 1) {
+                mPlayIndex++;
+                renderUpTo(mPlayIndex);
+                if (mPlayIndex < mAllSets.size() - 1) {
+                    mPlayH.postDelayed(this, 1200);
+                } else {
+                    mPlaying = false;
+                    updatePlayIcon();
+                }
+            } else {
+                mPlaying = false;
+                updatePlayIcon();
+            }
+        }
+    };
+
+    private void togglePlay() {
+        if (mAllSets.size() <= 1) return;
+        if (mPlaying) stopPlay();
+        else startPlay();
+    }
+
+    private void startPlay() {
+        if (mPlayIndex >= mAllSets.size() - 1) mPlayIndex = -1;
+        mPlaying = true;
+        updatePlayIcon();
+        mPlayH.post(mPlayRunnable);
+    }
+
+    private void stopPlay() {
+        mPlaying = false;
+        mPlayH.removeCallbacks(mPlayRunnable);
+        updatePlayIcon();
+    }
+
+    private void stepPlay(int dir) {
+        if (mAllSets.isEmpty()) return;
+        int ni = mPlayIndex + dir;
+        if (ni < 0) ni = 0;
+        if (ni > mAllSets.size() - 1) ni = mAllSets.size() - 1;
+        mPlayIndex = ni;
+        renderUpTo(mPlayIndex);
+    }
+
+    private void renderUpTo(int idx) {
+        if (mAllSets.isEmpty()) return;
+        int max = (idx < 0 || idx >= mAllSets.size() - 1) ? mAllSets.size() - 1 : idx;
+        mSets = new java.util.ArrayList<>(mAllSets.subList(0, max + 1));
+        renderHistory();
+        updateProgress();
+    }
+
+    private void updatePlayIcon() {
+        View v = getView();
+        if (v == null) return;
+        android.widget.ImageButton btn = v.findViewById(R.id.tac_detail_play);
+        if (btn != null) btn.setImageResource(mPlaying
+                ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+    }
+
+    private void updateProgress() {
+        View v = getView();
+        if (v == null) return;
+        android.widget.TextView tv = v.findViewById(R.id.tac_detail_progress);
+        if (tv != null) {
+            int cur = (mPlayIndex < 0) ? mAllSets.size() : (mPlayIndex + 1);
+            tv.setText(cur + "/" + mAllSets.size());
+        }
+    }
+
     private void fitAll() {
         if (mSets.isEmpty() || mMapView == null) return;
         java.util.List<GeoPoint> all = new java.util.ArrayList<>();
@@ -288,21 +371,24 @@ public class TacticalDetailFragment extends DialogFragment {
     private void buildRows() {
         if (mSets.isEmpty()) return;
         List<TacticalElementAdapter.Row> rows = new ArrayList<>();
+        int[] setIdxRef = {0};
         for (TacticalStore.Entry e : mSets) {
-            if (e.data == null) continue;
+            if (e.data == null) { setIdxRef[0]++; continue; }
+            final int __color = SET_COLORS[setIdxRef[0] % SET_COLORS.length];
             for (TacticalParser.TMarker tm : e.data.markers) {
                 String ident = TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
                 String affil = (tm.type >= 0 && tm.type < AFFIL.length) ? AFFIL[tm.type] : "-";
-                rows.add(new TacticalElementAdapter.Row("MARKER", ident, affil, tm.lat, tm.lon));
+                { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("MARKER", ident, affil, tm.lat, tm.lon); __r.setColor = __color; rows.add(__r); }
             }
             for (TacticalParser.TLine ln : e.data.lines) {
                 if (!ln.points.isEmpty())
-                    rows.add(new TacticalElementAdapter.Row("LINE", "-", "-", ln.points.get(0)[0], ln.points.get(0)[1]));
+                    { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("LINE", "-", "-", ln.points.get(0)[0], ln.points.get(0)[1]); __r.setColor = __color; rows.add(__r); }
             }
             for (TacticalParser.TMeasure ms : e.data.measures) {
                 if (!ms.points.isEmpty())
-                    rows.add(new TacticalElementAdapter.Row("MEAS", "-", "-", ms.points.get(0)[0], ms.points.get(0)[1]));
+                    { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("MEAS", "-", "-", ms.points.get(0)[0], ms.points.get(0)[1]); __r.setColor = __color; rows.add(__r); }
             }
+            setIdxRef[0]++;
         }
         mAdapter.submit(rows);
     }

@@ -19,6 +19,7 @@ public class TacticalElementAdapter extends RecyclerView.Adapter<TacticalElement
         public String id;      // 마커 id 또는 "-"
         public String affil;   // 소속명 또는 "-"
         public double lat, lon;
+        public int setColor = 0;
         public Row(String cls, String id, String affil, double lat, double lon) {
             this.cls = cls; this.id = id; this.affil = affil; this.lat = lat; this.lon = lon;
         }
@@ -49,6 +50,7 @@ public class TacticalElementAdapter extends RecyclerView.Adapter<TacticalElement
     public void onBindViewHolder(@NonNull VH h, int position) {
         Row r = rows.get(position);
         h.cls.setText(r.cls);
+        if (h.setbar != null && r.setColor != 0) h.setbar.setBackgroundColor(r.setColor);
         h.id.setText(r.id);
         h.affil.setText(r.affil);
         h.lat.setText(String.format(Locale.US, "%.5f", r.lat));
@@ -61,9 +63,11 @@ public class TacticalElementAdapter extends RecyclerView.Adapter<TacticalElement
 
     static class VH extends RecyclerView.ViewHolder {
         final TextView cls, id, affil, lat, lon;
+        final View setbar;
         VH(@NonNull View v) {
             super(v);
             cls = v.findViewById(R.id.el_class);
+            setbar = v.findViewById(R.id.el_setbar);
             id = v.findViewById(R.id.el_id);
             affil = v.findViewById(R.id.el_affil);
             lat = v.findViewById(R.id.el_lat);
