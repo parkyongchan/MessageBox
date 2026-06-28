@@ -335,6 +335,23 @@ public class ChatRoomFragment extends Fragment {
     private void setupHeader() {
         binding.textChatRoomName.setText(mContactName);
         binding.textChatRoomNum.setText(mCodeNum);
+        // [그룹] 그룹 방이면 "수정" 버튼 표시 → 구성원 편집/재전송
+        try {
+            com.ah.acr.messagebox.group.GroupStore.Group _g =
+                    new com.ah.acr.messagebox.group.GroupStore(requireContext()).find(mCodeNum);
+            if (_g != null && binding.btnChatEditGroup != null) {
+                binding.btnChatEditGroup.setVisibility(View.VISIBLE);
+                binding.btnChatEditGroup.setOnClickListener(v -> {
+                    com.ah.acr.messagebox.group.GroupStore.Group _cur =
+                            new com.ah.acr.messagebox.group.GroupStore(requireContext()).find(mCodeNum);
+                    if (_cur != null) {
+                        new com.ah.acr.messagebox.group.GroupRegisterDialog(requireActivity(), _cur).show();
+                    }
+                });
+            } else if (binding.btnChatEditGroup != null) {
+                binding.btnChatEditGroup.setVisibility(View.GONE);
+            }
+        } catch (Exception _ge) { /* ignore */ }
         updateHeaderAvatar(mAvatarPath);
     }
 
