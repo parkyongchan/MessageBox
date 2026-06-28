@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="#152A4A"
+    android:layout_marginBottom="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/tv_group_label"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="1번 (1소대)"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✓ 확정"
+            android:textColor="#00E5D1"
+            android:textSize="12sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_member_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="구성원 3명"
+        android:textColor="#95B0D4"
+        android:textSize="12sp"
+        android:layout_marginTop="4dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+        <Button
+            android:id="@+id/btn_resend"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="36dp"
+            android:text="재전송"
+            android:textSize="12sp"
+            android:textColor="#0A1628"
+            android:textAllCaps="false"
+            android:backgroundTint="#00E5D1"
+            android:layout_marginEnd="6dp"/>
+        <Button
+            android:id="@+id/btn_edit_group"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="36dp"
+            android:text="수정"
+            android:textSize="12sp"
+            android:textColor="#95B0D4"
+            android:textAllCaps="false"
+            android:backgroundTint="#1E3A5F"
+            android:layout_marginEnd="6dp"/>
+        <Button
+            android:id="@+id/btn_delete_group"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="36dp"
+            android:text="삭제"
+            android:textSize="12sp"
+            android:textColor="#E24B4A"
+            android:textAllCaps="false"
+            android:backgroundTint="#1E3A5F"/>
+    </LinearLayout>
+</LinearLayout>

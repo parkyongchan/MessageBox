@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#0D1F3C">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="그룹 관리"
+            android:textColor="#00E5D1"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+        <Button
+            android:id="@+id/btn_add_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+ 추가"
+            android:textColor="#0A1628"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="14dp"
+            android:backgroundTint="#00E5D1"/>
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_groups"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:background="#0A1628"/>
+
+    <TextView
+        android:id="@+id/tv_empty_groups"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="등록된 그룹이 없습니다.\n'+ 추가'로 그룹을 만드세요."
+        android:textColor="#5A7299"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:padding="24dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btn_close"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="닫기"
+        android:textColor="#95B0D4"
+        android:textAllCaps="false"
+        android:background="@android:color/transparent"
+        android:layout_marginTop="12dp"/>
+</LinearLayout>

@@ -31,6 +31,8 @@ import com.ah.acr.messagebox.data.DeviceInfo;
 import com.ah.acr.messagebox.database.AddressEntity;
 import com.ah.acr.messagebox.database.AddressViewModel;
 import com.ah.acr.messagebox.databinding.FragmentAddressBookBinding;
+import com.ah.acr.messagebox.group.GroupRegisterDialog;
+import com.ah.acr.messagebox.group.GroupListDialog;
 import com.ah.acr.messagebox.packet.security.SharedUtil;
 import com.ah.acr.messagebox.util.AvatarHelper;
 import com.ah.acr.messagebox.util.AvatarPickerHelper;
@@ -90,6 +92,7 @@ public class AddrssBookFragment extends Fragment {
         binding.buttonEdit.setOnClickListener(view -> showMeAddressDialog());
 
         binding.btnAckSettings.setOnClickListener(view -> showAckSettingsDialog());
+        binding.buttonGroup.setOnClickListener(view -> new GroupListDialog(requireActivity()).show());
 
         binding.frameMyAvatar.setOnClickListener(view -> {
             if (myImei == null || myImei.isEmpty()) {

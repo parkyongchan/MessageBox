@@ -1,5 +1,7 @@
 package com.ah.acr.messagebox;
 
+import com.ah.acr.messagebox.group.GroupStore;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -3341,6 +3343,18 @@ public class MainActivity extends AppCompatActivity {
                         // 서버가 보낸 내 대용량 도착확인 → 보냈던 원문을 내 말풍선으로 표시 (모델 B)
                         try {
                             int ackId = Integer.parseInt(title.substring(3).trim());
+                            // [그룹 등록 확정] 같은 msgId의 PENDING 그룹이 있으면 확정 처리
+                            try {
+                                GroupStore.Group _g = new GroupStore(MainActivity.this).confirmByMsgId(ackId);
+                                if (_g != null) {
+                                    android.util.Log.d("GROUP-REG", "그룹 확정: " + _g.getDisplayLabel() + " (msgId=" + ackId + ")");
+                                    runOnUiThread(() -> android.widget.Toast.makeText(
+                                            MainActivity.this, _g.shortNo() + "번 그룹이 확정되었습니다.",
+                                            android.widget.Toast.LENGTH_SHORT).show());
+                                }
+                            } catch (Exception _ge) {
+                                android.util.Log.w("GROUP-REG", "그룹 확정 처리 중 오류: " + _ge.getMessage());
+                            }
                             String sentText;
                             String sentTo;
                             synchronized (mSentLargeMsg) {
