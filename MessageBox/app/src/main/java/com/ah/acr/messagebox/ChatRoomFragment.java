@@ -352,7 +352,64 @@ public class ChatRoomFragment extends Fragment {
                 binding.btnChatEditGroup.setVisibility(View.GONE);
             }
         } catch (Exception _ge) { /* ignore */ }
-        updateHeaderAvatar(mAvatarPath);
+
+        // [그룹] 헤더 아바타: 그룹이면 구성원 겹침 + 수정 끔, 아니면 단일 아바타 + 수정 가능
+        com.ah.acr.messagebox.group.GroupStore.Group _ga = null;
+        try {
+            _ga = new com.ah.acr.messagebox.group.GroupStore(requireContext()).find(mCodeNum);
+        } catch (Exception _e) { /* ignore */ }
+        cleanupGroupHeaderAvatars();
+        if (_ga != null && _ga.members != null && !_ga.members.isEmpty()) {
+            // 그룹: 구성원 아바타 겹침, 아바타 수정 비활성화
+            binding.imgChatRoomAvatar.setVisibility(View.GONE);
+            binding.textChatRoomAvatar.setVisibility(View.GONE);
+            drawGroupHeaderAvatars(_ga.members);
+            binding.frameChatRoomAvatar.setOnClickListener(null);
+            if (binding.imgEditAvatarBadge != null) binding.imgEditAvatarBadge.setVisibility(View.GONE);
+        } else {
+            binding.imgChatRoomAvatar.setVisibility(View.VISIBLE);
+            if (binding.imgEditAvatarBadge != null) binding.imgEditAvatarBadge.setVisibility(View.VISIBLE);
+            updateHeaderAvatar(mAvatarPath);
+        }
+    }
+
+    /** 헤더 FrameLayout에 구성원 아바타 겹침 (목록과 통일, 38dp, 13dp씩). */
+    private void drawGroupHeaderAvatars(java.util.List<String> members) {
+        try {
+            android.widget.FrameLayout fl = binding.frameChatRoomAvatar;
+            android.content.Context ctx = requireContext();
+            float d = ctx.getResources().getDisplayMetrics().density;
+            int sz = (int) (24 * d);
+            int step = (int) (13 * d);
+            int n = Math.min(members.size(), 3);
+            for (int i = 0; i < n; i++) {
+                android.widget.ImageView iv = new android.widget.ImageView(ctx);
+                iv.setTag("groupHeaderAvatar");
+                iv.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                android.widget.FrameLayout.LayoutParams lp =
+                        new android.widget.FrameLayout.LayoutParams(sz, sz);
+                lp.leftMargin = i * step;
+                lp.gravity = android.view.Gravity.CENTER_VERTICAL;
+                iv.setLayoutParams(lp);
+                try {
+                    android.graphics.Bitmap b = com.ah.acr.messagebox.util.AvatarHelper.loadOrCreate(
+                            ctx, members.get(i), null, null, 24);
+                    iv.setImageBitmap(b);
+                } catch (Exception e) { /* ignore */ }
+                fl.addView(iv);
+            }
+        } catch (Exception e) { /* ignore */ }
+    }
+
+    /** 재활용/재호출 대비: 이전 헤더 겹침 아바타 제거. */
+    private void cleanupGroupHeaderAvatars() {
+        try {
+            android.widget.FrameLayout fl = binding.frameChatRoomAvatar;
+            for (int i = fl.getChildCount() - 1; i >= 0; i--) {
+                android.view.View ch = fl.getChildAt(i);
+                if ("groupHeaderAvatar".equals(ch.getTag())) fl.removeViewAt(i);
+            }
+        } catch (Exception e) { /* ignore */ }
     }
 
 

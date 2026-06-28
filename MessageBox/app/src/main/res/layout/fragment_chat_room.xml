@@ -72,6 +72,7 @@
                 android:background="#0D1F3C" />
 
             <ImageView
+                android:id="@+id/img_edit_avatar_badge"
                 android:layout_width="11dp"
                 android:layout_height="11dp"
                 android:layout_gravity="bottom|end"
