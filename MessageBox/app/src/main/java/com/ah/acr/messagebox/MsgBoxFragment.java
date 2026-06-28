@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.os.Bundle;
+import com.ah.acr.messagebox.group.GroupStore;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -195,6 +196,19 @@ public class MsgBoxFragment extends Fragment {
         bundle.putString("code_num", msg.getCodeNum());
 
         String contactName = msg.getCodeNum();
+        try {
+            com.ah.acr.messagebox.group.GroupStore.Group _g =
+                    new com.ah.acr.messagebox.group.GroupStore(requireContext()).find(msg.getCodeNum());
+            if (_g != null) {
+                String _label = (_g.name != null && !_g.name.trim().isEmpty())
+                        ? _g.name.trim() : (_g.shortNo() + "번 그룹");
+                bundle.putString("contact_name", _label);
+                bundle.putString("is_group", "1");
+                NavHostFragment.findNavController(MsgBoxFragment.this)
+                        .navigate(R.id.action_msgbox_to_chat_room, bundle);
+                return;
+            }
+        } catch (Exception _ge) { /* ignore */ }
         for (MsgWithAddress item : mAdapter.getCurrentList()) {
             if (item.getMsg().getCodeNum() != null &&
                     item.getMsg().getCodeNum().equals(msg.getCodeNum())) {

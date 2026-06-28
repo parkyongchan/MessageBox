@@ -27,6 +27,8 @@ import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgViewModel;
 import com.ah.acr.messagebox.databinding.FragmentMsgOutBoxSubNewBinding;
 import com.ah.acr.messagebox.search.SearchDialogFragment;
+import com.ah.acr.messagebox.group.GroupStore;
+import java.util.List;
 import com.ah.acr.messagebox.viewmodel.KeyViewModel;
 import com.ah.acr.messagebox.util.ByteLengthFilter;
 
@@ -43,6 +45,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
     private AddressViewModel addressViewModel;
 
     private String mCodeNum;
+    private String mSelectedGroupNo = null;   // 그룹 발송 시 그룹번호(10자리), null이면 일반
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -129,6 +132,36 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
 
         binding.buttonMsgSave.setOnClickListener(v->{
+            // [그룹 발송] 그룹 선택됐으면 codeNum=그룹번호(10자리), IMEI 변환 스킵
+            if (mSelectedGroupNo != null) {
+                String gCode = mSelectedGroupNo;
+                String gTitle = binding.textTitle.getText().toString().trim();
+                String gBody = binding.textMessage.getText().toString().trim();
+                if (gBody.isEmpty()) {
+                    android.widget.Toast.makeText(getContext(), "메시지를 입력하세요.",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                MsgEntity gMsg = new MsgEntity(
+                        0, true, gCode, gTitle, gBody,
+                        new Date(),
+                        new Date(System.currentTimeMillis()),
+                        new Date(System.currentTimeMillis()),
+                        false, false, false
+                );
+                msgViewModel.insert(gMsg, success -> {
+                    if (success) {
+                        requireActivity().runOnUiThread(() -> {
+                            android.widget.Toast.makeText(getContext(),
+                                    "그룹 메시지 전송 대기. 'Send pending'으로 전송하세요.",
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                            navigateBack();
+                        });
+                    }
+                    return null;
+                });
+                return;
+            }
 
 //            String codeNum;
 //            if (mCodeNum == null) codeNum = binding.textReceiver.getText().toString().trim();
@@ -204,8 +237,38 @@ public class MsgOutBoxSubNewFragment extends Fragment {
 
 
         binding.buttonSearch.setOnClickListener(v-> showSearchDialog());
+        binding.buttonPickGroup.setOnClickListener(v-> showGroupPicker());
     }
 
+
+    /** 확정된 그룹만 골라 받는이로 설정 (codeNum=그룹번호 10자리) */
+    private void showGroupPicker() {
+        List<GroupStore.Group> groups = new GroupStore(requireContext()).loadConfirmed();
+        if (groups.isEmpty()) {
+            android.widget.Toast.makeText(getContext(),
+                    "확정된 그룹이 없습니다. 먼저 그룹을 등록·확정하세요.",
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        String[] labels = new String[groups.size()];
+        for (int i = 0; i < groups.size(); i++) labels[i] = groups.get(i).getDisplayLabel();
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("그룹 선택")
+                .setItems(labels, (d, which) -> {
+                    GroupStore.Group g = groups.get(which);
+                    mSelectedGroupNo = g.groupNo;
+                    binding.textReceiver.setText("[그룹] " + g.getDisplayLabel());
+                    binding.textReceiver.setEnabled(false);
+                })
+                .setNegativeButton("취소", null)
+                .setNeutralButton("그룹 해제", (d, w) -> {
+                    mSelectedGroupNo = null;
+                    binding.textReceiver.setText("");
+                    binding.textReceiver.setEnabled(true);
+                })
+                .show();
+    }
 
     private void showSearchDialog() {
         SearchDialogFragment searchDialog = new SearchDialogFragment();
