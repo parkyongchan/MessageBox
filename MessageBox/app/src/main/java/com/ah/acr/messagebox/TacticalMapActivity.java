@@ -685,6 +685,30 @@ public class TacticalMapActivity extends AppCompatActivity {
         rebuildAllMarkerIcons();
         updateLegend();
         mMapView.invalidate();
+        fitToMarkers();
+    }
+
+    /** 저장된 마커가 있으면 그 마커들이 보이게 지도 맞춤 (없으면 서울 기본 유지) */
+    private void fitToMarkers() {
+        if (mTacMarkers == null || mTacMarkers.isEmpty()) return;
+        final java.util.List<GeoPoint> pts = new java.util.ArrayList<>();
+        for (TacMarker tm : mTacMarkers) {
+            if (tm.marker != null && tm.marker.getPosition() != null)
+                pts.add(tm.marker.getPosition());
+        }
+        if (pts.isEmpty()) return;
+        mMapView.post(() -> {
+            try {
+                if (pts.size() == 1) {
+                    mMapView.getController().setZoom(15.0);
+                    mMapView.getController().animateTo(pts.get(0));
+                } else {
+                    org.osmdroid.util.BoundingBox box =
+                            org.osmdroid.util.BoundingBox.fromGeoPoints(pts);
+                    mMapView.zoomToBoundingBox(box, true, 100);
+                }
+            } catch (Exception ignore) {}
+        });
     }
 
     private void showAffilChangeDialog(TacMarker tm) {

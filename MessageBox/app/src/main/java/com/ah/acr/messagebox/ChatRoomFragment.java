@@ -217,6 +217,27 @@ public class ChatRoomFragment extends Fragment {
         return binding.getRoot();
     }
 
+    /** 미확정 그룹 채팅방이면 입력 비활성화 + 안내 (확정돼야 발송 가능) */
+    private void checkGroupConfirmedState() {
+        try {
+            if (mCodeNum == null || mCodeNum.isEmpty()) return;
+            com.ah.acr.messagebox.group.GroupStore.Group g =
+                    new com.ah.acr.messagebox.group.GroupStore(requireContext()).find(mCodeNum);
+            if (g != null && !g.confirmed) {
+                // 미확정 그룹 → 입력 잠금
+                if (binding.editChatMsg != null) {
+                    binding.editChatMsg.setEnabled(false);
+                    binding.editChatMsg.setHint("⏳ 그룹 확정 후 사용 가능합니다");
+                }
+                if (binding.editChatTitle != null) binding.editChatTitle.setEnabled(false);
+                if (binding.btnChatSend != null) {
+                    binding.btnChatSend.setEnabled(false);
+                    binding.btnChatSend.setAlpha(0.4f);
+                }
+            }
+        } catch (Exception e) { /* ignore */ }
+    }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -227,6 +248,8 @@ public class ChatRoomFragment extends Fragment {
         if (getArguments() != null) {
             mCodeNum     = getArguments().getString("code_num", "");
             mContactName = getArguments().getString("contact_name", mCodeNum);
+            // [그룹] 미확정 그룹 방이면 입력 비활성화 + 안내
+            checkGroupConfirmedState();
         }
 
         setupHeader();
