@@ -18,6 +18,7 @@ import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.database.MsgEntity;
 import com.ah.acr.messagebox.database.MsgWithAddress;
 import com.ah.acr.messagebox.util.AvatarHelper;
+import com.ah.acr.messagebox.group.GroupStore;
 
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -148,23 +149,37 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
             textName.setText(displayName);
 
             // ⭐ 아바타 생성 (AvatarHelper 사용)
+            // [그룹] codeNum이 그룹이면 구성원 아바타 겹침, 아니면 단일 아바타
+            com.ah.acr.messagebox.group.GroupStore.Group _grp = null;
             try {
-                Bitmap avatarBitmap = AvatarHelper.loadOrCreate(
-                        itemView.getContext(),
-                        imei,
-                        nickname,
-                        avatarPath,
-                        AVATAR_SIZE_DP
-                );
-                imgAvatar.setImageBitmap(avatarBitmap);
+                _grp = new com.ah.acr.messagebox.group.GroupStore(itemView.getContext()).find(imei);
+            } catch (Exception _ge) { /* ignore */ }
+
+            cleanupGroupAvatars(layoutAvatar);
+
+            if (_grp != null && _grp.members != null && !_grp.members.isEmpty()) {
+                imgAvatar.setVisibility(View.GONE);
                 textAvatar.setVisibility(View.GONE);
-            } catch (Exception e) {
-                // Fallback: TextView with initial
-                imgAvatar.setImageDrawable(null);
-                textAvatar.setVisibility(View.VISIBLE);
-                textAvatar.setText(
-                        AvatarHelper.getInitial(imei, nickname)
-                );
+                drawGroupAvatars(layoutAvatar, _grp.members);
+            } else {
+                imgAvatar.setVisibility(View.VISIBLE);
+                try {
+                    Bitmap avatarBitmap = AvatarHelper.loadOrCreate(
+                            itemView.getContext(),
+                            imei,
+                            nickname,
+                            avatarPath,
+                            AVATAR_SIZE_DP
+                    );
+                    imgAvatar.setImageBitmap(avatarBitmap);
+                    textAvatar.setVisibility(View.GONE);
+                } catch (Exception e) {
+                    imgAvatar.setImageDrawable(null);
+                    textAvatar.setVisibility(View.VISIBLE);
+                    textAvatar.setText(
+                            AvatarHelper.getInitial(imei, nickname)
+                    );
+                }
             }
 
             // 마지막 메시지
@@ -212,6 +227,37 @@ public class MsgBoxAdapter extends ListAdapter<MsgWithAddress, MsgBoxAdapter.Msg
                 if (listener != null) listener.onLongClick();
                 return true;
             });
+        }
+
+        /** 그룹 방: 구성원 아바타를 FrameLayout에 겹쳐 그린다 (최대 3개, 28dp, 16dp씩 겹침). */
+        private void drawGroupAvatars(FrameLayout fl, java.util.List<String> members) {
+            android.content.Context ctx = fl.getContext();
+            float d = ctx.getResources().getDisplayMetrics().density;
+            int sz = (int) (28 * d);
+            int step = (int) (16 * d);
+            int n = Math.min(members.size(), 3);
+            for (int i = 0; i < n; i++) {
+                ImageView iv = new ImageView(ctx);
+                iv.setTag("groupAvatar");
+                iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(sz, sz);
+                lp.leftMargin = i * step;
+                lp.gravity = android.view.Gravity.CENTER_VERTICAL;
+                iv.setLayoutParams(lp);
+                try {
+                    Bitmap b = AvatarHelper.loadOrCreate(ctx, members.get(i), null, null, 28);
+                    iv.setImageBitmap(b);
+                } catch (Exception e) { /* ignore */ }
+                fl.addView(iv);
+            }
+        }
+
+        /** RecyclerView 재활용 대비: 이전에 추가한 그룹 아바타(태그) 제거. */
+        private void cleanupGroupAvatars(FrameLayout fl) {
+            for (int i = fl.getChildCount() - 1; i >= 0; i--) {
+                android.view.View ch = fl.getChildAt(i);
+                if ("groupAvatar".equals(ch.getTag())) fl.removeViewAt(i);
+            }
         }
     }
 }
