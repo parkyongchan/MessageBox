@@ -52,6 +52,9 @@ public class GroupListAdapter extends RecyclerView.Adapter<GroupListAdapter.VH> 
 
         h.tvLabel.setText(g.getDisplayLabel());
         h.tvCount.setText((g.members == null ? 0 : g.members.size()) + " members");
+        StringBuilder _mb = new StringBuilder();
+        if (g.members != null) for (String _im : g.members) _mb.append("• ").append(_im).append("\n");
+        h.tvMemberList.setText(_mb.toString().trim());
 
         if (g.confirmed) {
             h.tvStatus.setText("✓ Confirmed");
@@ -72,13 +75,14 @@ public class GroupListAdapter extends RecyclerView.Adapter<GroupListAdapter.VH> 
     }
 
     static class VH extends RecyclerView.ViewHolder {
-        TextView tvLabel, tvStatus, tvCount;
+        TextView tvLabel, tvStatus, tvCount, tvMemberList;
         Button btnResend, btnEdit, btnDelete;
         VH(@NonNull View v) {
             super(v);
             tvLabel = v.findViewById(R.id.tv_group_label);
             tvStatus = v.findViewById(R.id.tv_status);
             tvCount = v.findViewById(R.id.tv_member_count);
+            tvMemberList = v.findViewById(R.id.tv_member_list);
             btnResend = v.findViewById(R.id.btn_resend);
             btnEdit = v.findViewById(R.id.btn_edit_group);
             btnDelete = v.findViewById(R.id.btn_delete_group);

@@ -747,7 +747,8 @@ public class ChatRoomFragment extends Fragment {
         boolean ackShortOn = android.preference.PreferenceManager
                 .getDefaultSharedPreferences(requireContext())
                 .getBoolean("pref_ack_short", false);
-        boolean hide = large || ackShortOn;
+        boolean isGroupRoom = mCodeNum != null && mCodeNum.matches("\\d{10}");
+        boolean hide = large || (ackShortOn && !isGroupRoom);   // 그룹방은 ACK 안 쓰므로 타이틀칸 표시
         binding.editChatTitle.setVisibility(hide ? View.GONE : View.VISIBLE);
     }
 
@@ -1020,7 +1021,8 @@ public class ChatRoomFragment extends Fragment {
                     .getDefaultSharedPreferences(requireContext())
                     .getBoolean("pref_ack_short", false);
             String titleToSave;
-            if (ackShortOn) {
+            boolean isGroupRoom = mCodeNum != null && mCodeNum.matches("\\d{10}");
+            if (ackShortOn && !isGroupRoom) {   // 그룹방(10자리)은 fan-out 위해 ~M: 안 붙임
                 int ackMsgId = ((MainActivity) requireActivity()).nextAckMsgId();
                 titleToSave = "~M:" + ackMsgId;
             } else {

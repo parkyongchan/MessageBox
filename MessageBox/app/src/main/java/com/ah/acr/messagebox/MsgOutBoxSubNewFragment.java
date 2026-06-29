@@ -106,7 +106,24 @@ public class MsgOutBoxSubNewFragment extends Fragment {
             }
         });
 
-        binding.textMessage.setFilters(new InputFilter[]{new ByteLengthFilter(200, StandardCharsets.UTF_8.name())});
+        binding.textMessage.setFilters(new InputFilter[]{new ByteLengthFilter(200, StandardCharsets.UTF_8.name())});
+
+        // [단문/장문] 라디오: 장문 선택 시 200B 제한 해제
+        binding.radioMsgType.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean isLarge = (checkedId == R.id.radio_large);
+            if (isLarge) {
+                binding.textMessage.setFilters(new InputFilter[]{});
+            } else {
+                binding.textMessage.setFilters(new InputFilter[]{new ByteLengthFilter(200, StandardCharsets.UTF_8.name())});
+            }
+            int bytes = binding.textMessage.getText().toString().getBytes(StandardCharsets.UTF_8).length;
+            if (isLarge) {
+                int parts = Math.max(1, (int)Math.ceil(bytes / 200.0));
+                binding.textMsgSize.setText(bytes + " B / SBD " + parts);
+            } else {
+                binding.textMsgSize.setText(bytes + "/200");
+            }
+        });
 
         binding.textTitle.addTextChangedListener(new TextWatcher() {
             @Override
@@ -142,6 +159,17 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                             android.widget.Toast.LENGTH_SHORT).show();
                     return;
                 }
+                // [장문 그룹] 즉시 분할 전송 (DB 저장 없음, 그룹은 ACK 없음)
+                if (binding.radioLarge.isChecked()) {
+                    if (com.ah.acr.messagebox.ble.BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                        android.widget.Toast.makeText(getContext(), getString(R.string.chat_ble_not_connected), android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ((MainActivity) requireActivity()).sendLargeMsg(gCode, gBody);
+                    android.widget.Toast.makeText(getContext(), "대용량 전송 시작", android.widget.Toast.LENGTH_SHORT).show();
+                    navigateToChatRoom(gCode);
+                    return;
+                }
                 MsgEntity gMsg = new MsgEntity(
                         0, true, gCode, gTitle, gBody,
                         new Date(),
@@ -155,7 +183,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                             android.widget.Toast.makeText(getContext(),
                                     "Group message queued. Use 'Send pending' to send.",
                                     android.widget.Toast.LENGTH_SHORT).show();
-                            navigateBack();
+                            navigateToChatRoom(gCode);
                         });
                     }
                     return null;
@@ -193,6 +221,19 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                 String title = binding.textTitle.getText().toString().trim();
                 String bodyMsg = binding.textMessage.getText().toString().trim();
 
+                // [장문 일반] 즉시 분할 전송 (DB 저장 없음)
+                if (binding.radioLarge.isChecked()) {
+                    if (com.ah.acr.messagebox.ble.BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                        Toast.makeText(getContext(), getString(R.string.chat_ble_not_connected), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String largeTo = "SERVER".equals(codeNum) ? "" : codeNum;
+                    ((MainActivity) requireActivity()).sendLargeMsg(largeTo, bodyMsg);
+                    Toast.makeText(getContext(), "대용량 전송 시작", Toast.LENGTH_SHORT).show();
+                    navigateToChatRoom(codeNum);
+                    return;
+                }
+
                 MsgEntity msg = new MsgEntity(
                         0,
                         true,
@@ -206,12 +247,13 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                         false,
                         false
                 );
+                final String chatCodeNum = codeNum;
                 Log.v(TAG, msg.toString());
 
                 msgViewModel.insert(msg, success -> {
                     if (success) {
                         // After insert success
-                        navigateBack();
+                        navigateToChatRoom(chatCodeNum);
                         Log.d("Caller", "Insert success");
                     } else {
                         Log.d("Caller", "Insert failed");
@@ -303,6 +345,18 @@ public class MsgOutBoxSubNewFragment extends Fragment {
         }
     }
 
+
+    private void navigateToChatRoom(String codeNum) {
+        try {
+            android.os.Bundle b = new android.os.Bundle();
+            b.putString("code_num", codeNum);
+            NavController nav = Navigation.findNavController(requireView());
+            nav.navigate(R.id.action_new_to_chat_room, b);
+        } catch (Exception e) {
+            Log.e(TAG, "navigateToChatRoom fail: " + e.getMessage());
+            navigateBack();
+        }
+    }
 
     private void navigateBack() {
         try {

@@ -45,6 +45,10 @@
         android:id="@+id/main_outbox_sub_new_fragment"
         android:name="com.ah.acr.messagebox.MsgOutBoxSubNewFragment"
         android:label="OutBox New"
-        tools:layout="@layout/fragment_msg_out_box_sub_new" />
+        tools:layout="@layout/fragment_msg_out_box_sub_new">
+        <action
+            android:id="@+id/action_new_to_chat_room"
+            app:destination="@id/chat_room_fragment" />
+    </fragment>
 
 </navigation>
