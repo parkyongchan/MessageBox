@@ -51,13 +51,13 @@ public class GroupListAdapter extends RecyclerView.Adapter<GroupListAdapter.VH> 
         GroupStore.Group g = items.get(position);
 
         h.tvLabel.setText(g.getDisplayLabel());
-        h.tvCount.setText("구성원 " + (g.members == null ? 0 : g.members.size()) + "명");
+        h.tvCount.setText((g.members == null ? 0 : g.members.size()) + " members");
 
         if (g.confirmed) {
-            h.tvStatus.setText("✓ 확정");
+            h.tvStatus.setText("✓ Confirmed");
             h.tvStatus.setTextColor(0xFF00E5D1);
         } else {
-            h.tvStatus.setText("⏳ 대기");
+            h.tvStatus.setText("⏳ Pending");
             h.tvStatus.setTextColor(0xFFFFB300);
         }
 

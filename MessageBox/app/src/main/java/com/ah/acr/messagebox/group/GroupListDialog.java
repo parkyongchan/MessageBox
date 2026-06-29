@@ -92,13 +92,13 @@ public class GroupListDialog extends Dialog {
 
     private void confirmDelete(GroupStore.Group g) {
         new AlertDialog.Builder(getContext())
-                .setTitle("그룹 삭제")
+                .setTitle("Delete Group")
                 .setMessage(g.shortNo() + "번 그룹을 삭제할까요?")
-                .setPositiveButton("삭제", (d, w) -> {
+                .setPositiveButton("Delete", (d, w) -> {
                     store.delete(g.groupNo);
                     refresh();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 }

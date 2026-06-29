@@ -38,9 +38,9 @@ public class GroupStore {
         public String getDisplayLabel() {
             String no = shortNo();
             if (name != null && !name.trim().isEmpty()) {
-                return no + "번 (" + name.trim() + ")";
+                return "No." + no + " (" + name.trim() + ")";
             }
-            return no + "번";
+            return "No." + no;
         }
 
         /** 앞자리 0 제거한 짧은 번호 (0000000001 -> 1) */

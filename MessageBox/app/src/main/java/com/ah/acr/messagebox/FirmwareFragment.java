@@ -45,7 +45,8 @@ public class FirmwareFragment extends Fragment {
     private Uri selectedFileUri;
     private byte[] firmwareData;
     private String selectedFileName = "";
-    private static final String PREF_LAST_FW = "pref_last_firmware_file";;
+    private static final String PREF_LAST_FW = "pref_last_firmware_file";
+    private static final String PREF_LAST_FW_DATE = "pref_last_firmware_date";
 
     private int sendPacketSize = 0;
 
@@ -382,7 +383,8 @@ public class FirmwareFragment extends Fragment {
             android.content.SharedPreferences prefs =
                     android.preference.PreferenceManager
                             .getDefaultSharedPreferences(requireContext());
-            prefs.edit().putString(PREF_LAST_FW, fileName).apply();
+            String _fwDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(new java.util.Date());
+            prefs.edit().putString(PREF_LAST_FW, fileName).putString(PREF_LAST_FW_DATE, _fwDate).apply();
         } catch (Exception e) {
             // ignore
         }
@@ -410,6 +412,8 @@ public class FirmwareFragment extends Fragment {
                     android.preference.PreferenceManager
                             .getDefaultSharedPreferences(requireContext());
             last = prefs.getString(PREF_LAST_FW, "-");
+            String _fwDate = prefs.getString(PREF_LAST_FW_DATE, "");
+            if (!_fwDate.isEmpty()) last = last + " (" + _fwDate + ")";
         } catch (Exception ignored) {}
         binding.textLastFirmware.setText("마지막 업로드: " + last);
     }

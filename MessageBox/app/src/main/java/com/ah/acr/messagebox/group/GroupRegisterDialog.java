@@ -84,13 +84,13 @@ public class GroupRegisterDialog extends Dialog {
 
         // 그룹번호 결정 (신규=다음 번호, 수정=기존)
         final String groupNo = (editing != null) ? editing.groupNo : store.nextGroupNo();
-        tvGroupNo.setText(shortNo(groupNo) + "번");
+        tvGroupNo.setText("No." + shortNo(groupNo));
         if (editing != null && editing.name != null) etName.setText(editing.name);
 
         // 연락처 어댑터
         adapter = new GroupContactAdapter();
         adapter.setOnSelectionChanged(count ->
-                tvCount.setText("선택: " + count + "명"));
+                tvCount.setText("Selected: " + count));
         rv.setLayoutManager(new LinearLayoutManager(getContext()));
         rv.setAdapter(adapter);
 
@@ -100,8 +100,14 @@ public class GroupRegisterDialog extends Dialog {
                 .get(AddressViewModel.class);
         addrVm.getAllAddress().observe(activity, list -> {
             List<AddressEntity> contacts = (list != null) ? list : new ArrayList<>();
-            adapter.setItems(contacts);
-            tvEmpty.setVisibility(contacts.isEmpty() ? View.VISIBLE : View.GONE);
+            // SERVER 제외 (그룹은 장비끼리만 묶음 — 서버는 의미 없음)
+            List<AddressEntity> filtered = new ArrayList<>();
+            for (AddressEntity _a : contacts) {
+                if (_a.getNumbers() != null && _a.getNumbers().equals("SERVER")) continue;
+                filtered.add(_a);
+            }
+            adapter.setItems(filtered);
+            tvEmpty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
             // 수정 모드: 기존 구성원 미리 체크
             if (editing != null) adapter.setPreselected(editing.members);
         });
@@ -113,7 +119,7 @@ public class GroupRegisterDialog extends Dialog {
     private void doRegister(String groupNo) {
         List<String> members = adapter.getSelectedImeis();
         if (members.isEmpty()) {
-            toast("구성원을 1명 이상 선택하세요.");
+            toast("Select at least 1 member.");
             return;
         }
 
@@ -121,7 +127,7 @@ public class GroupRegisterDialog extends Dialog {
         String memo = TextUtils.join(",", members);
         // 10K 검증
         if (memo.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 10 * 1024) {
-            toast("구성원이 너무 많습니다 (10K 초과).");
+            toast("Too many members (over 10K).");
             return;
         }
 
@@ -130,7 +136,7 @@ public class GroupRegisterDialog extends Dialog {
         String title = "~M:" + msgId + ":address";
         // 타이틀 20byte 한도 점검
         if (title.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 20) {
-            toast("등록 ID가 너무 큽니다. 잠시 후 다시 시도하세요.");
+            toast("Registration ID too large. Try again later.");
             return;
         }
 
@@ -157,7 +163,7 @@ public class GroupRegisterDialog extends Dialog {
                 store.upsert(g);
 
                 activity.runOnUiThread(() -> {
-                    toast(shortNo(groupNo) + "번 그룹 등록 전송 대기. 'Send pending'으로 전송하세요.");
+                    toast("Group No." + shortNo(groupNo) + " queued. Use 'Send pending' to send.");
                     dismiss();
                 });
             }

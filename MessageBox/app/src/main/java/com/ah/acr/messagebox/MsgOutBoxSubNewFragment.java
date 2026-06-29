@@ -153,7 +153,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                     if (success) {
                         requireActivity().runOnUiThread(() -> {
                             android.widget.Toast.makeText(getContext(),
-                                    "그룹 메시지 전송 대기. 'Send pending'으로 전송하세요.",
+                                    "Group message queued. Use 'Send pending' to send.",
                                     android.widget.Toast.LENGTH_SHORT).show();
                             navigateBack();
                         });
@@ -246,7 +246,7 @@ public class MsgOutBoxSubNewFragment extends Fragment {
         List<GroupStore.Group> groups = new GroupStore(requireContext()).loadConfirmed();
         if (groups.isEmpty()) {
             android.widget.Toast.makeText(getContext(),
-                    "확정된 그룹이 없습니다. 먼저 그룹을 등록·확정하세요.",
+                    "No confirmed groups. Register and confirm a group first.",
                     android.widget.Toast.LENGTH_LONG).show();
             return;
         }
@@ -254,15 +254,15 @@ public class MsgOutBoxSubNewFragment extends Fragment {
         for (int i = 0; i < groups.size(); i++) labels[i] = groups.get(i).getDisplayLabel();
 
         new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("그룹 선택")
+                .setTitle("Select Group")
                 .setItems(labels, (d, which) -> {
                     GroupStore.Group g = groups.get(which);
                     mSelectedGroupNo = g.groupNo;
-                    binding.textReceiver.setText("[그룹] " + g.getDisplayLabel());
+                    binding.textReceiver.setText("[Group] " + g.getDisplayLabel());
                     binding.textReceiver.setEnabled(false);
                 })
-                .setNegativeButton("취소", null)
-                .setNeutralButton("그룹 해제", (d, w) -> {
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Clear Group", (d, w) -> {
                     mSelectedGroupNo = null;
                     binding.textReceiver.setText("");
                     binding.textReceiver.setEnabled(true);

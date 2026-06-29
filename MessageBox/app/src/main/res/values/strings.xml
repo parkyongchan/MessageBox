@@ -886,11 +886,11 @@
 
     <!-- TRACK (Settings - Location tab) -->
     <string name="setting_track_buttons_info">Buttons below send commands only — no map drawing or history saving.</string>
-    <string name="setting_track_header_hint">For full tracking with map and saved history, use the TRACK button at the top.</string>
+    <string name="setting_track_header_hint"></string>
 
     <!-- SOS (Settings - SOS tab) -->
     <string name="sos_buttons_info">Buttons below send commands only — no map drawing or history saving.</string>
-    <string name="sos_header_hint">For SOS with map and saved history, use the SOS button at the top.</string>
+    <string name="sos_header_hint"></string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- ═══════════════════════════════════════════════════════════════ -->

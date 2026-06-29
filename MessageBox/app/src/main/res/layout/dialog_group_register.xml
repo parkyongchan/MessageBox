@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="그룹 등록"
+        android:text="Register Group"
         android:textColor="#00E5D1"
         android:textSize="18sp"
         android:textStyle="bold"
@@ -19,7 +19,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="그룹번호"
+        android:text="Group No."
         android:textColor="#95B0D4"
         android:textSize="12sp"/>
     <TextView
@@ -36,14 +36,14 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="그룹명 (선택)"
+        android:text="Group Name (optional)"
         android:textColor="#95B0D4"
         android:textSize="12sp"/>
     <EditText
         android:id="@+id/et_group_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="예: 1소대"
+        android:hint="e.g. 1st Platoon"
         android:textColorHint="#5A7299"
         android:textColor="#FFFFFF"
         android:textSize="15sp"
@@ -60,7 +60,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="구성원 선택 (연락처)"
+            android:text="Select Members (Contacts)"
             android:textColor="#95B0D4"
             android:textSize="12sp"/>
         <TextView
@@ -83,7 +83,7 @@
         android:id="@+id/tv_empty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="등록된 연락처가 없습니다.\n먼저 연락처를 추가하세요."
+        android:text="No contacts registered.\nAdd a contact first."
         android:textColor="#5A7299"
         android:textSize="13sp"
         android:gravity="center"
@@ -101,7 +101,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="취소"
+            android:text="Cancel"
             android:textColor="#95B0D4"
             android:background="@android:color/transparent"/>
         <Button
@@ -109,7 +109,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="등록 전송"
+            android:text="Send Registration"
             android:textColor="#0A1628"
             android:textStyle="bold"
             android:backgroundTint="#00E5D1"/>

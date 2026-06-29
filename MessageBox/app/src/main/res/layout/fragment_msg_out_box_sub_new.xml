@@ -88,7 +88,7 @@
                     android:id="@+id/button_pick_group"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
-                    android:text="그룹"
+                    android:text="Group"
                     android:textColor="#00E5D1"
                     android:textSize="12sp"
                     android:textStyle="bold"

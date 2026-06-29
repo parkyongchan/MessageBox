@@ -227,7 +227,7 @@ public class ChatRoomFragment extends Fragment {
                 // 미확정 그룹 → 입력 잠금
                 if (binding.editChatMsg != null) {
                     binding.editChatMsg.setEnabled(false);
-                    binding.editChatMsg.setHint("⏳ 그룹 확정 후 사용 가능합니다");
+                    binding.editChatMsg.setHint("⏳ Available after group is confirmed");
                 }
                 if (binding.editChatTitle != null) binding.editChatTitle.setEnabled(false);
                 if (binding.btnChatSend != null) {

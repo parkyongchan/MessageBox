@@ -27,18 +27,18 @@ public class GroupSender {
 
     public static void send(FragmentActivity activity, GroupStore.Group group, Result cb) {
         if (group.members == null || group.members.isEmpty()) {
-            cb.onResult(false, "구성원이 없습니다.");
+            cb.onResult(false, "No members.");
             return;
         }
         String memo = TextUtils.join(",", group.members);
         if (memo.getBytes(StandardCharsets.UTF_8).length > 10 * 1024) {
-            cb.onResult(false, "구성원이 너무 많습니다 (10K 초과).");
+            cb.onResult(false, "Too many members (over 10K).");
             return;
         }
         int msgId = ((MainActivity) activity).nextAckMsgId();
         String title = "~M:" + msgId + ":address";
         if (title.getBytes(StandardCharsets.UTF_8).length > 20) {
-            cb.onResult(false, "등록 ID가 너무 큽니다. 잠시 후 다시 시도하세요.");
+            cb.onResult(false, "Registration ID too large. Try again later.");
             return;
         }
 
@@ -59,9 +59,9 @@ public class GroupSender {
                 group.pendingMsgId = fMsgId;
                 store.upsert(group);
                 activity.runOnUiThread(() -> cb.onResult(true,
-                        group.shortNo() + "번 그룹 전송 대기. 'Send pending'으로 전송하세요."));
+                        "Group No." + group.shortNo() + " queued. Use 'Send pending' to send."));
             } else {
-                activity.runOnUiThread(() -> cb.onResult(false, "전송 저장 실패"));
+                activity.runOnUiThread(() -> cb.onResult(false, "Failed to save for sending."));
             }
             return null;
         });

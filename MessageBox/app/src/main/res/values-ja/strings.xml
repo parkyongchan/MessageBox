@@ -876,11 +876,11 @@
 
     <!-- TRACK (Settings - Location tab) -->
     <string name="setting_track_buttons_info">下のボタンはコマンド送信のみ — 地図表示や履歴の保存は行いません。</string>
-    <string name="setting_track_header_hint">地図表示と履歴保存付きで追跡するには、画面上部の追跡ボタンを使用してください。</string>
+    <string name="setting_track_header_hint"></string>
 
     <!-- SOS (Settings - SOS tab) -->
     <string name="sos_buttons_info">下のボタンはコマンド送信のみ — 地図表示や履歴の保存は行いません。</string>
-    <string name="sos_header_hint">地図表示と履歴保存付きでSOSを開始するには、画面上部のSOSボタンを使用してください。</string>
+    <string name="sos_header_hint"></string>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
