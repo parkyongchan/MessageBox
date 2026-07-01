@@ -136,6 +136,16 @@ public class TytoConnectService extends Service {
         pumpTxQueue();                        // ★ 콜백에서만 다음 dequeue
     }
 
+    /** ★ 재연결 후: 리커넥트로 write 콜백이 유실돼 mIsSending이 갇힌 경우 해제하고 송신 재개.
+     *  큐에 남은 조각(사진/대용량)부터 이어서 전송. */
+    private synchronized void resumeTxAfterReconnect() {
+        if (mIsSending && !mTxQueue.isEmpty()) {
+            Log.v(TAG, "재연결: 멈춘 송신 재개 (남은 큐=" + mTxQueue.size() + ")");
+            mIsSending = false;
+            pumpTxQueue();
+        }
+    }
+
     // 세션 상태 (Phase B-2에서 활용)
     private boolean mIsTracking = false;
     private boolean mIsSos = false;
@@ -253,6 +263,10 @@ public class TytoConnectService extends Service {
                     status -> {
                         Log.v(TAG, "BLE 연결 status: " + status);
                         updateNotification();
+                        // ★ 재연결 시 멈춘 송신 재개 (리커넥트로 onWriteDone 유실 → mIsSending 갇힘 방지)
+                        if ("connected".equals(status)) {
+                            resumeTxAfterReconnect();
+                        }
                     }
             );
 

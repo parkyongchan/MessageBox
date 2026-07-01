@@ -104,6 +104,9 @@ public class MainActivity extends AppCompatActivity {
     private boolean mIsTestMode = false;
 
     private boolean mIsTrackingMode = false;
+    // [대용량 TRACK] 대용량 수신 중 TRACK 일시정지 (위성 송신 경합 방지). 60초 무활동 시 자동 복원.
+    private volatile boolean mTrackPausedForLarge = false;
+    private volatile long mLastLargeActivityAt = 0L;
     private boolean mIsSosMode = false;
 
     private Handler mSyncHandler;
@@ -1630,6 +1633,35 @@ public class MainActivity extends AppCompatActivity {
     //    프레임: [0x07][addr=빈(서버행)][title="~R:msgId:seq"][memo=빈] + SENDING + 모뎀에코
     //    상한/쿨다운은 호출 전(enqueueGapFillRequests)에서 거른다. 여기선 순수 송신.
     // ============================================================
+    // [대용량 TRACK] 송신 조각마다 호출 — 활동 시각만 갱신(장시간 송신 중 60초 조기복원 방지).
+    private void touchLargeActivity() {
+        mLastLargeActivityAt = System.currentTimeMillis();
+    }
+    // [대용량 TRACK] 대용량 조각 수신 시 호출. 첫 조각이면 TRACK OFF(LOCATION=3), 활동 시각 갱신.
+    private void onLargeActivity() {
+        mLastLargeActivityAt = System.currentTimeMillis();
+        if (!mTrackPausedForLarge && mIsTrackingMode) {
+            BLE.INSTANCE.getWriteQueue().offer("LOCATION=3");   // Tracking Stop
+            mTrackPausedForLarge = true;
+            android.util.Log.d("TRACK-PAUSE", "대용량 수신 시작 → TRACK OFF (LOCATION=3)");
+            mSyncHandler.postDelayed(mTrackRestoreCheck, 10000);   // 10초마다 복원 체크
+        }
+    }
+
+    // [대용량 TRACK] 60초간 대용량 조각 없으면 TRACK 복원(LOCATION=2). 완성/실패 무관하게 안전 복원.
+    private final Runnable mTrackRestoreCheck = new Runnable() {
+        @Override public void run() {
+            if (mTrackPausedForLarge
+                    && System.currentTimeMillis() - mLastLargeActivityAt > 60000) {
+                BLE.INSTANCE.getWriteQueue().offer("LOCATION=2");   // Tracking Start
+                mTrackPausedForLarge = false;
+                android.util.Log.d("TRACK-PAUSE", "대용량 60초 무활동 → TRACK 복원 (LOCATION=2)");
+            }
+            if (mTrackPausedForLarge) {
+                mSyncHandler.postDelayed(this, 10000);
+            }
+        }
+    };
     private void sendGapFillRequest(int msgId, int seq) {
         try {
             String reqTitle = "~R:" + msgId + ":" + seq;
@@ -2364,6 +2396,7 @@ public class MainActivity extends AppCompatActivity {
                 });
 
                 mLargeSendingCount++;   // [STALE] 송신 시작
+                runOnUiThread(this::onLargeActivity);   // [대용량 TRACK] 송신 시작 → TRACK OFF
                 android.util.Log.d("LARGE-MSG", "TX large start msgId=" + msgId
                         + " total=" + total
                         + " bytes=" + fullText.getBytes(StandardCharsets.UTF_8).length);
@@ -2421,6 +2454,7 @@ public class MainActivity extends AppCompatActivity {
                     String sms = String.format("SENDING=%d,%s",
                             sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
 
+                    touchLargeActivity();   // [대용량 TRACK] 조각 송신 → 활동 갱신(조기복원 방지)
                     boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
                     if (!ok) {
                         Log.e("LARGE-MSG", "chunk modem reject msgId=" + msgId
@@ -2568,6 +2602,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 mLargeSendingCount++;
+                runOnUiThread(this::onLargeActivity);   // [대용량 TRACK] 파일 송신 시작 → TRACK OFF
                 android.util.Log.d("FILE-MSG", "TX file start msgId=" + msgId + " type=" + type
                         + " total=" + total + " bytes=" + data.length + " name=" + safeName
                         + " crc=" + fullCrc);
@@ -2608,6 +2643,7 @@ public class MainActivity extends AppCompatActivity {
                     int sendId = mLargeSendIdSeq.updateAndGet(p -> p >= 999 ? 800 : p + 1);
                     String sms = String.format("SENDING=%d,%s", sendId, Base64.encodeToString(frame, Base64.NO_WRAP));
 
+                    touchLargeActivity();   // [대용량 TRACK] 파일 조각 송신 → 활동 갱신(조기복원 방지)
                     boolean ok = sendChunkAwaitEcho(sms, sendId, msgId, seq);
                     if (!ok) {
                         // [fileRetry] 일시적 감도 불량 극복: 실패 조각 5초 간격 3회 재시도 후 계속.
@@ -2879,6 +2915,7 @@ public class MainActivity extends AppCompatActivity {
 
             // 조각 쌓기
             mLargeFileBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, fileBody);
+            onLargeActivity();   // [대용량 TRACK] 파일/사진 조각 수신 → TRACK 일시정지
             mLargeFileTotal.put(msgId, total);
             mLargeFileLastAt.put(msgId, System.currentTimeMillis());
             mLargeFileSender.put(msgId, codeNum);
@@ -3277,6 +3314,7 @@ public class MainActivity extends AppCompatActivity {
                                     if (newCrc != -1) mLargeMsgCrc.put(msgId, newCrc);
                                 }
                                 mLargeMsgBuf.computeIfAbsent(msgId, k -> new java.util.TreeMap<>()).put(seq, message);
+                                onLargeActivity();   // [대용량 TRACK] 조각 수신 → TRACK 일시정지
                                 mLargeMsgTotal.put(msgId, total);
                                 mLargeMsgLastAt.put(msgId, System.currentTimeMillis());   // [gap-fill] 마지막 조각 시각
                                 mLargeMsgSender.put(msgId, codeNum);
