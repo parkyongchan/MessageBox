@@ -1,213 +1,218 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
+    android:background="#FF0A1628">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
     android:background="#FF0A1628"
-    android:fitsSystemWindows="false">
+    android:padding="20dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:gravity="center_horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+        <ImageView
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:src="@drawable/ill_splash_logo"
+            android:layout_marginBottom="10dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_title"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:letterSpacing="0.05" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_subtitle"
+            android:textSize="12sp"
+            android:textColor="#FF95B0D4"
+            android:paddingTop="4dp" />
+    </LinearLayout>
 
-        <!-- ═══════════════ Title ═══════════════ -->
-        <LinearLayout
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_input_card"
+        android:padding="11dp"
+        android:layout_marginBottom="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_imei_label"
+            android:textSize="10sp"
+            android:textColor="#FF95B0D4"
+            android:letterSpacing="0.15"
+            android:textAllCaps="true" />
+        <TextView
+            android:id="@+id/text_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#FF00E5D1"
+            android:fontFamily="monospace"
+            android:paddingTop="3dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_input_card"
+        android:padding="11dp"
+        android:layout_marginBottom="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/language_label"
+            android:textSize="10sp"
+            android:textColor="#FF95B0D4"
+            android:letterSpacing="0.15"
+            android:textAllCaps="true"
+            android:layout_marginBottom="6dp" />
+        <RadioGroup
+            android:id="@+id/group_language"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:paddingTop="24dp"
-            android:paddingBottom="32dp">
-
-            <TextView
+            android:orientation="horizontal">
+            <RadioButton
+                android:id="@+id/radio_en"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/ble_login_title"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:letterSpacing="0.05" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/ble_login_subtitle"
-                android:textSize="13sp"
-                android:textColor="#FF95B0D4"
-                android:paddingTop="8dp" />
-        </LinearLayout>
-
-
-        <!-- ═══════════════ IMEI Display ═══════════════ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FF0F2440"
-            android:padding="16dp"
-            android:layout_marginBottom="24dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/ble_login_imei_label"
-                android:textSize="11sp"
-                android:textColor="#FF95B0D4"
-                android:letterSpacing="0.15"
-                android:textAllCaps="true" />
-
-            <TextView
-                android:id="@+id/text_id"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="-"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#FF00E5D1"
-                android:fontFamily="monospace"
-                android:paddingTop="4dp" />
-        </LinearLayout>
-
-
-        <!-- ═══════════════ Language Selection ═══════════════ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FF0F2440"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/language_label"
-                android:textSize="11sp"
-                android:textColor="#FF95B0D4"
-                android:letterSpacing="0.15"
-                android:textAllCaps="true"
-                android:layout_marginBottom="8dp" />
-
-            <RadioGroup
-                android:id="@+id/group_language"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <RadioButton
-                    android:id="@+id/radio_en"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="English"
-                    android:textColor="#FFFFFFFF"
-                    android:buttonTint="#FF00E5D1"
-                    android:layout_marginEnd="24dp" />
-
-                <RadioButton
-                    android:id="@+id/radio_ja"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="日本語"
-                    android:textColor="#FFFFFFFF"
-                    android:buttonTint="#FF00E5D1" />
-            </RadioGroup>
-        </LinearLayout>
-
-
-        <!-- ═══════════════ Password Input ═══════════════ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/ble_login_password_label"
-                android:textSize="11sp"
-                android:textColor="#FF95B0D4"
-                android:letterSpacing="0.15"
-                android:textAllCaps="true"
-                android:paddingBottom="8dp" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:hintEnabled="false"
-                app:boxStrokeColor="#FF1E3A5F"
-                app:boxBackgroundColor="#FF0F2440">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/text_pw"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberPassword"
-                    android:hint="@string/ble_login_password_hint"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#FF95B0D4"
-                    android:fontFamily="monospace"
-                    android:textSize="16sp"
-                    android:maxLength="9" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <CheckBox
-                android:id="@+id/checkbox_remember"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/ble_login_remember_password"
+                android:text="English"
                 android:textColor="#FFFFFFFF"
                 android:buttonTint="#FF00E5D1"
-                android:paddingStart="4dp"
-                android:layout_marginTop="8dp" />
-        </LinearLayout>
+                android:layout_marginEnd="24dp" />
+            <RadioButton
+                android:id="@+id/radio_ja"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="日本語"
+                android:textColor="#FFFFFFFF"
+                android:buttonTint="#FF00E5D1" />
+        </RadioGroup>
+    </LinearLayout>
 
-
-        <!-- ═══════════════ Connect Button ═══════════════ -->
-        <LinearLayout
-            android:id="@+id/button_login"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_password_label"
+            android:textSize="10sp"
+            android:textColor="#FF95B0D4"
+            android:letterSpacing="0.15"
+            android:textAllCaps="true"
+            android:paddingBottom="6dp" />
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="#FF00E5D1"
-            android:padding="20dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:layout_marginTop="8dp">
-
-            <TextView
-                android:id="@+id/text_login_label"
-                android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            app:hintEnabled="false"
+            app:boxStrokeColor="#FF1E3A5F"
+            app:boxBackgroundColor="#FF0F2440">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/text_pw"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/ble_login_connect_button"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#FF0A1628"
-                android:letterSpacing="0.05" />
-
-            <TextView
-                android:id="@+id/text_status_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/ble_login_status_hint"
-                android:textSize="11sp"
-                android:textColor="#FF0A1628"
-                android:alpha="0.8"
-                android:paddingTop="4dp" />
-        </LinearLayout>
-
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:minHeight="24dp" />
-
+                android:inputType="numberPassword"
+                android:hint="@string/ble_login_password_hint"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#FF95B0D4"
+                android:fontFamily="monospace"
+                android:textSize="16sp"
+                android:maxLength="9" />
+        </com.google.android.material.textfield.TextInputLayout>
+        <CheckBox
+            android:id="@+id/checkbox_remember"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_remember_password"
+            android:textColor="#FFFFFFFF"
+            android:buttonTint="#FF00E5D1"
+            android:paddingStart="4dp"
+            android:layout_marginTop="4dp" />
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/button_login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#FF00E5D1"
+        android:padding="16dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="4dp">
+        <TextView
+            android:id="@+id/text_login_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_connect_button"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FF0A1628"
+            android:letterSpacing="0.05" />
+        <TextView
+            android:id="@+id/text_status_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_login_status_hint"
+            android:textSize="11sp"
+            android:textColor="#FF0A1628"
+            android:alpha="0.8"
+            android:paddingTop="3dp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="0dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingTop="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Arion Communication"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#FF95B0D4"
+            android:letterSpacing="0.05" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="sales@arionit.com"
+            android:textSize="11sp"
+            android:textColor="#FF5A7090"
+            android:paddingTop="2dp" />
+    </LinearLayout>
+
+</LinearLayout>
 </ScrollView>
