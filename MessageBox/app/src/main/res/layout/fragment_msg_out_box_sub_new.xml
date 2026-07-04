@@ -111,11 +111,12 @@
 
             </LinearLayout>
 
-            <!-- Title label + byte counter -->
+            <!-- Title label + byte counter (숨김: 단문 ~M: ACK 고정, 타이틀 미사용) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:visibility="gone"
                 android:layout_marginBottom="6dp">
 
                 <TextView
@@ -138,11 +139,12 @@
 
             </LinearLayout>
 
-            <!-- Title input -->
+            <!-- Title input (숨김: 단문 ~M: ACK 고정, 타이틀 미사용) -->
             <EditText
                 android:id="@+id/text_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:visibility="gone"
                 android:background="@drawable/bg_input_card"
                 android:hint="@string/outbox_new_hint_title"
                 android:textColor="#FFFFFF"

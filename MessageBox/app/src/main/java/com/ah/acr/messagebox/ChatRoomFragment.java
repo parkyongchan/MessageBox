@@ -748,8 +748,8 @@ public class ChatRoomFragment extends Fragment {
                 .getDefaultSharedPreferences(requireContext())
                 .getBoolean("pref_ack_short", false);
         boolean isGroupRoom = mCodeNum != null && mCodeNum.matches("\\d{10}");
-        boolean hide = large || (ackShortOn && !isGroupRoom);   // 그룹방은 ACK 안 쓰므로 타이틀칸 표시
-        binding.editChatTitle.setVisibility(hide ? View.GONE : View.VISIBLE);
+        // [titleFix] 단문/장문 모두 타이틀 항상 숨김 (단문은 ~M: 식별자 고정, 타이틀 미사용)
+        binding.editChatTitle.setVisibility(View.GONE);
     }
 
     private void updateByteCount() {
@@ -915,7 +915,7 @@ public class ChatRoomFragment extends Fragment {
             boolean isAttach = isPhoto || isFile || isVoice;
 
             // Title: only for Short (and Large hides it per spec)
-            binding.editChatTitle.setVisibility(isShort ? View.VISIBLE : View.GONE);
+            binding.editChatTitle.setVisibility(View.GONE);   // [titleFix] 타이틀 항상 숨김 (단문도 ~M: 고정)
             // Message box vs Upload area
             binding.editChatMsg.setVisibility(isAttach ? View.GONE : View.VISIBLE);
             binding.uploadArea.setVisibility(isAttach ? View.VISIBLE : View.GONE);
@@ -923,6 +923,9 @@ public class ChatRoomFragment extends Fragment {
             if (isShort)      binding.textByteCount.setText("0/200 B");
             else if (isLarge) binding.textByteCount.setText("\u2248 0 chunks");
             else              binding.textByteCount.setText("");
+            // [hintFix] 입력 placeholder: 단문 200 bytes / 장문 10KB
+            if (isLarge)      binding.editChatMsg.setHint("Enter message (max 10KB)");
+            else if (isShort) binding.editChatMsg.setHint("Enter message (max 200 bytes)");
 
             // reset attach when leaving attach mode
             if (!isAttach) {
@@ -1016,10 +1019,8 @@ public class ChatRoomFragment extends Fragment {
                 return;
             }
 
-            // ⭐ 단문 ACK 설정 확인: ON이면 제목=식별자(~M:msgId), 사용자 제목 무시 (대용량처럼)
-            boolean ackShortOn = android.preference.PreferenceManager
-                    .getDefaultSharedPreferences(requireContext())
-                    .getBoolean("pref_ack_short", false);
+            // [ackFix] 단문 ACK 항상 고정 ON (타이틀 미사용, ~M: 식별자 고정)
+            boolean ackShortOn = true;
             String titleToSave;
             boolean isGroupRoom = mCodeNum != null && mCodeNum.matches("\\d{10}");
             if (ackShortOn && !isGroupRoom) {   // 그룹방(10자리)은 fan-out 위해 ~M: 안 붙임

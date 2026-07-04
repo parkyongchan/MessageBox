@@ -170,8 +170,9 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                     navigateToChatRoom(gCode);
                     return;
                 }
+                // [titleFix] 그룹 단문은 타이틀 미사용 (그룹은 fan-out이라 ~M: ACK 없음)
                 MsgEntity gMsg = new MsgEntity(
-                        0, true, gCode, gTitle, gBody,
+                        0, true, gCode, null, gBody,
                         new Date(),
                         new Date(System.currentTimeMillis()),
                         new Date(System.currentTimeMillis()),
@@ -234,11 +235,15 @@ public class MsgOutBoxSubNewFragment extends Fragment {
                     return;
                 }
 
+                // [ackFix] 단문 ACK 고정: title=~M:msgId (사용자 타이틀 미사용, 채팅방과 통일)
+                boolean isGroupRoom = codeNum != null && codeNum.matches("\\d{10}");
+                String titleToSave = isGroupRoom ? (title.isEmpty() ? null : title)
+                        : ("~M:" + ((MainActivity) requireActivity()).nextAckMsgId());
                 MsgEntity msg = new MsgEntity(
                         0,
                         true,
                         codeNum,
-                        title,
+                        titleToSave,
                         bodyMsg,
                         new Date(),
                         new Date(System.currentTimeMillis()),
