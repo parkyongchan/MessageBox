@@ -113,8 +113,10 @@ public class MsgOutBoxSubNewFragment extends Fragment {
             boolean isLarge = (checkedId == R.id.radio_large);
             if (isLarge) {
                 binding.textMessage.setFilters(new InputFilter[]{});
+                binding.textMessage.setHint("Enter message (max 10KB)");   // [hintFix] 장문
             } else {
                 binding.textMessage.setFilters(new InputFilter[]{new ByteLengthFilter(200, StandardCharsets.UTF_8.name())});
+                binding.textMessage.setHint("Enter message (max 200 bytes)");   // [hintFix] 단문
             }
             int bytes = binding.textMessage.getText().toString().getBytes(StandardCharsets.UTF_8).length;
             if (isLarge) {
