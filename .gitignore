@@ -4,3 +4,5 @@ build/
 *.pbf 
 *.pdb 
 *.mbtiles 
+
+MessageBox/.idea/
