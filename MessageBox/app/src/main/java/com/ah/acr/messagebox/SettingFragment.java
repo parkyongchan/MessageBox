@@ -119,6 +119,9 @@ public class SettingFragment extends Fragment {
     private boolean mIsDirty = false;
     private boolean mIsInitializing = true;
 
+    // [Group] group receiver selected -> groupNo(10 digits), null if normal
+    private String mSelectedGroupNo = null;
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -255,6 +258,7 @@ public class SettingFragment extends Fragment {
         }
         if (vals.length > 3) {
             String receiver = vals[3];
+            mSelectedGroupNo = null;   // [Group] device replied -> clear group selection
             if (!receiver.equals("0")) {
                 addressViewModel.getAddressByNumbers(receiver).observe(getViewLifecycleOwner(), addressEntity -> {
                     if (addressEntity != null) {
@@ -492,6 +496,27 @@ public class SettingFragment extends Fragment {
 
     private void showReceiverMenu() {
         String[] options = {
+                "Web Server (default)",
+                "From Address Book",
+                "Select Group",
+                "Type Number Manually"
+        };
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Receiver")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: setReceiverWeb();      markDirty(); break;
+                        case 1: showAddressBookPicker();            break;
+                        case 2: showGroupPicker();                 break;
+                        case 3: showManualInputDialog();           break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showReceiverMenu_OLD_UNUSED() {
+        String[] options = {
                 "📧 Web Server (default)",
                 "📇 From Address Book",
                 "⌨ Type Number Manually"
@@ -727,7 +752,44 @@ public class SettingFragment extends Fragment {
     //   SAVE LOGIC
     // ═══════════════════════════════════════════════════════════════
 
+    /** [Group] pick a confirmed group as receiver (groupNo=10 digits, skip IMEI convert) */
+    private void showGroupPicker() {
+        java.util.List<com.ah.acr.messagebox.group.GroupStore.Group> groups =
+                new com.ah.acr.messagebox.group.GroupStore(requireContext()).loadConfirmed();
+        if (groups.isEmpty()) {
+            Toast.makeText(getContext(),
+                    "No confirmed groups. Register and confirm a group first.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        String[] labels = new String[groups.size()];
+        for (int i = 0; i < groups.size(); i++) labels[i] = groups.get(i).getDisplayLabel();
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Group")
+                .setItems(labels, (d, which) -> {
+                    com.ah.acr.messagebox.group.GroupStore.Group g = groups.get(which);
+                    mSelectedGroupNo = g.groupNo;
+                    binding.textReceiver.setText("[Group] " + g.getDisplayLabel());
+                    binding.textReceiverLabel.setText("[Group] " + g.getDisplayLabel());
+                    binding.textReceiverSub.setText("Group " + g.groupNo);
+                    markDirty();
+                })
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Clear Group", (d, w) -> {
+                    mSelectedGroupNo = null;
+                    setReceiverWeb();
+                    markDirty();
+                })
+                .show();
+    }
+
     private void handleSave() {
+        // [Group] if a group is selected, skip address lookup and use groupNo directly
+        if (mSelectedGroupNo != null) {
+            buildAndSendSetting(mSelectedGroupNo);
+            return;
+        }
         String nicName = binding.textReceiver.getText().toString().trim();
 
         if (nicName.isEmpty()) {

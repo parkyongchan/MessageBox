@@ -750,6 +750,23 @@ public class ChatRoomFragment extends Fragment {
         boolean isGroupRoom = mCodeNum != null && mCodeNum.matches("\\d{10}");
         // [titleFix] 단문/장문 모두 타이틀 항상 숨김 (단문은 ~M: 식별자 고정, 타이틀 미사용)
         binding.editChatTitle.setVisibility(View.GONE);
+
+        // [그룹 미디어 차단] 그룹방(10자리)에서는 사진/파일/음성 비활성화 (텍스트=단문/장문만 허용)
+        boolean mediaEnabled = !isGroupRoom;
+        binding.typePhoto.setEnabled(mediaEnabled);
+        binding.typeFile.setEnabled(mediaEnabled);
+        binding.typeVoice.setEnabled(mediaEnabled);
+        binding.typePhoto.setAlpha(mediaEnabled ? 1.0f : 0.4f);
+        binding.typeFile.setAlpha(mediaEnabled ? 1.0f : 0.4f);
+        binding.typeVoice.setAlpha(mediaEnabled ? 1.0f : 0.4f);
+        if (isGroupRoom) {
+            // 그룹방 진입 시 미디어가 선택돼 있었으면 단문으로 되돌림
+            if (binding.typePhoto.isChecked() || binding.typeFile.isChecked() || binding.typeVoice.isChecked()) {
+                binding.typePhoto.setChecked(false);
+                binding.typeFile.setChecked(false);
+                binding.typeVoice.setChecked(false);
+            }
+        }
     }
 
     private void updateByteCount() {
