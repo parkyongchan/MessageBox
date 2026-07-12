@@ -179,6 +179,7 @@ public class SettingFragment extends Fragment {
             public void onChanged(@Nullable final DeviceStatus status) {
                 if (BLE.INSTANCE.getSelectedDevice().getValue() != null && status != null) {
                     updateStartStopButtonState(status.isTrackingMode());
+                    if (!mIsDirty) binding.chkLed.setChecked(status.isLedOn());
                 }
             }
         });
@@ -356,6 +357,7 @@ public class SettingFragment extends Fragment {
 
         setupTimePresets();
         setupDistPresets();
+        binding.chkLed.setOnCheckedChangeListener((b, checked) -> { if (!mIsInitializing) markDirty(); });
         setupCheckBoxes();
         setupTextListeners();
 
@@ -815,6 +817,8 @@ public class SettingFragment extends Fragment {
 
 
     private void buildAndSendSetting(String codeNum) {
+        BLE.INSTANCE.getWriteQueue().offer(binding.chkLed.isChecked() ? "LED=1" : "LED=0");
+
         StringBuilder setting = new StringBuilder();
         setting.append("SET=");
 

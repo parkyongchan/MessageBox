@@ -301,6 +301,17 @@
 
             </LinearLayout>
 
+            <CheckBox
+                android:id="@+id/chk_led"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/setting_led"
+                android:textColor="#E8F1FB"
+                android:textSize="12sp"
+                android:buttonTint="#FBBF24"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="4dp" />
+
             <LinearLayout
                 android:id="@+id/layout_time_settings"
                 android:layout_width="match_parent"

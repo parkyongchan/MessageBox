@@ -12,6 +12,7 @@ public class DeviceStatus {
 
     private boolean trackingMode;
     private boolean sosMode;
+    private boolean ledOn;
 
     public DeviceStatus() {
     }
@@ -71,6 +72,8 @@ public class DeviceStatus {
     public void setSosMode(boolean mode) {this.sosMode = mode;};
     public boolean isTrackingMode(){return trackingMode;};
     public boolean isSosMode(){return sosMode;};
+    public void setLedOn(boolean on) {this.ledOn = on;};
+    public boolean isLedOn(){return ledOn;};
 
     @Override
     public String toString() {

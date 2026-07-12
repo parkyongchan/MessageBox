@@ -928,10 +928,6 @@ public class MainActivity extends AppCompatActivity {
             if (info != null) {
                 updateTrackButtonUI(info.isTrackingMode());
                 updateSosButtonUI(info.isSosStarted());
-
-                if (info.isSosStarted()) updateLocationStatus(2);
-                else if (info.isTrackingMode()) updateLocationStatus(1);
-                else updateLocationStatus(0);
             }
         });
 
@@ -963,7 +959,7 @@ public class MainActivity extends AppCompatActivity {
                 binding.statusArea.textMainOutbox.setText("0");
                 binding.headerArea.textHeaderSub.setText("IMEI  -");
                 updateSignalBar(0);
-                updateLocationStatus(0);
+                updateLedStatus(false);
 
                 updateTrackButtonUI(false);
                 updateSosButtonUI(false);
@@ -983,9 +979,7 @@ public class MainActivity extends AppCompatActivity {
             updateTrackButtonUI(status.isTrackingMode());
             updateSosButtonUI(status.isSosMode());
 
-            if (status.isSosMode()) updateLocationStatus(2);
-            else if (status.isTrackingMode()) updateLocationStatus(1);
-            else updateLocationStatus(0);
+            updateLedStatus(status.isLedOn());
 
             syncSatTrackSession(status.isTrackingMode(), status.isSosMode());
         });
@@ -1041,6 +1035,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateLedStatus(boolean on) {
+        binding.statusArea.textLocationStatusLabel.setText(
+                getString(on ? R.string.led_status_on : R.string.led_status_off));
+        int c = on ? 0xFFFBBF24 : 0xFF95B0D4;
+        binding.statusArea.textLocationStatusLabel.setTextColor(c);
+        binding.statusArea.imgLocationStatus.setColorFilter(c);
+    }
     private void updateLocationStatus(int state) {
         switch (state) {
             case 1:
@@ -1072,7 +1073,7 @@ public class MainActivity extends AppCompatActivity {
             binding.statusArea.textMainOutbox.setText("0");
             binding.headerArea.textHeaderSub.setText("IMEI  -");
             updateSignalBar(0);
-            updateLocationStatus(0);
+            updateLedStatus(false);
             updateTrackButtonUI(false);
             updateSosButtonUI(false);
 
@@ -3528,6 +3529,7 @@ public class MainActivity extends AppCompatActivity {
             if (vals.length > 6) sta.setGpsLng(vals[6]);
             if (vals.length > 7) sta.setSosMode(!vals[7].equals("0"));
             if (vals.length > 8) sta.setTrackingMode(!vals[8].equals("0"));
+            if (vals.length > 9) sta.setLedOn(!vals[9].equals("0"));
 
             mBleViewModel.getDeviceStatus().postValue(sta);
             mLastBroadReceivedTime = System.currentTimeMillis();

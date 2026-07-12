@@ -321,6 +321,9 @@
     <string name="addr_btn_edit">Edit</string>
     <string name="addr_btn_new">+  New</string>
     <string name="addr_btn_delete">Delete</string>
+    <string name="setting_led">Device LED</string>
+    <string name="led_status_on">LED ON</string>
+    <string name="led_status_off">LED OFF</string>
 
     <!-- Default -->
     <string name="addr_my_default_name">My Name</string>
