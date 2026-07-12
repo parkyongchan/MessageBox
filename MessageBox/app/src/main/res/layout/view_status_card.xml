@@ -153,12 +153,12 @@
                 <!-- 단말 메시지 전체 삭제 (MO 버퍼 클리어) -->
                 <ImageView
                     android:id="@+id/btn_msg_delete"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginEnd="2dp"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@android:drawable/ic_menu_delete"
                     app:tint="#FF5252"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginStart="4dp"
                     android:padding="2dp"
                     android:clickable="true"
                     android:focusable="true"
