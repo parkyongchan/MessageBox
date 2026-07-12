@@ -664,6 +664,7 @@ public class MainActivity extends AppCompatActivity {
             mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
             mSurvivalKey = null;
             mSurvivalTitle = null;
+            mSurvivalRetryCount = 0;
             Log.v("SURVIVAL", "ACK ok, retry stopped: " + ackKey);
             updateSurvivalStatus(false, true);   // 연결됨
         }
