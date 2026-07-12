@@ -110,6 +110,20 @@ public class MainActivity extends AppCompatActivity {
     private boolean mIsSosMode = false;
 
     private Handler mSyncHandler;
+
+    // [SURVIVAL] 생존 진입 재시도 (단일 슬롯 + 1분 주기 + ACK 중단)
+    private String mSurvivalKey = null;       // 재시도 중인 세션키 (null=비활성)
+    private String mSurvivalTitle = null;     // 재전송할 ~S:... title
+    private static final long SURVIVAL_RETRY_MS = 60000L; // 1분
+    private final Runnable mSurvivalRetryRunnable = new Runnable() {
+        @Override public void run() {
+            if (mSurvivalKey != null && mSurvivalTitle != null) {
+                BLE.INSTANCE.getWriteQueue().offer(mSurvivalTitle);
+                Log.v("SURVIVAL", "retry send: " + mSurvivalTitle);
+                mSyncHandler.postDelayed(this, SURVIVAL_RETRY_MS);
+            }
+        }
+    };
     private Runnable mBroadRetryRunnable;
     // [outboxStuck] outbox 좀비 감지 (오래 안 빠지는 미발신)
     private int mLastOutboxVal = -1;
@@ -574,9 +588,66 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton(getString(R.string.btn_send), (d, w) -> {
                         BLE.INSTANCE.getWriteQueue().offer("LOCATION=4");
                         Log.v("SOS", "LOCATION=4");
+                        promptSurvivalEntry();   // [SURVIVAL] SOS after -> survival prompt
                     })
                     .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
+        }
+    }
+
+    // [SURVIVAL] 생존 지원 요청 팝업 → 확인 시 발신 시작
+    private void promptSurvivalEntry() {
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.dialog_survival_title))
+                .setMessage(getString(R.string.dialog_survival_message))
+                .setPositiveButton(getString(R.string.btn_survival_yes), (d, w) -> startSurvivalEntry())
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .setCancelable(false)
+                .show();
+    }
+
+    // [SURVIVAL] 생존 진입 발신 시작: ~S:<key>:<lat>:<lon>, 단일 슬롯 + 1분 재시도
+    private void startSurvivalEntry() {
+        DeviceStatus st = mBleViewModel.getDeviceStatus().getValue();
+        String imei = ImeiStorage.getSanitizedLast(this);
+        if (imei == null || imei.isEmpty()) {
+            Toast.makeText(this, getString(R.string.toast_survival_no_imei), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String lat = (st != null && st.getGpsLat() != null) ? st.getGpsLat() : "0";
+        String lon = (st != null && st.getGpsLng() != null) ? st.getGpsLng() : "0";
+
+        String key = imei + "-" + (System.currentTimeMillis() / 1000L);
+        mSurvivalKey = key;
+        mSurvivalTitle = "~S:" + key + ":" + lat + ":" + lon;
+
+        // 최초 발신
+        BLE.INSTANCE.getWriteQueue().offer(mSurvivalTitle);
+        Log.v("SURVIVAL", "start send: " + mSurvivalTitle);
+        updateSurvivalStatus(true, false);   // 요청 중
+
+        // 1분 후부터 재시도
+        mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
+        mSyncHandler.postDelayed(mSurvivalRetryRunnable, SURVIVAL_RETRY_MS);
+    }
+
+    // [SURVIVAL] ~SA:<key> ACK 수신 시 재시도 중단
+    private void onSurvivalAck(String ackKey) {
+        if (mSurvivalKey != null && mSurvivalKey.equals(ackKey)) {
+            mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
+            mSurvivalKey = null;
+            mSurvivalTitle = null;
+            Log.v("SURVIVAL", "ACK ok, retry stopped: " + ackKey);
+            updateSurvivalStatus(false, true);   // 연결됨
+        }
+    }
+
+    // [SURVIVAL] 상태 표시 (요청 중 / 연결됨)
+    private void updateSurvivalStatus(boolean requesting, boolean connected) {
+        String msg = connected ? getString(R.string.survival_connected)
+                : requesting ? getString(R.string.survival_requesting) : "";
+        if (!msg.isEmpty()) {
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -3378,6 +3449,10 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception ex) {
                             Log.e("LARGE-MSG", "헤더 파싱 실패 title=" + title + " : " + ex.getMessage());
                         }
+                    } else if (title.startsWith("~SA:")) {
+                        // [SURVIVAL] 생존 진입 ACK: ~SA:<sessionKey> → 재시도 중단
+                        String _ackKey = title.substring(4).trim();
+                        onSurvivalAck(_ackKey);
                     } else if (title.startsWith("~A:")) {
                         // 서버가 보낸 내 대용량 도착확인 → 보냈던 원문을 내 말풍선으로 표시 (모델 B)
                         try {

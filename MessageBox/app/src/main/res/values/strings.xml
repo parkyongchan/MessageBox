@@ -324,6 +324,13 @@
     <string name="setting_led">Device LED</string>
     <string name="led_status_on">LED ON</string>
     <string name="led_status_off">LED OFF</string>
+    <!-- SURVIVAL -->
+    <string name="dialog_survival_title">생존 지원</string>
+    <string name="dialog_survival_message">생존 지원을 받으시겠습니까?</string>
+    <string name="btn_survival_yes">지원받기</string>
+    <string name="toast_survival_no_imei">IMEI를 확인할 수 없습니다</string>
+    <string name="survival_requesting">생존 지원 요청 중...</string>
+    <string name="survival_connected">생존 지원 연결됨</string>
 
     <!-- Default -->
     <string name="addr_my_default_name">My Name</string>
