@@ -3365,6 +3365,7 @@ public class MainActivity extends AppCompatActivity {
 
                     int titleSize = buffer.readUnsignedByte();
                     String title = buffer.readCharSequence(titleSize, StandardCharsets.UTF_8).toString().trim();
+                    android.util.Log.d("RECV-TITLE", "received title=[" + title + "]");   // [SURVIVAL] ~SA 수신 확인용
 
                     int memoSize = buffer.readUnsignedByte();
                     // [fileMsg 2-a] ~L:F:/~L:I:(파일/사진)면 body를 byte[]로 읽기(바이너리 보존, trim 안 함). 그 외(텍스트/단문)는 기존 String.
