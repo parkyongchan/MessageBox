@@ -166,4 +166,74 @@ public class TacticalMarkerIcon {
                 break;
         }
     }
+    // ─── 생존/재난 마커 (앱→웹 규격 통일) ───────────────────────
+    public static final int[] SURV_BASE_GLYPH     = { 0, 1, 2, 3, 4, 5 };   // R/W/D/H/X/L 대응
+    public static final String[] SURV_BASE_CHARS    = { "R","W","D","H","X","L" };
+    public static final String[] SURV_DISASTER_CHARS = { "F","T","O","E","R","L" };
+
+    /** 생존 식별자: 재난이면 D+글자+id, 아니면 S+글자+id. */
+    public static String survivalIdentifier(int survType, int survDisaster, int id) {
+        if (survDisaster >= 0) {
+            String g = (survDisaster < SURV_DISASTER_CHARS.length) ? SURV_DISASTER_CHARS[survDisaster] : "?";
+            return "D" + g + id;
+        }
+        String g = (survType >= 0 && survType < SURV_BASE_CHARS.length) ? SURV_BASE_CHARS[survType] : "?";
+        return "S" + g + id;
+    }
+
+    /**
+     * 생존/재난 마커 아이콘. survDisaster>=0 이면 재난(삼각/주황), 아니면 생존(원/청록).
+     */
+    public static Drawable makeSurvival(Context ctx, int survType, int survDisaster, int id) {
+        boolean disaster = survDisaster >= 0;
+        int fillColor = disaster ? 0xFFFF6B35 : 0xFF00C9B7;
+        int iconSize = dp(ctx, 22);
+        int badge = dp(ctx, 12);
+        int totalW = iconSize;
+        int totalH = iconSize + badge;
+        Bitmap bmp = Bitmap.createBitmap(totalW, totalH, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        float cx = iconSize / 2f;
+        float cy = badge + iconSize / 2f;
+        float rad = iconSize * 0.40f;
+        Paint body = new Paint(Paint.ANTI_ALIAS_FLAG);
+        body.setColor(fillColor);
+        Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        edge.setColor(0xFF0A1628);
+        edge.setStyle(Paint.Style.STROKE);
+        edge.setStrokeWidth(dp(ctx, 1.5f));
+        if (disaster) {
+            android.graphics.Path tri = new android.graphics.Path();
+            tri.moveTo(cx, cy - rad);
+            tri.lineTo(cx - rad, cy + rad * 0.85f);
+            tri.lineTo(cx + rad, cy + rad * 0.85f);
+            tri.close();
+            c.drawPath(tri, body);
+            c.drawPath(tri, edge);
+        } else {
+            c.drawCircle(cx, cy, rad, body);
+            c.drawCircle(cx, cy, rad, edge);
+        }
+        // 하단 식별자 배지
+        String ident = survivalIdentifier(survType, survDisaster, id);
+        Paint badgeBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        badgeBg.setColor(0xFF0A1628);
+        Paint badgeBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+        badgeBorder.setColor(fillColor);
+        badgeBorder.setStyle(Paint.Style.STROKE);
+        badgeBorder.setStrokeWidth(dp(ctx, 1.5f));
+        float bx = totalW / 2f;
+        float by = badge / 2f + dp(ctx, 1);
+        float br = badge / 2f;
+        c.drawCircle(bx, by, br, badgeBg);
+        c.drawCircle(bx, by, br, badgeBorder);
+        Paint bt = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bt.setColor(Color.WHITE);
+        bt.setTextSize(dp(ctx, 7));
+        bt.setFakeBoldText(true);
+        bt.setTextAlign(Paint.Align.CENTER);
+        float ty = by - (bt.descent() + bt.ascent()) / 2f;
+        c.drawText(ident, bx, ty, bt);
+        return new BitmapDrawable(ctx.getResources(), bmp);
+    }
 }

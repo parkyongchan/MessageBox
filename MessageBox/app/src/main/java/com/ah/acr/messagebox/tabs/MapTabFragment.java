@@ -343,9 +343,13 @@ public class MapTabFragment extends Fragment {
                 Marker mk = new Marker(mMapView);
                 mk.setPosition(new GeoPoint(tm.lat, tm.lon));
                 mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                Drawable ic = TacticalMarkerIcon.make(getContext(), tm.type, tm.id, tm.unit, tm.place);
+                Drawable ic = "S".equals(tm.cat)
+                        ? TacticalMarkerIcon.makeSurvival(getContext(), tm.survType, tm.survDisaster, tm.id)
+                        : TacticalMarkerIcon.make(getContext(), tm.type, tm.id, tm.unit, tm.place);
                 if (ic != null) mk.setIcon(ic);
-                String ident = TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
+                String ident = "S".equals(tm.cat)
+                        ? TacticalMarkerIcon.survivalIdentifier(tm.survType, tm.survDisaster, tm.id)
+                        : TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
                 mk.setTitle(ident);
                 StringBuilder sn = new StringBuilder();
                 sn.append(String.format(Locale.US, "%.5f, %.5f", tm.lat, tm.lon));
