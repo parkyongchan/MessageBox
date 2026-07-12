@@ -619,16 +619,33 @@ public class MainActivity extends AppCompatActivity {
 
         String key = imei + "-" + (System.currentTimeMillis() / 1000L);
         mSurvivalKey = key;
-        mSurvivalTitle = "~S:" + key + ":" + lat + ":" + lon;
+        // title=~S:1 (20B 제한 회피), memo=key:lat:lon (실데이터). 0x07 패킷으로 서버 발신.
+        mSurvivalTitle = buildSurvivalPacket("~S:1", key + ":" + lat + ":" + lon);
 
-        // 최초 발신
         BLE.INSTANCE.getWriteQueue().offer(mSurvivalTitle);
-        Log.v("SURVIVAL", "start send: " + mSurvivalTitle);
+        Log.v("SURVIVAL", "start send: key=" + key + " lat=" + lat + " lon=" + lon);
         updateSurvivalStatus(true, false);   // 요청 중
 
-        // 1분 후부터 재시도
         mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
         mSyncHandler.postDelayed(mSurvivalRetryRunnable, SURVIVAL_RETRY_MS);
+    }
+
+    // [SURVIVAL] 0x07 패킷 조립 (채팅 doSendPending과 동일 형식). codeNum=""=서버.
+    private String buildSurvivalPacket(String title, String memo) {
+        String codeNum = "";   // addrForSend: SERVER -> ""
+        ByteBuf buffer = Unpooled.buffer();
+        buffer.writeByte(0x07);
+        buffer.writeByte(codeNum.getBytes(StandardCharsets.US_ASCII).length);
+        buffer.writeCharSequence(codeNum, StandardCharsets.US_ASCII);
+        buffer.writeByte(title.getBytes(StandardCharsets.UTF_8).length);
+        buffer.writeCharSequence(title, StandardCharsets.UTF_8);
+        buffer.writeByte(memo.getBytes(StandardCharsets.UTF_8).length);
+        buffer.writeCharSequence(memo, StandardCharsets.UTF_8);
+        byte[] body = new byte[buffer.readableBytes()];
+        buffer.readBytes(body);
+        return String.format("SENDING=%d,%s",
+                (int)(System.currentTimeMillis() % 100000),
+                Base64.encodeToString(body, Base64.NO_WRAP));
     }
 
     // [SURVIVAL] ~SA:<key> ACK 수신 시 재시도 중단
