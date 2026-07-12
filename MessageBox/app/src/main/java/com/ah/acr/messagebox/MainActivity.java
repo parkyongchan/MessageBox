@@ -111,17 +111,26 @@ public class MainActivity extends AppCompatActivity {
 
     private Handler mSyncHandler;
 
-    // [SURVIVAL] 생존 진입 재시도 (단일 슬롯 + 1분 주기 + ACK 중단)
+    // [SURVIVAL] 생존 진입 재시도 (단일 슬롯 + 10분 주기 + 최대 3회 + ACK 중단)
     private String mSurvivalKey = null;       // 재시도 중인 세션키 (null=비활성)
-    private String mSurvivalTitle = null;     // 재전송할 ~S:... title
-    private static final long SURVIVAL_RETRY_MS = 60000L; // 1분
+    private String mSurvivalTitle = null;     // 재전송할 SENDING= 패킷
+    private int mSurvivalRetryCount = 0;      // 재시도 횟수
+    private static final long SURVIVAL_RETRY_MS = 600000L; // 10분
+    private static final int SURVIVAL_RETRY_MAX = 3;       // 최대 3회 (감도 나쁠 때 아웃박스 과적 방지)
     private final Runnable mSurvivalRetryRunnable = new Runnable() {
         @Override public void run() {
-            if (mSurvivalKey != null && mSurvivalTitle != null) {
-                BLE.INSTANCE.getWriteQueue().offer(mSurvivalTitle);
-                Log.v("SURVIVAL", "retry send: " + mSurvivalTitle);
-                mSyncHandler.postDelayed(this, SURVIVAL_RETRY_MS);
+            if (mSurvivalKey == null || mSurvivalTitle == null) return;
+            if (mSurvivalRetryCount >= SURVIVAL_RETRY_MAX) {
+                Log.v("SURVIVAL", "retry max(" + SURVIVAL_RETRY_MAX + ") reached, giving up: " + mSurvivalKey);
+                mSurvivalKey = null;
+                mSurvivalTitle = null;
+                updateSurvivalStatus(false, false);   // 요청 실패(상태 해제)
+                return;
             }
+            mSurvivalRetryCount++;
+            BLE.INSTANCE.getWriteQueue().offer(mSurvivalTitle);
+            Log.v("SURVIVAL", "retry send #" + mSurvivalRetryCount + ": " + mSurvivalTitle);
+            mSyncHandler.postDelayed(this, SURVIVAL_RETRY_MS);
         }
     };
     private Runnable mBroadRetryRunnable;
