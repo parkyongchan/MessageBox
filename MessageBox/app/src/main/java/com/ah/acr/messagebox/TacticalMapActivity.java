@@ -2,6 +2,7 @@ package com.ah.acr.messagebox;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Path;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
@@ -89,6 +90,7 @@ public class TacticalMapActivity extends AppCompatActivity {
     private static final String[] PLACE_ABBR = { "BLD", "BRG", "HEL", "CKP" };
 
     private static class TacMarker {
+        String cat = "G"; int survType = -1; int survDisaster = -1;
         Marker marker;
         int type;
         int id;  // 고유 ID (트랙용, 삭제해도 유지)
@@ -102,9 +104,18 @@ public class TacticalMapActivity extends AppCompatActivity {
     static class MarkerData {
         int id, type, unitType, placeType;
         double lat, lon;
+        String cat = "G";           // G=전술, S=생존
+        int survType = -1, survDisaster = -1;  // 생존: 기본종류/재난종류
+        // 전술 마커 생성자
         MarkerData(int id, int type, int unitType, int placeType, double lat, double lon) {
             this.id = id; this.type = type; this.unitType = unitType;
             this.placeType = placeType; this.lat = lat; this.lon = lon;
+        }
+        // 생존 마커 생성자
+        MarkerData(int id, int survType, int survDisaster, double lat, double lon) {
+            this.id = id; this.cat = "S"; this.survType = survType;
+            this.survDisaster = survDisaster; this.lat = lat; this.lon = lon;
+            this.type = -1; this.unitType = -1; this.placeType = -1;
         }
     }
     private static final java.util.List<MarkerData> sMarkerData = new java.util.ArrayList<>();
@@ -134,6 +145,9 @@ public class TacticalMapActivity extends AppCompatActivity {
     private TacMarker mMovingMarker = null; // 선택 후 이동 대기 중인 마커
     private int mMarkerUnit = -1;
     private int mMarkerPlace = -1;
+    private String mCategory = "G";   // G=전술(군), S=생존
+    private int mSurvType = -1;         // 생존 기본 마커 0~5 (전술 unit과 분리)
+    private int mSurvDisaster = -1;     // 재난 마커 0~5 (전술 place와 분리)
     private boolean mShowCoords = false;
     private final List<TacMarker> mTacMarkers = new ArrayList<>();
     private int mNextMarkerId = 1;  // 고유 ID 카운터
@@ -237,7 +251,7 @@ public class TacticalMapActivity extends AppCompatActivity {
                     addMeasurePoint(p);
                     return true;
                 }
-                if (mMarkerType >= 0) {
+                if (mMarkerType >= 0 || "S".equals(mCategory)) {
                     placeMarker(p, mMarkerType);
                     return true;
                 }
@@ -326,7 +340,9 @@ public class TacticalMapActivity extends AppCompatActivity {
     private void rebuildAllMarkerIcons() {
         for (int i = 0; i < mTacMarkers.size(); i++) {
             TacMarker tm = mTacMarkers.get(i);
-            tm.marker.setIcon(makeMarkerIcon(tm.type, i + 1, tm.unitType, tm.placeType));
+            tm.marker.setIcon("S".equals(tm.cat)
+                    ? makeSurvivalIcon(tm.survType, tm.survDisaster, i + 1)
+                    : makeMarkerIcon(tm.type, i + 1, tm.unitType, tm.placeType));
         }
         if (mMapView != null) mMapView.invalidate();
     }
@@ -366,7 +382,9 @@ public class TacticalMapActivity extends AppCompatActivity {
             TacMarker tm = mTacMarkers.get(i);
             TextView row = new TextView(this);
             String unitStr;
-            if (tm.type == 4 && tm.placeType >= 0) {
+            if (tm.type < 0) {
+                unitStr = "";
+            } else if (tm.type == 4 && tm.placeType >= 0) {
                 unitStr = " [" + PLACE_ABBR[tm.placeType] + "]";
             } else if (tm.unitType >= 0) {
                 unitStr = " [" + UNIT_ABBR[tm.unitType] + "]";
@@ -374,10 +392,10 @@ public class TacticalMapActivity extends AppCompatActivity {
                 unitStr = "";
             }
             String txt = String.format(Locale.US, "%d. %s%s  %.5f, %.5f",
-                    i + 1, MK_SHORT[tm.type], unitStr,
+                    i + 1, ((tm.type < 0 || "S".equals(tm.cat)) ? survivalIdentifier(tm.survType, tm.survDisaster, i + 1) : MK_SHORT[tm.type]), unitStr,
                     tm.point.getLatitude(), tm.point.getLongitude());
             row.setText(txt);
-            row.setTextColor(MK_COLORS[tm.type]);
+            row.setTextColor((tm.type < 0 || "S".equals(tm.cat)) ? (tm.survDisaster >= 0 ? 0xFFFF6B35 : 0xFF00C9B7) : MK_COLORS[tm.type]);
             row.setTextSize(9f);
             row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
             mLegend.addView(row);
@@ -396,7 +414,41 @@ public class TacticalMapActivity extends AppCompatActivity {
         if (mToolMeasure != null) mToolMeasure.setOnClickListener(v -> toggleMeasureMode());
     }
 
+    // 생존 마커 이름 (규격서: 기본 6 + 재난 6)
+    private static final String[] SURV_BASE_NAMES = { "대피소", "식수원", "조난신호", "헬기착륙", "위험지역", "내위치" };
+    private static final String[] SURV_DISASTER_NAMES = { "산불", "태풍", "홍수", "지진", "급류", "낙석" };
+
+    // 마커 도구 진입: 먼저 전술/생존 카테고리 선택
     private void showMarkerTypeDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("마커 종류")
+                .setItems(new String[]{ "전술 (군)", "생존" }, (d, w) -> {
+                    if (w == 1) { mCategory = "S"; showSurvivalTypeDialog(); }
+                    else { mCategory = "G"; showTacticalTypeDialog(); }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // 생존 마커 선택 (기본 6 + 재난 6)
+    private void showSurvivalTypeDialog() {
+        String[] opts = new String[SURV_BASE_NAMES.length + SURV_DISASTER_NAMES.length];
+        for (int i = 0; i < SURV_BASE_NAMES.length; i++) opts[i] = SURV_BASE_NAMES[i];
+        for (int i = 0; i < SURV_DISASTER_NAMES.length; i++) opts[SURV_BASE_NAMES.length + i] = "[재난] " + SURV_DISASTER_NAMES[i];
+        new AlertDialog.Builder(this)
+                .setTitle("생존 마커 선택")
+                .setItems(opts, (d, w) -> {
+                    if (w < SURV_BASE_NAMES.length) { mSurvType = w; mSurvDisaster = -1; }
+                    else { mSurvDisaster = w - SURV_BASE_NAMES.length; mSurvType = -1; }
+                    mToolMarker.setTextColor(0xFF00C9B7);
+                    Toast.makeText(this, opts[w] + " - 지도를 탭하세요", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // 전술 마커 선택 (기존 소속 → 병종 흐름)
+    private void showTacticalTypeDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Select Marker Type")
                 .setItems(MK_NAMES, (dialog, which) -> {
@@ -487,6 +539,125 @@ public class TacticalMapActivity extends AppCompatActivity {
         c.drawText(num, cx, ty, numText);
 
         return new BitmapDrawable(getResources(), bmp);
+    }
+
+    // ── 생존/재난 마커 아이콘 (규격서 좌표 기반, Canvas) ──
+    private static final String[] SURV_BASE_GLYPH = { "R", "W", "D", "H", "X", "L" };
+    private static final String[] SURV_DISASTER_GLYPH = { "F", "T", "O", "E", "R", "L" };
+
+    private String survivalIdentifier(int survType, int survDisaster, int number) {
+        if (survDisaster >= 0) {
+            String g = (survDisaster >= 0 && survDisaster < 6) ? SURV_DISASTER_GLYPH[survDisaster] : "?";
+            return "D" + g + number;
+        }
+        String g = (survType >= 0 && survType < 6) ? SURV_BASE_GLYPH[survType] : "?";
+        return "S" + g + number;
+    }
+
+    private Drawable makeSurvivalIcon(int survType, int survDisaster, int number) {
+        int iconSize = dp(24);
+        int badge = dp(12);
+        Bitmap bmp = Bitmap.createBitmap(iconSize, iconSize + badge, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        final float S = iconSize / 100f;
+        final float OY = badge;
+        boolean isDisaster = (survDisaster >= 0);
+        int fillColor = isDisaster ? 0xFFFF6B35 : 0xFF00C9B7;
+
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setColor(fillColor); fill.setStyle(Paint.Style.FILL);
+        Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        edge.setColor(0xFF0A1628); edge.setStyle(Paint.Style.STROKE); edge.setStrokeWidth(4 * S);
+
+        if (isDisaster) {
+            Path tri = new Path();
+            tri.moveTo(50 * S, 9 * S + OY); tri.lineTo(86 * S, 79 * S + OY); tri.lineTo(14 * S, 79 * S + OY); tri.close();
+            c.drawPath(tri, fill); c.drawPath(tri, edge);
+        } else {
+            c.drawCircle(50 * S, 47 * S + OY, 40 * S, fill);
+            c.drawCircle(50 * S, 47 * S + OY, 40 * S, edge);
+        }
+
+        Paint st = new Paint(Paint.ANTI_ALIAS_FLAG);
+        st.setColor(Color.WHITE); st.setStyle(Paint.Style.STROKE);
+        st.setStrokeWidth((isDisaster ? 5 : 4) * S);
+        st.setStrokeCap(Paint.Cap.ROUND); st.setStrokeJoin(Paint.Join.ROUND);
+        Paint fl = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fl.setColor(Color.WHITE); fl.setStyle(Paint.Style.FILL);
+
+        if (isDisaster) drawDisasterGlyph(c, survDisaster, S, OY, st, fl);
+        else drawSurvivalGlyph(c, survType, S, OY, st, fl);
+
+        String id = survivalIdentifier(survType, survDisaster, number);
+        Paint badgeBg = new Paint(Paint.ANTI_ALIAS_FLAG); badgeBg.setColor(0xFF0A1628);
+        Paint badgeEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        badgeEdge.setColor(fillColor); badgeEdge.setStyle(Paint.Style.STROKE); badgeEdge.setStrokeWidth(dp(1f));
+        float bx = iconSize / 2f, by = badge / 2f + dp(1), br = badge / 2f;
+        c.drawRoundRect(bx - iconSize * 0.42f, by - br, bx + iconSize * 0.42f, by + br, dp(3), dp(3), badgeBg);
+        c.drawRoundRect(bx - iconSize * 0.42f, by - br, bx + iconSize * 0.42f, by + br, dp(3), dp(3), badgeEdge);
+        Paint idText = new Paint(Paint.ANTI_ALIAS_FLAG);
+        idText.setColor(fillColor); idText.setTextSize(dp(8)); idText.setFakeBoldText(true);
+        idText.setTextAlign(Paint.Align.CENTER);
+        c.drawText(id, bx, by - (idText.descent() + idText.ascent()) / 2f, idText);
+
+        return new BitmapDrawable(getResources(), bmp);
+    }
+
+    private void drawSurvivalGlyph(Canvas c, int code, float S, float OY, Paint st, Paint fl) {
+        switch (code) {
+            case 0: {
+                Path p = new Path();
+                p.moveTo(32*S,52*S+OY); p.lineTo(50*S,34*S+OY); p.lineTo(68*S,52*S+OY); c.drawPath(p, st);
+                Path p2 = new Path();
+                p2.moveTo(37*S,48*S+OY); p2.lineTo(37*S,66*S+OY); p2.lineTo(63*S,66*S+OY); p2.lineTo(63*S,48*S+OY); c.drawPath(p2, st);
+                break; }
+            case 1: {
+                Path p = new Path(); p.moveTo(50*S,32*S+OY);
+                p.cubicTo(50*S,32*S+OY,64*S,48*S+OY,64*S,58*S+OY);
+                p.arcTo(36*S,44*S+OY,64*S,72*S+OY,-20,-140,false); p.close(); c.drawPath(p, st); break; }
+            case 2: {
+                Path p = new Path(); p.moveTo(50*S,34*S+OY); p.lineTo(66*S,64*S+OY); p.lineTo(34*S,64*S+OY); p.close(); c.drawPath(p, st);
+                c.drawLine(50*S,46*S+OY,50*S,56*S+OY, st); break; }
+            case 3: {
+                Paint h = new Paint(Paint.ANTI_ALIAS_FLAG); h.setColor(Color.WHITE); h.setTextSize(40*S);
+                h.setFakeBoldText(true); h.setTextAlign(Paint.Align.CENTER); c.drawText("H",50*S,62*S+OY,h); break; }
+            case 4: {
+                c.drawLine(50*S,34*S+OY,50*S,54*S+OY, st); c.drawCircle(50*S,63*S+OY,3*S, fl); break; }
+            case 5: {
+                c.drawCircle(50*S,50*S+OY,8*S, fl);
+                c.drawLine(50*S,30*S+OY,50*S,40*S+OY, st); c.drawLine(50*S,60*S+OY,50*S,70*S+OY, st);
+                c.drawLine(30*S,50*S+OY,40*S,50*S+OY, st); c.drawLine(60*S,50*S+OY,70*S,50*S+OY, st); break; }
+        }
+    }
+
+    private void drawDisasterGlyph(Canvas c, int code, float S, float OY, Paint st, Paint fl) {
+        switch (code) {
+            case 0: {
+                Path p = new Path(); p.moveTo(50*S,48*S+OY);
+                p.cubicTo(60*S,58*S+OY,62*S,64*S+OY,62*S,68*S+OY);
+                p.arcTo(38*S,56*S+OY,62*S,80*S+OY,0,140,false);
+                p.cubicTo(42*S,60*S+OY,45*S,54*S+OY,45*S,54*S+OY);
+                p.cubicTo(46*S,62*S+OY,52*S,62*S+OY,52*S,62*S+OY);
+                p.cubicTo(52*S,56*S+OY,48*S,52*S+OY,50*S,48*S+OY); p.close(); c.drawPath(p, fl); break; }
+            case 1: {
+                Path p = new Path(); p.moveTo(62*S,62*S+OY);
+                p.cubicTo(42*S,70*S+OY,36*S,52*S+OY,50*S,50*S+OY);
+                p.cubicTo(60*S,49*S+OY,62*S,60*S+OY,52*S,61*S+OY); c.drawPath(p, st); break; }
+            case 2: {
+                for (int k=0;k<3;k++){ float y=(54+k*8)*S+OY; Path p=new Path();
+                    p.moveTo(36*S,y); p.quadTo(43*S,y-6*S,50*S,y); p.quadTo(57*S,y+6*S,64*S,y); c.drawPath(p, st); } break; }
+            case 3: {
+                Path p = new Path(); p.moveTo(34*S,62*S+OY); p.lineTo(42*S,62*S+OY); p.lineTo(47*S,48*S+OY);
+                p.lineTo(53*S,74*S+OY); p.lineTo(58*S,62*S+OY); p.lineTo(66*S,62*S+OY); c.drawPath(p, st); break; }
+            case 4: {
+                Path p = new Path(); p.moveTo(35*S,54*S+OY);
+                p.quadTo(43*S,48*S+OY,50*S,54*S+OY); p.quadTo(57*S,60*S+OY,65*S,54*S+OY); c.drawPath(p, st);
+                c.drawLine(50*S,58*S+OY,50*S,72*S+OY, st);
+                Path a = new Path(); a.moveTo(43*S,66*S+OY); a.lineTo(50*S,73*S+OY); a.lineTo(57*S,66*S+OY); c.drawPath(a, st); break; }
+            case 5: {
+                Path p = new Path(); p.moveTo(38*S,70*S+OY); p.lineTo(52*S,50*S+OY); p.lineTo(58*S,70*S+OY); c.drawPath(p, st);
+                c.drawCircle(60*S,60*S+OY,5*S, fl); break; }
+        }
     }
 
     private void drawPlaceSymbol(Canvas c, int placeType, int iconSize, int badge) {
@@ -589,7 +760,7 @@ public class TacticalMapActivity extends AppCompatActivity {
         Marker marker = new Marker(mMapView);
         marker.setPosition(p);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        marker.setTitle(MK_NAMES[type]);
+        marker.setTitle("S".equals(mCategory) ? "생존마커" : MK_NAMES[type]);
         marker.setDraggable(true);
 
         final TacMarker tm = new TacMarker(marker, type, p);
@@ -600,11 +771,19 @@ public class TacticalMapActivity extends AppCompatActivity {
             tm.unitType = mMarkerUnit;
             tm.placeType = mMarkerPlace;
             tm.id = sNextMarkerId++;
-            sMarkerData.add(new MarkerData(tm.id, type, tm.unitType, tm.placeType,
-                    p.getLatitude(), p.getLongitude()));
+            if ("S".equals(mCategory)) {
+                tm.cat = "S"; tm.survType = mSurvType; tm.survDisaster = mSurvDisaster;
+                sMarkerData.add(new MarkerData(tm.id, mSurvType, mSurvDisaster,
+                        p.getLatitude(), p.getLongitude()));
+            } else {
+                sMarkerData.add(new MarkerData(tm.id, type, tm.unitType, tm.placeType,
+                        p.getLatitude(), p.getLongitude()));
+            }
         }
 
-        Drawable icon = makeMarkerIcon(type, number, tm.unitType, tm.placeType);
+        Drawable icon = "S".equals(tm.cat)
+                ? makeSurvivalIcon(tm.survType, tm.survDisaster, number)
+                : makeMarkerIcon(type, number, tm.unitType, tm.placeType);
         if (icon != null) marker.setIcon(icon);
 
         marker.setOnMarkerClickListener((m, mv) -> {
@@ -1003,12 +1182,20 @@ public class TacticalMapActivity extends AppCompatActivity {
         sb.append(";TS:").append(System.currentTimeMillis() / 1000L);
         // 마커: M:id,type,unit,place,lat,lon
         for (TacMarker tm : mTacMarkers) {
-            sb.append(";M:").append(tm.id)
-              .append(",").append(tm.type)
-              .append(",").append(tm.unitType)
-              .append(",").append(tm.placeType)
-              .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLatitude()))
-              .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLongitude()));
+            if ("S".equals(tm.cat)) {
+                sb.append(";MS:").append(tm.id)
+                  .append(",").append(tm.survType)
+                  .append(",").append(tm.survDisaster)
+                  .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLatitude()))
+                  .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLongitude()));
+            } else {
+                sb.append(";M:").append(tm.id)
+                  .append(",").append(tm.type)
+                  .append(",").append(tm.unitType)
+                  .append(",").append(tm.placeType)
+                  .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLatitude()))
+                  .append(",").append(String.format(Locale.US, "%.5f", tm.point.getLongitude()));
+            }
         }
         // 발신자 위치 (내위치 ON) → 아군(1) HQ(6) 마커로 추가. 웹과 동일 코드표
         if (mMyLocOn && mMyLocMarker != null) {
