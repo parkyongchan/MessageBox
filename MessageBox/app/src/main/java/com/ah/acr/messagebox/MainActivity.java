@@ -628,6 +628,7 @@ public class MainActivity extends AppCompatActivity {
 
         String key = imei + "-" + (System.currentTimeMillis() / 1000L);
         mSurvivalKey = key;
+        mSurvivalRetryCount = 0;
         // title=~S:1 (20B 제한 회피), memo=key:lat:lon (실데이터). 0x07 패킷으로 서버 발신.
         mSurvivalTitle = buildSurvivalPacket("~S:1", key + ":" + lat + ":" + lon);
 
