@@ -3468,7 +3468,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     } else if (title.startsWith("~SA:")) {
                         // [SURVIVAL] 생존 진입 ACK: ~SA:<sessionKey> → 재시도 중단
-                        String _ackKey = title.substring(4).trim();
+                        String _ackKey = message.trim();   // memo에 sessionKey (title=~SA:1)
                         onSurvivalAck(_ackKey);
                     } else if (title.startsWith("~A:")) {
                         // 서버가 보낸 내 대용량 도착확인 → 보냈던 원문을 내 말풍선으로 표시 (모델 B)
