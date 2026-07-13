@@ -3467,7 +3467,8 @@ public class MainActivity extends AppCompatActivity {
                                     boolean ackLargeOn = android.preference.PreferenceManager
                                             .getDefaultSharedPreferences(MainActivity.this)
                                             .getBoolean("pref_ack_large", false);
-                                    if (ackLargeOn && !mPendingServerAckIds.contains(msgId)) {
+                                    boolean isSurvivalTarget = bubbleBody != null && bubbleBody.contains("MSA:");
+                                    if ((ackLargeOn || isSurvivalTarget) && !mPendingServerAckIds.contains(msgId)) {
                                         mPendingServerAckIds.add(msgId);   // 즉시 송신 금지: 인박스 배수 후 flush
                                         android.util.Log.d("ACK", "대용량 완성 -> 서버 ACK 지연 큐 적재 msgId=" + msgId);
                                     }
