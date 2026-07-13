@@ -14,6 +14,7 @@ public class TacticalParser {
     public static class TacticalData {
         public String fromImei = "";   // 빈 값이면 관제센터/서버발 (v1.4)
         public long ts = 0;            // Unix epoch 초
+        public long sessionId = -1;    // SID: 생존 세션 ID (재전송해도 동일, -1=없음)
         public List<TMarker> markers = new ArrayList<>();
         public List<TLine> lines = new ArrayList<>();
         public List<TMeasure> measures = new ArrayList<>();
@@ -65,6 +66,8 @@ public class TacticalParser {
                     out.fromImei = seg.substring(5).trim();
                 } else if (seg.startsWith("TS:")) {
                     out.ts = Long.parseLong(seg.substring(3).trim());
+                } else if (seg.startsWith("SID:")) {
+                    out.sessionId = Long.parseLong(seg.substring(4).trim());
                 } else if (seg.startsWith("MSA:")) {
                     parseSurvival(seg.substring(4), out, true);
                 } else if (seg.startsWith("MS:")) {

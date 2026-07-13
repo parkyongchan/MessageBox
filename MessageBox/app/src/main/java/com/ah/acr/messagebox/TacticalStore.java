@@ -29,12 +29,32 @@ public class TacticalStore {
         add(codeNum, data, null);
     }
     public static synchronized void add(String codeNum, TacticalParser.TacticalData data, String payload) {
+        if (data != null && data.sessionId >= 0) {
+            java.util.Iterator<Entry> it = sEntries.iterator();
+            while (it.hasNext()) { Entry prev = it.next(); if (prev.data != null && prev.data.sessionId == data.sessionId) it.remove(); }
+        }
         Entry e = new Entry();
         e.codeNum = codeNum;
         e.data = data;
         e.payload = payload;
         e.recvAt = System.currentTimeMillis();
         sEntries.add(e);
+    }
+
+    /** [SID] 같은 세션(SID)의 생존 표적 Entry는 최신 1건만 남김 (재전송 중복 제거). */
+    private static void dedupBySession() {
+        java.util.HashMap<Long, Entry> latest = new java.util.HashMap<>();
+        for (Entry e : sEntries) {
+            if (e.data != null && e.data.sessionId >= 0) {
+                Entry prev = latest.get(e.data.sessionId);
+                if (prev == null || e.recvAt >= prev.recvAt) latest.put(e.data.sessionId, e);
+            }
+        }
+        java.util.Iterator<Entry> it = sEntries.iterator();
+        while (it.hasNext()) {
+            Entry e = it.next();
+            if (e.data != null && e.data.sessionId >= 0 && latest.get(e.data.sessionId) != e) it.remove();
+        }
     }
 
     public static synchronized List<Entry> getAll() {
@@ -80,6 +100,7 @@ public class TacticalStore {
                 e.recvAt = r.getRecvAt();
                 sEntries.add(e);
             }
+            dedupBySession();
             android.util.Log.d("TACTICAL-STORE", "DB 로드: " + sEntries.size() + "건");
         } catch (Exception e) {
             android.util.Log.e("TACTICAL-STORE", "DB 로드 실패", e);

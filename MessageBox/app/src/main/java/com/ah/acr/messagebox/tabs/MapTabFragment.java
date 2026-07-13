@@ -337,12 +337,15 @@ public class MapTabFragment extends Fragment {
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }
         java.util.List<TacticalStore.Entry> entries = new java.util.ArrayList<>(latestByImei.values());
+        long latestSid = -1;
+        for (TacticalStore.Entry _e : entries) { if (_e.data != null && _e.data.sessionId > latestSid) latestSid = _e.data.sessionId; }
         for (TacticalStore.Entry e : entries) {
             if (e.data == null) continue;
             for (TacticalParser.TMarker tm : e.data.markers) {
                 Marker mk = new Marker(mMapView);
                 mk.setPosition(new GeoPoint(tm.lat, tm.lon));
                 mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                if ("S".equals(tm.cat) && e.data.sessionId >= 0 && e.data.sessionId != latestSid) mk.setAlpha(0.4f);
                 Drawable ic = "S".equals(tm.cat)
                         ? TacticalMarkerIcon.makeSurvival(getContext(), tm.survType, tm.survDisaster, tm.id)
                         : TacticalMarkerIcon.make(getContext(), tm.type, tm.id, tm.unit, tm.place);
