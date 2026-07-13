@@ -26,6 +26,7 @@ public class TacticalParser {
         public String cat = "M";          // "M"=전술, "S"=생존
         public int survType = -1;
         public int survDisaster = -1;
+        public boolean auto = false;   // MSA(서버 자동 표적)=true
     }
 
     public static class TLine {
@@ -64,8 +65,10 @@ public class TacticalParser {
                     out.fromImei = seg.substring(5).trim();
                 } else if (seg.startsWith("TS:")) {
                     out.ts = Long.parseLong(seg.substring(3).trim());
+                } else if (seg.startsWith("MSA:")) {
+                    parseSurvival(seg.substring(4), out, true);
                 } else if (seg.startsWith("MS:")) {
-                    parseSurvival(seg.substring(3), out);
+                    parseSurvival(seg.substring(3), out, false);
                 } else if (seg.startsWith("M:")) {
                     parseMarker(seg.substring(2), out);
                 } else if (seg.startsWith("L:")) {
@@ -102,11 +105,12 @@ public class TacticalParser {
     }
 
     // MS:id,survType,survDisaster,lat,lon
-    private static void parseSurvival(String s, TacticalData out) {
+    private static void parseSurvival(String s, TacticalData out, boolean auto) {
         String[] p = s.split(",");
         if (p.length < 5) return;
         TMarker m = new TMarker();
         m.cat = "S";
+        m.auto = auto;
         m.id = Integer.parseInt(p[0].trim());
         m.survType = Integer.parseInt(p[1].trim());
         m.survDisaster = Integer.parseInt(p[2].trim());
