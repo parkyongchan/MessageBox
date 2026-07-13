@@ -149,8 +149,10 @@ public class SosFragment extends Fragment {
             new AlertDialog.Builder(getContext())
                     .setTitle(getString(R.string.sos_dialog_start_title))
                     .setMessage(getString(R.string.sos_dialog_start_message))
-                    .setPositiveButton(getString(R.string.sos_btn_start), (d, w) ->
-                            BLE.INSTANCE.getWriteQueue().offer("LOCATION=4"))
+                    .setPositiveButton(getString(R.string.sos_btn_start), (d, w) -> {
+                        BLE.INSTANCE.getWriteQueue().offer("LOCATION=4");
+                        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).promptSurvivalEntry();
+                    })
                     .setNegativeButton(getString(R.string.btn_cancel), null)
                     .show();
         });

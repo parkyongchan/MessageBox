@@ -605,7 +605,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // [SURVIVAL] 생존 지원 요청 팝업 → 확인 시 발신 시작
-    private void promptSurvivalEntry() {
+    public void promptSurvivalEntry() {
         new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.dialog_survival_title))
                 .setMessage(getString(R.string.dialog_survival_message))
