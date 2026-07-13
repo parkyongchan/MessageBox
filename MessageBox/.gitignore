@@ -22,3 +22,6 @@ _bak/
 # 백업 파일 (git 추적 제외)
 *.bak*
 _bak_xml/
+
+*.bak_*
+*.bak2_*
