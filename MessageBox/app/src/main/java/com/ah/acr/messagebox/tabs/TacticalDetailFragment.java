@@ -151,7 +151,7 @@ public class TacticalDetailFragment extends DialogFragment {
         for (TacticalStore.Entry e : mSets) {
             if (e.data == null) continue;
             for (TacticalParser.TMarker m : e.data.markers) {
-                String label = TacticalParser.makeIdentifier(m.type, m.unit, m.place, m.id);
+                String label = "S".equals(m.cat) ? TacticalMarkerIcon.survivalIdentifier(m.survType, m.survDisaster, m.id) : TacticalParser.makeIdentifier(m.type, m.unit, m.place, m.id);
                 groups.computeIfAbsent(label, k -> new java.util.ArrayList<>()).add(new Object[]{m, e.recvAt});
             }
         }
@@ -176,11 +176,11 @@ public class TacticalDetailFragment extends DialogFragment {
                 mk.setPosition(gp);
                 mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
                 android.graphics.drawable.Drawable ic =
-                        TacticalMarkerIcon.make(getContext(), m.type, m.id, m.unit, m.place);
+                        "S".equals(m.cat) ? TacticalMarkerIcon.makeSurvival(getContext(), m.survType, m.survDisaster, m.id) : TacticalMarkerIcon.make(getContext(), m.type, m.id, m.unit, m.place);
                 if (ic != null) mk.setIcon(ic);
                 mk.setAlpha(latest ? 1.0f : 0.4f);
-                String ident = TacticalParser.makeIdentifier(m.type, m.unit, m.place, m.id);
-                String affil = (m.type >= 0 && m.type < AFFIL.length) ? AFFIL[m.type] : "-";
+                String ident = "S".equals(m.cat) ? TacticalMarkerIcon.survivalIdentifier(m.survType, m.survDisaster, m.id) : TacticalParser.makeIdentifier(m.type, m.unit, m.place, m.id);
+                String affil = "S".equals(m.cat) ? TacticalMarkerIcon.survivalName(m.survType, m.survDisaster) : ((m.type >= 0 && m.type < AFFIL.length) ? AFFIL[m.type] : "-");
                 mk.setTitle(ident);
                 mk.setSnippet(affil + "\n" + String.format(java.util.Locale.US, "%.5f, %.5f", m.lat, m.lon));
                 mk.setOnMarkerClickListener((mm, mv) -> {
@@ -499,8 +499,8 @@ public class TacticalDetailFragment extends DialogFragment {
             if (e.data == null) { setIdxRef[0]++; continue; }
             final int __color = SET_COLORS[setIdxRef[0] % SET_COLORS.length];
             for (TacticalParser.TMarker tm : e.data.markers) {
-                String ident = TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
-                String affil = (tm.type >= 0 && tm.type < AFFIL.length) ? AFFIL[tm.type] : "-";
+                String ident = "S".equals(tm.cat) ? TacticalMarkerIcon.survivalIdentifier(tm.survType, tm.survDisaster, tm.id) : TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
+                String affil = "S".equals(tm.cat) ? TacticalMarkerIcon.survivalName(tm.survType, tm.survDisaster) : ((tm.type >= 0 && tm.type < AFFIL.length) ? AFFIL[tm.type] : "-");
                 { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("MARKER", ident, affil, tm.lat, tm.lon); __r.setColor = __color; rows.add(__r); }
             }
             for (TacticalParser.TLine ln : e.data.lines) {

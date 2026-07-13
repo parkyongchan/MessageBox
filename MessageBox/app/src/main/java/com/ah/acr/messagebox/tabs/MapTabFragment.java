@@ -353,6 +353,7 @@ public class MapTabFragment extends Fragment {
                 mk.setTitle(ident);
                 StringBuilder sn = new StringBuilder();
                 sn.append(String.format(Locale.US, "%.5f, %.5f", tm.lat, tm.lon));
+                if ("S".equals(tm.cat)) sn.append("\n").append(TacticalMarkerIcon.survivalName(tm.survType, tm.survDisaster));
                 String from = (e.data.fromImei == null || e.data.fromImei.isEmpty()) ? "HQ/Control" : e.data.fromImei;
                 sn.append("\nFrom: ").append(from);
                 if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\nNote: ").append(e.data.note);

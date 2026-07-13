@@ -236,4 +236,21 @@ public class TacticalMarkerIcon {
         c.drawText(ident, bx, ty, bt);
         return new BitmapDrawable(ctx.getResources(), bmp);
     }
+    /** 생존 마커 영어 정의 (InfoWindow 표시용). survDisaster>=0 이면 재난. */
+    public static String survivalName(int survType, int survDisaster) {
+        if (survDisaster >= 0) {
+            String[] d = { "Wildfire","Typhoon","Flood","Earthquake","Rapids","Rockfall" };
+            String n = (survDisaster >= 0 && survDisaster < d.length) ? d[survDisaster] : "Disaster";
+            return n + " ? hazard area, evacuate";
+        }
+        switch (survType) {
+            case 0: return "Shelter ? evacuation target, easy rescue access";
+            case 1: return "Water Source ? drinkable water available";
+            case 2: return "Distress Point ? open sky for signaling";
+            case 3: return "Helipad ? rescue helicopter landing";
+            case 4: return "Danger Zone ? avoid this area";
+            case 5: return "My Location (SOS origin)";
+            default: return "Survival Point";
+        }
+    }
 }
