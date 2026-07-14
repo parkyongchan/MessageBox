@@ -318,6 +318,7 @@ public class MapTabFragment extends Fragment {
     // [tactical] 전술 오버레이 렌더 (TacticalStore 읽어 마커/라인/메저 표시)
     // [상세진입] 생존/전술 마커 2탭 시 상세 지도(트래킹) 열기.
     private void openTacticalDetail(String fromImei) {
+        android.util.Log.d("SURV-DETAIL", "openTacticalDetail 호출: fromImei=[" + fromImei + "]");
         try {
             com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei)
                 .show(getParentFragmentManager(), "TacticalDetail");
@@ -380,12 +381,21 @@ public class MapTabFragment extends Fragment {
                 final boolean _isSurv = "S".equals(tm.cat);
                 // 전술 마커 클릭 토글: 열려있으면 닫고, 아니면 정보 표시
                 mk.setOnMarkerClickListener((m2, mv2) -> {
-                    if (m2.isInfoWindowShown()) {
-                        if (_isSurv) { openTacticalDetail(_fromImei); m2.closeInfoWindow(); }
-                        else m2.closeInfoWindow();
+                    if (_isSurv) {
+                        // [생존] 1탭=문구 표시, 2탭(이미 열림)=상세 지도 이동
+                        if (m2.isInfoWindowShown()) {
+                            openTacticalDetail(_fromImei);
+                        } else {
+                            org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv2);
+                            m2.showInfoWindow();
+                        }
                     } else {
-                        org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv2);
-                        m2.showInfoWindow();
+                        if (m2.isInfoWindowShown()) {
+                            m2.closeInfoWindow();
+                        } else {
+                            org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv2);
+                            m2.showInfoWindow();
+                        }
                     }
                     return true;
                 });
@@ -659,7 +669,16 @@ public class MapTabFragment extends Fragment {
                     @Override
                     public void onChanged(List<LocationWithAddress> locations) {
                         refreshMarkers(locations); // [지도항상] TAC 모드여도 위치 마커 정리(옛 SOS 제거)
-                        if (mCurrentMode == MODE_TACTICAL) { mMapView.invalidate(); return; } // [TAC가드] 목록은 TAC 유지
+                        // [목록가드] TAC/SURV/ALL은 전술목록 어댑터 사용 → 위치목록 갱신으로 덮어쓰지 않음
+                        if (mCurrentMode == MODE_TACTICAL || mCurrentMode == MODE_SURVIVAL || mCurrentMode == MODE_ALL) {
+                            java.util.List<TacticalStore.Entry> _lt = getLatestTacticalEntries(mCurrentMode);
+                            binding.listLocation.setAdapter(mTacticalAdapter);
+                            mTacticalAdapter.submit(_lt);
+                            binding.listLocation.setVisibility(_lt.isEmpty() ? View.GONE : View.VISIBLE);
+                            binding.emptyState.setVisibility(_lt.isEmpty() ? View.VISIBLE : View.GONE);
+                            mMapView.invalidate();
+                            return;
+                        }
                         mAdapter.submitList(locations);
 
                         int count = locations != null ? locations.size() : 0;
@@ -731,10 +750,11 @@ public class MapTabFragment extends Fragment {
         renderTacticalOverlays();
 
         // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
-        if (mode == MODE_TACTICAL) {
+        if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL || mode == MODE_ALL) {
             binding.listLocation.setAdapter(mTacticalAdapter);
-            java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries();
+            java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries(mode);
             mTacticalAdapter.submit(latest);
+            android.util.Log.d("SURV-LIST", "목록표시 mode=" + mode + " latest.size=" + latest.size() + " empty=" + latest.isEmpty());
             binding.listLocation.setVisibility(latest.isEmpty() ? View.GONE : View.VISIBLE);
             binding.emptyState.setVisibility(latest.isEmpty() ? View.VISIBLE : View.GONE);
         } else {
@@ -743,11 +763,19 @@ public class MapTabFragment extends Fragment {
     }
 
     /** [TAC 목록] 발신자(fromImei)별 최신 전술 1건씩. renderTacticalOverlays와 동일 기준. */
-    private java.util.List<TacticalStore.Entry> getLatestTacticalEntries() {
+    private String cats(java.util.List<TacticalParser.TMarker> ms) { StringBuilder sb = new StringBuilder(); for (TacticalParser.TMarker m : ms) sb.append("[").append(m.cat).append("/st").append(m.survType).append("]"); return sb.toString(); }
+
+    private java.util.List<TacticalStore.Entry> getLatestTacticalEntries(int mode) {
         java.util.Map<String, TacticalStore.Entry> latestByImei = new java.util.HashMap<>();
         for (TacticalStore.Entry e : TacticalStore.getAll()) {
             if (e.data == null) continue;
-            String key = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            boolean hasSurv = false, hasTac = false;
+            for (TacticalParser.TMarker tm : e.data.markers) { if ("S".equals(tm.cat)) hasSurv = true; else hasTac = true; }
+            if (!e.data.lines.isEmpty() || !e.data.measures.isEmpty()) hasTac = true;
+            android.util.Log.d("SURV-LIST", "mode=" + mode + " hasSurv=" + hasSurv + " hasTac=" + hasTac + " markers=" + e.data.markers.size() + " cats=" + cats(e.data.markers));
+            if (mode == MODE_SURVIVAL && !hasSurv) continue;
+            if (mode == MODE_TACTICAL && !hasTac) continue;
+            String key = ((e.data.fromImei == null) ? "" : e.data.fromImei) + "#" + (hasSurv ? "S" : "T");   // 종류 포함 → 생존/전술 서로 안 밀어냄
             TacticalStore.Entry cur = latestByImei.get(key);
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }

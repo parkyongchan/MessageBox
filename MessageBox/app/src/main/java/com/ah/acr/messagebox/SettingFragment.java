@@ -235,6 +235,8 @@ public class SettingFragment extends Fragment {
             return;
         }
         if (vals.length < 3) { Log.v(TAG, "★X vals.length < 3, 종료"); return; }
+        // [설정저장fix] 편집 중(dirty)이면 SET=? 폴링 응답으로 화면을 덮어쓰지 않음 (LED와 동일 보호)
+        if (mIsDirty) { Log.v(TAG, "★X 편집 중(dirty) → 화면 유지, 덮어쓰기 스킵"); return; }
         Log.v(TAG, "★2 파싱: vals=" + java.util.Arrays.toString(vals));
 
         // ★★★ 캐시 저장 — 다음 진입 시 즉시 복원할 수 있도록
@@ -817,8 +819,6 @@ public class SettingFragment extends Fragment {
 
 
     private void buildAndSendSetting(String codeNum) {
-        BLE.INSTANCE.getWriteQueue().offer(binding.chkLed.isChecked() ? "LED=1" : "LED=0");
-
         StringBuilder setting = new StringBuilder();
         setting.append("SET=");
 
@@ -865,6 +865,11 @@ public class SettingFragment extends Fragment {
 
         Log.v(TAG, setting.toString());
         BLE.INSTANCE.getWriteQueue().offer(setting.toString());
+
+        // [설정저장fix] LED는 SET 뒤 딜레이로 전송 - 장비가 SET(로케이션) 처리 후 받게 (연속 전송 시 SET 유실 방지)
+        final boolean _ledOn = binding.chkLed.isChecked();
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() ->
+                BLE.INSTANCE.getWriteQueue().offer(_ledOn ? "LED=1" : "LED=0"), 600);
 
         Toast.makeText(getContext(), "Settings sent to device", Toast.LENGTH_SHORT).show();
 

@@ -49,12 +49,19 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
         TacticalStore.Entry e = items.get(position);
         String from = (e.data != null && e.data.fromImei != null && !e.data.fromImei.isEmpty())
                 ? e.data.fromImei : "Control";
-        h.from.setText("TACTICAL — " + from);
+        // [SURV] 생존 데이터 판별 (markers 중 cat="S")
+        boolean _isSurv = false;
+        if (e.data != null && e.data.markers != null) {
+            for (com.ah.acr.messagebox.TacticalParser.TMarker _m : e.data.markers) { if ("S".equals(_m.cat)) { _isSurv = true; break; } }
+        }
+        h.from.setText((_isSurv ? "SURVIVAL — " : "TACTICAL — ") + from);
 
         int mCnt = (e.data != null && e.data.markers != null) ? e.data.markers.size() : 0;
         int lCnt = (e.data != null && e.data.lines != null) ? e.data.lines.size() : 0;
         int rCnt = (e.data != null && e.data.measures != null) ? e.data.measures.size() : 0;
-        h.summary.setText("markers " + mCnt + ", lines " + lCnt + ", measures " + rCnt);
+        String _sum = "markers " + mCnt + ", lines " + lCnt + ", measures " + rCnt;
+        if (_isSurv) _sum += "\n\u25B6 TAP TWICE ON MAP TO OPEN GUIDE";
+        h.summary.setText(_sum);
 
         h.time.setText(sdf.format(new java.util.Date(e.recvAt)));
 
