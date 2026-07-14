@@ -105,6 +105,7 @@ public class MapTabFragment extends Fragment {
     private static final int MODE_TRACK = 2;
     private static final int MODE_SOS = 4;
     private static final int MODE_TACTICAL = 6;
+    private static final int MODE_SURVIVAL = 5;   // [SURV] 생존 전용 필터
 
     private boolean mIsSearchMode = false;
 
@@ -332,7 +333,7 @@ public class MapTabFragment extends Fragment {
         mTacticalMarkers.clear();
         mTacticalLines.clear();
 
-        if (mCurrentMode != MODE_ALL && mCurrentMode != MODE_TACTICAL) {
+        if (mCurrentMode != MODE_ALL && mCurrentMode != MODE_TACTICAL && mCurrentMode != MODE_SURVIVAL) {
             mMapView.invalidate();
             return;
         }
@@ -352,6 +353,9 @@ public class MapTabFragment extends Fragment {
         for (TacticalStore.Entry e : entries) {
             if (e.data == null) continue;
             for (TacticalParser.TMarker tm : e.data.markers) {
+                boolean _surv = "S".equals(tm.cat);
+                if (mCurrentMode == MODE_SURVIVAL && !_surv) continue;   // [SURV] 생존만
+                if (mCurrentMode == MODE_TACTICAL && _surv) continue;    // [TAC] 전술만
                 Marker mk = new Marker(mMapView);
                 mk.setPosition(new GeoPoint(tm.lat, tm.lon));
                 mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
@@ -696,6 +700,7 @@ public class MapTabFragment extends Fragment {
         binding.chipTrack.setOnClickListener(v -> selectModeChip(v, MODE_TRACK));
         binding.chipSos.setOnClickListener(v -> selectModeChip(v, MODE_SOS));
         binding.chipTactical.setOnClickListener(v -> selectModeChip(v, MODE_TACTICAL));
+        binding.chipSurvival.setOnClickListener(v -> selectModeChip(v, MODE_SURVIVAL));
     }
 
     private void selectQuickDate(View chip, int value, boolean isHours) {
@@ -717,6 +722,7 @@ public class MapTabFragment extends Fragment {
         binding.chipTrack.setSelected(false);
         binding.chipSos.setSelected(false);
         binding.chipTactical.setSelected(false);
+        binding.chipSurvival.setSelected(false);
         chip.setSelected(true);
 
         mInitialFitDone = false;
