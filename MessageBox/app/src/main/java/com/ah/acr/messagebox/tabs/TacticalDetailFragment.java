@@ -43,6 +43,22 @@ public class TacticalDetailFragment extends DialogFragment {
     private boolean mPlaying = false;
     private final android.os.Handler mPlayH = new android.os.Handler(android.os.Looper.getMainLooper()); // 그 장비 전술 이력(시간순)
     private TacticalElementAdapter mAdapter;
+    // [S5-nav] 내 위치(폰 GPS) + 생존 안내
+    private double mMyLat = Double.NaN, mMyLon = Double.NaN;
+    private org.osmdroid.views.overlay.Marker mMyMarker;
+    private org.osmdroid.views.overlay.Polyline mNavLine;
+    private android.location.LocationManager mLocMgr;
+    private android.location.LocationListener mLocListener;
+    private boolean mTrackingOn = false;   // [S5-nav] 실시간 트래킹 on/off
+    private android.widget.ImageButton mTrackBtn;
+    // [S5-nav] 나침반: 자기센서 heading + 선택 표적
+    private android.hardware.SensorManager mSensorMgr;
+    private android.hardware.SensorEventListener mSensorListener;
+    private float mHeading = Float.NaN;   // 폰이 향한 방위(0~360)
+    private double mSelLat = Double.NaN, mSelLon = Double.NaN;   // 선택된 표적(나침반 대상)
+    private final float[] mRotMat = new float[9];
+    private final float[] mOrient = new float[3];
+    private float[] mGravity, mGeomag;
 
     public static TacticalDetailFragment newInstance(String fromImei) {
         TacticalDetailFragment f = new TacticalDetailFragment();
@@ -105,6 +121,10 @@ public class TacticalDetailFragment extends DialogFragment {
             if (mMapView != null) mMapView.getController().zoomOut();
         });
         root.findViewById(R.id.tac_detail_fit).setOnClickListener(v -> fitAll());
+        // [S5-nav] 실시간 트래킹 토글
+        mTrackBtn = root.findViewById(R.id.tac_detail_track);
+        mTrackBtn.setColorFilter(0xFF95B0D4);
+        mTrackBtn.setOnClickListener(v -> toggleTracking());
 
         // 온라인/오프라인 토글
         com.ah.acr.messagebox.util.MapModeToggleHelper.setup(
@@ -121,6 +141,8 @@ public class TacticalDetailFragment extends DialogFragment {
         MapModeManager.applyToMapView(requireContext(), mMapView);
         mMapView.getController().setZoom(13.0);
         mMapView.getController().setCenter(new GeoPoint(37.5665, 126.9780));
+
+        startMyLocation();   // [S5-nav] 내 위치 수신 시작
 
         // 목록
         RecyclerView list = root.findViewById(R.id.tac_detail_list);
@@ -142,9 +164,154 @@ public class TacticalDetailFragment extends DialogFragment {
         return root;
     }
 
+    // [S5-nav] 내 위치(폰 GPS) 수신 시작. 권한 있으면 마지막 위치 즉시 + 실시간 갱신.
+    private void startMyLocation() {
+        try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                    android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.w("S5-NAV", "위치 권한 없음 - 내 위치 표시 불가");
+                return;
+            }
+            mLocMgr = (android.location.LocationManager) requireContext()
+                    .getSystemService(android.content.Context.LOCATION_SERVICE);
+            // 1) 마지막 위치 즉시 (위급 상황 - 있으면 바로 사용)
+            android.location.Location last = null;
+            try { last = mLocMgr.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER); } catch (Exception ignore) {}
+            if (last == null) { try { last = mLocMgr.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER); } catch (Exception ignore) {} }
+            if (last != null) { mMyLat = last.getLatitude(); mMyLon = last.getLongitude(); drawMyMarker(); }
+            // 2) 실시간 갱신
+            mLocListener = new android.location.LocationListener() {
+                @Override public void onLocationChanged(android.location.Location loc) {
+                    mMyLat = loc.getLatitude(); mMyLon = loc.getLongitude(); drawMyMarker();
+                    if (mTrackingOn && mMapView != null) mMapView.getController().animateTo(new GeoPoint(mMyLat, mMyLon));
+                }
+                @Override public void onProviderEnabled(String p) {}
+                @Override public void onProviderDisabled(String p) {}
+                @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
+            };
+            try { mLocMgr.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 3000, 5, mLocListener); } catch (Exception ignore) {}
+            try { mLocMgr.requestLocationUpdates(android.location.LocationManager.NETWORK_PROVIDER, 5000, 10, mLocListener); } catch (Exception ignore) {}
+        } catch (Exception e) {
+            android.util.Log.e("S5-NAV", "위치 수신 실패: " + e.getMessage());
+        }
+    }
+
+    // [S5-nav] 나침반 센서 시작 (가속도+자기 → heading).
+    private void startCompass() {
+        try {
+            if (mSensorMgr == null)
+                mSensorMgr = (android.hardware.SensorManager) requireContext().getSystemService(android.content.Context.SENSOR_SERVICE);
+            android.hardware.Sensor acc = mSensorMgr.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
+            android.hardware.Sensor mag = mSensorMgr.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD);
+            if (acc == null || mag == null) { android.util.Log.w("S5-NAV", "나침반 센서 없음"); return; }
+            if (mSensorListener == null) {
+                mSensorListener = new android.hardware.SensorEventListener() {
+                    @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+                        if (e.sensor.getType() == android.hardware.Sensor.TYPE_ACCELEROMETER) mGravity = e.values.clone();
+                        else if (e.sensor.getType() == android.hardware.Sensor.TYPE_MAGNETIC_FIELD) mGeomag = e.values.clone();
+                        if (mGravity != null && mGeomag != null) {
+                            if (android.hardware.SensorManager.getRotationMatrix(mRotMat, null, mGravity, mGeomag)) {
+                                android.hardware.SensorManager.getOrientation(mRotMat, mOrient);
+                                float deg = (float) Math.toDegrees(mOrient[0]);
+                                mHeading = (deg + 360) % 360;
+                                updateCompass();
+                            }
+                        }
+                    }
+                    @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) {}
+                };
+            }
+            mSensorMgr.registerListener(mSensorListener, acc, android.hardware.SensorManager.SENSOR_DELAY_UI);
+            mSensorMgr.registerListener(mSensorListener, mag, android.hardware.SensorManager.SENSOR_DELAY_UI);
+        } catch (Exception ex) { android.util.Log.e("S5-NAV", "나침반 시작 실패: " + ex.getMessage()); }
+    }
+
+    private void stopCompass() {
+        if (mSensorMgr != null && mSensorListener != null) mSensorMgr.unregisterListener(mSensorListener);
+    }
+
+    // [S5-nav] 나침반 갱신: 선택 표적 대비 방향을 상단 안내 바에 표시.
+    private void updateCompass() {
+        if (Float.isNaN(mHeading) || Double.isNaN(mSelLat) || Double.isNaN(mMyLat)) return;
+        if (getView() == null) return;
+        double tb = com.ah.acr.messagebox.util.SurvivalNav.bearingDegrees(mMyLat, mMyLon, mSelLat, mSelLon);
+        double rel = com.ah.acr.messagebox.util.SurvivalNav.relativeBearing(tb, mHeading);
+        double dist = com.ah.acr.messagebox.util.SurvivalNav.distanceMeters(mMyLat, mMyLon, mSelLat, mSelLon);
+        android.view.View bar = getView().findViewById(R.id.tac_nav_bar);
+        android.widget.TextView arrow = getView().findViewById(R.id.tac_nav_arrow);
+        android.widget.TextView hint = getView().findViewById(R.id.tac_nav_hint);
+        android.widget.TextView distTv = getView().findViewById(R.id.tac_nav_dist);
+        if (bar == null) return;
+        bar.setVisibility(android.view.View.VISIBLE);
+        // 화살표: 상대방위에 따라
+        double a = Math.abs(rel);
+        String arr;
+        if (a <= 15) arr = "\u2191";           // ↑ 정면
+        else if (a <= 75) arr = rel > 0 ? "\u2197" : "\u2196";  // ↗ ↖
+        else if (a <= 135) arr = rel > 0 ? "\u2192" : "\u2190"; // → ←
+        else arr = "\u2193";                   // ↓ 뒤
+        int color = com.ah.acr.messagebox.util.SurvivalNav.onCourse(rel) ? 0xFF2ECC71 : (a > 135 ? 0xFFE74C3C : 0xFFFF9500);
+        arrow.setText(arr);
+        arrow.setTextColor(color);
+        hint.setText(com.ah.acr.messagebox.util.SurvivalNav.steerHint(rel));
+        hint.setTextColor(color);
+        distTv.setText(com.ah.acr.messagebox.util.SurvivalNav.compass8(tb) + " · "
+                + com.ah.acr.messagebox.util.SurvivalNav.formatDistance(dist) + " · 도보 "
+                + com.ah.acr.messagebox.util.SurvivalNav.formatWalk(dist));
+    }
+
+    // [S5-nav] 실시간 트래킹 토글. ON=내 위치로 지도 이동+추적, 버튼 초록.
+    private void toggleTracking() {
+        mTrackingOn = !mTrackingOn;
+        if (mTrackBtn != null) mTrackBtn.setColorFilter(mTrackingOn ? 0xFF2ECC71 : 0xFF95B0D4);
+        if (mTrackingOn) {
+            if (!Double.isNaN(mMyLat)) {
+                mMapView.getController().animateTo(new GeoPoint(mMyLat, mMyLon));
+                mMapView.getController().setZoom(17.0);
+            } else {
+                android.widget.Toast.makeText(getContext(), "내 위치 확인 중… (My location acquiring)", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    // [S5-nav] 내 위치 마커(파란 점) 그리기/갱신.
+    private void drawMyMarker() {
+        if (mMapView == null || Double.isNaN(mMyLat)) return;
+        GeoPoint me = new GeoPoint(mMyLat, mMyLon);
+        if (mMyMarker == null) {
+            mMyMarker = new org.osmdroid.views.overlay.Marker(mMapView);
+            mMyMarker.setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER);
+            mMyMarker.setIcon(com.ah.acr.messagebox.TacticalMarkerIcon.makeMyLocation(getContext()));
+            mMyMarker.setTitle("My Location");
+            mMapView.getOverlays().add(mMyMarker);
+        }
+        mMyMarker.setPosition(me);
+        mMapView.invalidate();
+    }
+
+    // [S5-nav] 내 위치 → 선택 표적 직선 라인. 기존 라인 있으면 갱신.
+    private void drawNavLine(double tlat, double tlon) {
+        if (mMapView == null || Double.isNaN(mMyLat)) return;
+        if (mNavLine != null) mMapView.getOverlays().remove(mNavLine);
+        mNavLine = new org.osmdroid.views.overlay.Polyline();
+        java.util.List<GeoPoint> pts = new java.util.ArrayList<>();
+        pts.add(new GeoPoint(mMyLat, mMyLon));
+        pts.add(new GeoPoint(tlat, tlon));
+        mNavLine.setPoints(pts);
+        mNavLine.getOutlinePaint().setColor(0xFF2196F3);
+        mNavLine.getOutlinePaint().setStrokeWidth(6f);
+        mNavLine.getOutlinePaint().setPathEffect(new android.graphics.DashPathEffect(new float[]{20f, 15f}, 0f));
+        mMapView.getOverlays().add(mNavLine);
+        mMapView.invalidate();
+    }
+
     private void renderHistory() {
         if (mSets.isEmpty() || mMapView == null) return;
         mMapView.getOverlays().clear();
+        // [S5-nav] clear로 지워진 내 위치 마커/점선 복원
+        if (mMyMarker != null) mMapView.getOverlays().add(mMyMarker);
+        if (mNavLine != null) mMapView.getOverlays().add(mNavLine);
         java.util.List<GeoPoint> all = new java.util.ArrayList<>();
 
         java.util.LinkedHashMap<String, java.util.List<Object[]>> groups = new java.util.LinkedHashMap<>();
@@ -183,9 +350,22 @@ public class TacticalDetailFragment extends DialogFragment {
                 String affil = "S".equals(m.cat) ? TacticalMarkerIcon.survivalName(m.survType, m.survDisaster) : ((m.type >= 0 && m.type < AFFIL.length) ? AFFIL[m.type] : "-");
                 mk.setTitle(ident);
                 mk.setSnippet(affil + "\n" + String.format(java.util.Locale.US, "%.5f, %.5f", m.lat, m.lon));
+                final double _tlat = m.lat, _tlon = m.lon;
+                final boolean _isSurv = "S".equals(m.cat);
+                final String _sBase = affil + "\n" + String.format(java.util.Locale.US, "%.5f, %.5f", m.lat, m.lon);
                 mk.setOnMarkerClickListener((mm, mv) -> {
                     if (mm.isInfoWindowShown()) mm.closeInfoWindow();
                     else {
+                        if (_isSurv && !Double.isNaN(mMyLat)) {
+                            double _d = com.ah.acr.messagebox.util.SurvivalNav.distanceMeters(mMyLat, mMyLon, _tlat, _tlon);
+                            double _b = com.ah.acr.messagebox.util.SurvivalNav.bearingDegrees(mMyLat, mMyLon, _tlat, _tlon);
+                            String _nav = "🧭 " + com.ah.acr.messagebox.util.SurvivalNav.compass8(_b) + " "
+                                    + com.ah.acr.messagebox.util.SurvivalNav.formatDistance(_d)
+                                    + " · 도보 " + com.ah.acr.messagebox.util.SurvivalNav.formatWalk(_d);
+                            mm.setSnippet(_sBase + "\n" + _nav);
+                            drawNavLine(_tlat, _tlon);
+                            mSelLat = _tlat; mSelLon = _tlon; startCompass();   // [S5-nav] 나침반 대상 지정 + 센서 시작
+                        }
                         org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv);
                         mm.showInfoWindow();
                     }
@@ -520,7 +700,7 @@ public class TacticalDetailFragment extends DialogFragment {
     public void onResume() { super.onResume(); if (mMapView != null) mMapView.onResume(); }
 
     @Override
-    public void onPause() { super.onPause(); if (mMapView != null) mMapView.onPause(); }
+    public void onPause() { super.onPause(); if (mMapView != null) mMapView.onPause(); stopCompass(); }
 
     @Override
     public void onDestroyView() {

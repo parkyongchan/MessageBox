@@ -184,6 +184,23 @@ public class TacticalMarkerIcon {
     /**
      * 생존/재난 마커 아이콘. survDisaster>=0 이면 재난(삼각/주황), 아니면 생존(원/청록).
      */
+    /** [S5-nav] 내 위치 마커: 파란 점 + 흰 테두리 (GPS 현재 위치). */
+    public static Drawable makeMyLocation(Context ctx) {
+        int size = dp(ctx, 18);
+        Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        float cx = size / 2f, cy = size / 2f;
+        // 바깥 흰 링
+        Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ring.setColor(0xFFFFFFFF);
+        c.drawCircle(cx, cy, size * 0.42f, ring);
+        // 안쪽 파란 점
+        Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dot.setColor(0xFF2196F3);
+        c.drawCircle(cx, cy, size * 0.30f, dot);
+        return new BitmapDrawable(ctx.getResources(), bmp);
+    }
+
     /** [S5] survType별 마커 색. 0=대피소(초록) 1=식수원(파랑) 2=조난(주황) 3=헬기(보라) 4=위험(빨강) 5=내위치(청록). 재난은 주황계열 우선. */
     public static int survColor(int survType, boolean disaster) {
         if (disaster) return 0xFFFF6B35;
@@ -256,16 +273,16 @@ public class TacticalMarkerIcon {
         if (survDisaster >= 0) {
             String[] d = { "Wildfire","Typhoon","Flood","Earthquake","Rapids","Rockfall" };
             String n = (survDisaster >= 0 && survDisaster < d.length) ? d[survDisaster] : "Disaster";
-            return n + " ? hazard area, evacuate";
+            return n + " (재난) — hazard area, evacuate";
         }
         switch (survType) {
-            case 0: return "Shelter ? evacuation target, easy rescue access";
-            case 1: return "Water Source ? drinkable water available";
-            case 2: return "Distress Point ? open sky for signaling";
-            case 3: return "Helipad ? rescue helicopter landing";
-            case 4: return "Danger Zone ? avoid this area";
-            case 5: return "My Location (SOS origin)";
-            default: return "Survival Point";
+            case 0: return "Shelter (대피소) — evacuation target, easy rescue access";
+            case 1: return "Water Source (식수원) — drinkable water available";
+            case 2: return "Distress Point (조난신호) — open sky for signaling";
+            case 3: return "Helipad (헬기착륙) — rescue helicopter landing";
+            case 4: return "Danger Zone (위험지역) — avoid this area";
+            case 5: return "My Location (내 위치, SOS origin)";
+            default: return "Survival Point (생존 지점)";
         }
     }
 }
