@@ -184,9 +184,24 @@ public class TacticalMarkerIcon {
     /**
      * 생존/재난 마커 아이콘. survDisaster>=0 이면 재난(삼각/주황), 아니면 생존(원/청록).
      */
+    /** [S5] survType별 마커 색. 0=대피소(초록) 1=식수원(파랑) 2=조난(주황) 3=헬기(보라) 4=위험(빨강) 5=내위치(청록). 재난은 주황계열 우선. */
+    public static int survColor(int survType, boolean disaster) {
+        if (disaster) return 0xFFFF6B35;
+        switch (survType) {
+            case 0: return 0xFF2ECC71;   // 대피소 초록
+            case 1: return 0xFF3498DB;   // 식수원 파랑
+            case 2: return 0xFFFF9500;   // 조난신호 주황
+            case 3: return 0xFF9B59B6;   // 헬기착륙 보라
+            case 4: return 0xFFE74C3C;   // 위험지역 빨강
+            case 5: return 0xFF00C9B7;   // 내 위치 청록
+            default: return 0xFF00C9B7;
+        }
+    }
+
     public static Drawable makeSurvival(Context ctx, int survType, int survDisaster, int id) {
         boolean disaster = survDisaster >= 0;
-        int fillColor = disaster ? 0xFFFF6B35 : 0xFF00C9B7;
+        // [S5] survType별 색 구분: 위험=빨강, 대피소=초록 등 (위급시 색으로 즉시 판별)
+        int fillColor = survColor(survType, disaster);
         int iconSize = dp(ctx, 22);
         int badge = dp(ctx, 12);
         int totalW = iconSize;
