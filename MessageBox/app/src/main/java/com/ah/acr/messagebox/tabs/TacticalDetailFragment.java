@@ -59,6 +59,8 @@ public class TacticalDetailFragment extends DialogFragment {
     private final float[] mRotMat = new float[9];
     private final float[] mOrient = new float[3];
     private float[] mGravity, mGeomag;
+    // [S5-nav] 경로 위험 검사용: 위험지역(survType 4) 좌표 수집
+    private final java.util.List<double[]> mHazards = new java.util.ArrayList<>();
 
     public static TacticalDetailFragment newInstance(String fromImei) {
         TacticalDetailFragment f = new TacticalDetailFragment();
@@ -125,6 +127,16 @@ public class TacticalDetailFragment extends DialogFragment {
         mTrackBtn = root.findViewById(R.id.tac_detail_track);
         mTrackBtn.setColorFilter(0xFF95B0D4);
         mTrackBtn.setOnClickListener(v -> toggleTracking());
+        // [S5-nav] 바다/개활지 나침반 모드 토글
+        root.findViewById(R.id.tac_detail_compass).setOnClickListener(v -> {
+            android.view.View ov = getView() != null ? getView().findViewById(R.id.tac_compass_overlay) : null;
+            if (ov != null) {
+                boolean show = ov.getVisibility() != android.view.View.VISIBLE;
+                ov.setVisibility(show ? android.view.View.VISIBLE : android.view.View.GONE);
+                if (show) startCompass();
+            }
+        });
+        root.findViewById(R.id.tac_compass_overlay).setOnClickListener(v -> v.setVisibility(android.view.View.GONE));
 
         // 온라인/오프라인 토글
         com.ah.acr.messagebox.util.MapModeToggleHelper.setup(
@@ -259,6 +271,37 @@ public class TacticalDetailFragment extends DialogFragment {
         distTv.setText(com.ah.acr.messagebox.util.SurvivalNav.compass8(tb) + " · "
                 + com.ah.acr.messagebox.util.SurvivalNav.formatDistance(dist) + " · 도보 "
                 + com.ah.acr.messagebox.util.SurvivalNav.formatWalk(dist));
+        // [S5-nav] 경로상 위험(절벽 등) 검사: 내위치→표적 직선 100m 안에 위험지역 있으면 경고
+        android.widget.TextView warnTv = getView().findViewById(R.id.tac_nav_warn);
+        if (warnTv != null) {
+            double minHaz = Double.MAX_VALUE;
+            for (double[] hz : mHazards) {
+                double dh = com.ah.acr.messagebox.util.SurvivalNav.distancePointToPathMeters(mMyLat, mMyLon, mSelLat, mSelLon, hz[0], hz[1]);
+                if (dh < minHaz) minHaz = dh;
+            }
+            if (minHaz < 100) {
+                warnTv.setText("\u26A0 경로에 위험지역 " + Math.round(minHaz) + "m — 우회 주의 (Hazard on path)");
+                warnTv.setVisibility(android.view.View.VISIBLE);
+            } else {
+                warnTv.setVisibility(android.view.View.GONE);
+            }
+        }
+        // [S5-nav] 바다 모드 큰 오버레이도 동일 갱신
+        android.widget.TextView bigArrow = getView().findViewById(R.id.tac_big_arrow);
+        if (bigArrow != null && getView().findViewById(R.id.tac_compass_overlay).getVisibility() == android.view.View.VISIBLE) {
+            bigArrow.setText(arr);
+            bigArrow.setTextColor(color);
+            ((android.widget.TextView) getView().findViewById(R.id.tac_big_hint)).setText(com.ah.acr.messagebox.util.SurvivalNav.steerHint(rel));
+            ((android.widget.TextView) getView().findViewById(R.id.tac_big_hint)).setTextColor(color);
+            ((android.widget.TextView) getView().findViewById(R.id.tac_big_dist)).setText(com.ah.acr.messagebox.util.SurvivalNav.compass8(tb) + " · " + com.ah.acr.messagebox.util.SurvivalNav.formatDistance(dist) + " · 도보 " + com.ah.acr.messagebox.util.SurvivalNav.formatWalk(dist));
+            android.widget.TextView bigWarn = getView().findViewById(R.id.tac_big_warn);
+            if (warnTv != null && warnTv.getVisibility() == android.view.View.VISIBLE) {
+                bigWarn.setText(warnTv.getText());
+                bigWarn.setVisibility(android.view.View.VISIBLE);
+            } else {
+                bigWarn.setVisibility(android.view.View.GONE);
+            }
+        }
     }
 
     // [S5-nav] 실시간 트래킹 토글. ON=내 위치로 지도 이동+추적, 버튼 초록.
@@ -312,6 +355,7 @@ public class TacticalDetailFragment extends DialogFragment {
         // [S5-nav] clear로 지워진 내 위치 마커/점선 복원
         if (mMyMarker != null) mMapView.getOverlays().add(mMyMarker);
         if (mNavLine != null) mMapView.getOverlays().add(mNavLine);
+        mHazards.clear();   // [S5-nav] 위험 좌표 재수집
         java.util.List<GeoPoint> all = new java.util.ArrayList<>();
 
         java.util.LinkedHashMap<String, java.util.List<Object[]>> groups = new java.util.LinkedHashMap<>();
@@ -342,6 +386,7 @@ public class TacticalDetailFragment extends DialogFragment {
                 GeoPoint gp = new GeoPoint(m.lat, m.lon);
                 mk.setPosition(gp);
                 mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                if ("S".equals(m.cat) && m.survType == 4) mHazards.add(new double[]{m.lat, m.lon});   // [S5-nav] 위험지역 수집
                 android.graphics.drawable.Drawable ic =
                         "S".equals(m.cat) ? TacticalMarkerIcon.makeSurvival(getContext(), m.survType, m.survDisaster, m.id) : TacticalMarkerIcon.make(getContext(), m.type, m.id, m.unit, m.place);
                 if (ic != null) mk.setIcon(ic);

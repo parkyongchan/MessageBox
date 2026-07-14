@@ -315,6 +315,16 @@ public class MapTabFragment extends Fragment {
 
 
     // [tactical] 전술 오버레이 렌더 (TacticalStore 읽어 마커/라인/메저 표시)
+    // [상세진입] 생존/전술 마커 2탭 시 상세 지도(트래킹) 열기.
+    private void openTacticalDetail(String fromImei) {
+        try {
+            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei)
+                .show(getParentFragmentManager(), "TacticalDetail");
+        } catch (Exception ex) {
+            android.util.Log.e(TAG, "openTacticalDetail 실패: " + ex.getMessage(), ex);
+        }
+    }
+
     private void renderTacticalOverlays() {
         if (mMapView == null) return;
         for (Marker m : mTacticalMarkers) mMapView.getOverlays().remove(m);
@@ -360,11 +370,15 @@ public class MapTabFragment extends Fragment {
                 String from = (e.data.fromImei == null || e.data.fromImei.isEmpty()) ? "HQ/Control" : e.data.fromImei;
                 sn.append("\nFrom: ").append(from);
                 if (e.data.note != null && !e.data.note.isEmpty()) sn.append("\nNote: ").append(e.data.note);
+                if ("S".equals(tm.cat)) sn.append("\n\u25B6 탭하여 상세 안내 보기 (Tap for details)");
                 mk.setSnippet(sn.toString());
+                final String _fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+                final boolean _isSurv = "S".equals(tm.cat);
                 // 전술 마커 클릭 토글: 열려있으면 닫고, 아니면 정보 표시
                 mk.setOnMarkerClickListener((m2, mv2) -> {
                     if (m2.isInfoWindowShown()) {
-                        m2.closeInfoWindow();
+                        if (_isSurv) { openTacticalDetail(_fromImei); m2.closeInfoWindow(); }
+                        else m2.closeInfoWindow();
                     } else {
                         org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mv2);
                         m2.showInfoWindow();

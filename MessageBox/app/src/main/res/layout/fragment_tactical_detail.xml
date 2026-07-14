@@ -201,6 +201,15 @@
                 android:background="@drawable/bg_map_button"
                 android:src="@android:drawable/ic_menu_mylocation"
                 android:contentDescription="My location tracking" />
+
+            <ImageButton
+                android:id="@+id/tac_detail_compass"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@android:drawable/ic_menu_compass"
+                android:contentDescription="Compass mode" />
         </LinearLayout>
         <!-- Playback controls (bottom center) -->
         <LinearLayout
@@ -290,6 +299,76 @@
                 android:text="-"
                 android:textColor="#B0C4DE"
                 android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tac_nav_warn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textColor="#E74C3C"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- [S5-nav] 바다/개활지 모드: 큰 나침반 오버레이 (기본 숨김) -->
+        <LinearLayout
+            android:id="@+id/tac_compass_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="#E60A1628"
+            android:visibility="gone"
+            android:clickable="true">
+
+            <TextView
+                android:id="@+id/tac_big_dist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textColor="#B0C4DE"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/tac_big_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="↑"
+                android:textColor="#2ECC71"
+                android:textSize="120sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tac_big_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="정면 · 직진"
+                android:textColor="#FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tac_big_warn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text=""
+                android:textColor="#E74C3C"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="[ 탭하여 지도로 · Tap for map ]"
+                android:textColor="#7A93B8"
+                android:textSize="14sp" />
         </LinearLayout>
     </FrameLayout>
 
