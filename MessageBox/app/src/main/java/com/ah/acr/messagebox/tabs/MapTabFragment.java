@@ -670,7 +670,7 @@ public class MapTabFragment extends Fragment {
                     public void onChanged(List<LocationWithAddress> locations) {
                         refreshMarkers(locations); // [지도항상] TAC 모드여도 위치 마커 정리(옛 SOS 제거)
                         // [목록가드] TAC/SURV/ALL은 전술목록 어댑터 사용 → 위치목록 갱신으로 덮어쓰지 않음
-                        if (mCurrentMode == MODE_TACTICAL || mCurrentMode == MODE_SURVIVAL || mCurrentMode == MODE_ALL) {
+                        if (mCurrentMode == MODE_TACTICAL || mCurrentMode == MODE_SURVIVAL) {
                             java.util.List<TacticalStore.Entry> _lt = getLatestTacticalEntries(mCurrentMode);
                             binding.listLocation.setAdapter(mTacticalAdapter);
                             mTacticalAdapter.submit(_lt);
@@ -750,7 +750,7 @@ public class MapTabFragment extends Fragment {
         renderTacticalOverlays();
 
         // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
-        if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL || mode == MODE_ALL) {
+        if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL) {
             binding.listLocation.setAdapter(mTacticalAdapter);
             java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries(mode);
             mTacticalAdapter.submit(latest);
