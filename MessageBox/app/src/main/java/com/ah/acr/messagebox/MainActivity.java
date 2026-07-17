@@ -112,7 +112,8 @@ public class MainActivity extends AppCompatActivity {
     private Handler mSyncHandler;
 
     // [SURVIVAL] 생존 진입 재시도 (단일 슬롯 + 10분 주기 + 최대 3회 + ACK 중단)
-    private String mSurvivalKey = null;       // 재시도 중인 세션키 (null=비활성)
+    private String mSurvivalKey = null;
+    private String mActiveSurvivalKey = null;   // [S5-chat] ACK 무관, 세션 유지용 키       // 재시도 중인 세션키 (null=비활성)
     private String mSurvivalTitle = null;     // 재전송할 SENDING= 패킷
     private int mSurvivalRetryCount = 0;      // 재시도 횟수
     private static final long SURVIVAL_RETRY_MS = 600000L; // 10분
@@ -616,6 +617,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // [SURVIVAL] 생존 진입 발신 시작: ~S:<key>:<lat>:<lon>, 단일 슬롯 + 1분 재시도
+    /** [S5-chat] 활성 생존 세션키 (조난자 질의 ~V: 송신용). 없으면 null. */
+    public String getActiveSurvivalKey() { return mActiveSurvivalKey; }
+
+    /** [S5-chat] victim query send: title=~V:<key>, memo=content. */
+    public boolean sendSurvivalQuery(String content) {
+        if (content == null || content.trim().isEmpty()) return false;
+        if (mActiveSurvivalKey == null || mActiveSurvivalKey.isEmpty()) return false;
+        String packet = buildSurvivalPacket("~V:" + mActiveSurvivalKey, content.trim());
+        BLE.INSTANCE.getWriteQueue().offer(packet);
+        Log.v("SURVIVAL", "victim query send: key=" + mActiveSurvivalKey + " len=" + content.length());
+        return true;
+    }
+
     private void startSurvivalEntry() {
         DeviceStatus st = mBleViewModel.getDeviceStatus().getValue();
         String imei = ImeiStorage.getSanitizedLast(this);
@@ -628,6 +642,7 @@ public class MainActivity extends AppCompatActivity {
 
         String key = imei + "-" + (System.currentTimeMillis() / 1000L);
         mSurvivalKey = key;
+        mActiveSurvivalKey = key;   // [S5-chat] 대화 송신용 (ACK 후에도 유지)
         mSurvivalRetryCount = 0;
         // title=~S:1 (20B 제한 회피), memo=key:lat:lon (실데이터). 0x07 패킷으로 서버 발신.
         mSurvivalTitle = buildSurvivalPacket("~S:1", key + ":" + lat + ":" + lon);
@@ -3451,13 +3466,18 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                     }
                                     // 전술이면 채팅 본문 = 요약, 아니면 원문
+                                    boolean _isGuide = full.startsWith("GUIDE:");
+                                    if (_isGuide) {
+                                        SurvivalChatStore.add(codeNum, "server", full.substring(6));
+                                        android.util.Log.d("SURV-CHAT", "GUIDE recv from=" + codeNum + " len=" + (full.length()-6));
+                                    }
                                     String bubbleBody = (tacticalSummary != null) ? tacticalSummary : full;
                                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", bubbleBody,
                                             new Date(),
                                             new Date(System.currentTimeMillis()),
                                             new Date(System.currentTimeMillis()),
                                             false, false, false);
-                                    insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
+                                    if (!_isGuide) insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
                                     mLargeMsgBuf.remove(msgId);
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);

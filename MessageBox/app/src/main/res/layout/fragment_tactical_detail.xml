@@ -370,6 +370,123 @@
                 android:textColor="#7A93B8"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- [S5-chat] survival message panel (overlay, bottom) -->
+        <LinearLayout
+            android:id="@+id/tac_surv_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical">
+
+            <!-- collapsed peek bar -->
+            <LinearLayout
+                android:id="@+id/tac_surv_peek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="#E60D1E33"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:clickable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="\u25B2"
+                    android:textColor="#00E5D1"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="8dp" />
+                <TextView
+                    android:id="@+id/tac_surv_peek_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="\uC548\uB0B4 \uBA54\uC2DC\uC9C0"
+                    android:textColor="#B0C4DE"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- expanded panel -->
+            <LinearLayout
+                android:id="@+id/tac_surv_expanded"
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                android:orientation="vertical"
+                android:background="#F00A1628"
+                android:visibility="gone">
+
+                <!-- handle (tap to collapse) -->
+                <LinearLayout
+                    android:id="@+id/tac_surv_handle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="#0D1E33"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="8dp"
+                    android:clickable="true">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="\uAD00\uC81C \uC548\uB0B4"
+                        android:textColor="#00E5D1"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="\u25BC"
+                        android:textColor="#7A93B8"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/tac_surv_msgs"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:clipToPadding="false" />
+
+                <!-- input row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="#0D1E33"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="8dp">
+                    <EditText
+                        android:id="@+id/tac_surv_input"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="\uBA54\uC2DC\uC9C0 \uC785\uB825"
+                        android:textColorHint="#5A6E88"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:maxLines="3"
+                        android:background="#152A4A"
+                        android:padding="10dp" />
+                    <Button
+                        android:id="@+id/tac_surv_send"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="\uC804\uC1A1"
+                        android:textColor="#0A1628"
+                        android:textStyle="bold"
+                        android:backgroundTint="#00E5D1" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
     </FrameLayout>
 
     <!-- Element list -->

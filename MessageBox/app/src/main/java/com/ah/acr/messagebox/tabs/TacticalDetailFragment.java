@@ -37,6 +37,12 @@ public class TacticalDetailFragment extends DialogFragment {
     private static final int[] SET_COLORS = {0xFF00E5FF, 0xFFFF6D00, 0xFFFFEB3B, 0xFF76FF03, 0xFFE040FB, 0xFFFF4081, 0xFF40C4FF, 0xFFB388FF};
 
     private MapView mMapView;
+    private String mSurvImei = "";
+    private java.util.List<com.ah.acr.messagebox.SurvivalChatStore.Msg> mSurvMsgs = new java.util.ArrayList<>();
+    private RecyclerView mSurvRecycler;
+    private android.widget.TextView mSurvPeekText;
+    private android.view.View mSurvExpanded;
+    private com.ah.acr.messagebox.SurvivalChatStore.Listener mSurvListener;
     private java.util.List<TacticalStore.Entry> mSets = new java.util.ArrayList<>();
     private java.util.List<TacticalStore.Entry> mAllSets = new java.util.ArrayList<>(); // 전체 백업(재생용)
     private int mPlayIndex = -1;
@@ -173,6 +179,7 @@ public class TacticalDetailFragment extends DialogFragment {
         } catch (Exception e) {
             android.util.Log.e("TAC-DETAIL", "render fail", e);
         }
+        initSurvivalPanel(root);
         return root;
     }
 
@@ -747,9 +754,110 @@ public class TacticalDetailFragment extends DialogFragment {
     @Override
     public void onPause() { super.onPause(); if (mMapView != null) mMapView.onPause(); stopCompass(); }
 
+    // [S5-chat] survival message panel init
+    private void initSurvivalPanel(View root) {
+        mSurvImei = getArguments() != null ? getArguments().getString(ARG_FROM, "") : "";
+        if (mSurvImei == null) mSurvImei = "";
+        android.view.View peek = root.findViewById(R.id.tac_surv_peek);
+        android.view.View handle = root.findViewById(R.id.tac_surv_handle);
+        mSurvExpanded = root.findViewById(R.id.tac_surv_expanded);
+        mSurvPeekText = root.findViewById(R.id.tac_surv_peek_text);
+        mSurvRecycler = root.findViewById(R.id.tac_surv_msgs);
+        android.widget.EditText input = root.findViewById(R.id.tac_surv_input);
+        android.widget.Button send = root.findViewById(R.id.tac_surv_send);
+        if (mSurvRecycler == null) return;
+
+        mSurvRecycler.setLayoutManager(new LinearLayoutManager(getContext()));
+        SurvAdapter adapter = new SurvAdapter();
+        mSurvRecycler.setAdapter(adapter);
+
+        mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvImei);
+        adapter.notifyDataSetChanged();
+        updatePeek();
+        scrollBottom();
+
+        if (peek != null) peek.setOnClickListener(v -> {
+            if (mSurvExpanded != null) mSurvExpanded.setVisibility(View.VISIBLE);
+            scrollBottom();
+        });
+        if (handle != null) handle.setOnClickListener(v -> {
+            if (mSurvExpanded != null) mSurvExpanded.setVisibility(View.GONE);
+        });
+
+        if (send != null) send.setOnClickListener(v -> {
+            String txt = input.getText().toString().trim();
+            if (txt.isEmpty()) return;
+            boolean ok = false;
+            if (getActivity() instanceof com.ah.acr.messagebox.MainActivity) {
+                ok = ((com.ah.acr.messagebox.MainActivity) getActivity()).sendSurvivalQuery(txt);
+            }
+            if (ok) {
+                com.ah.acr.messagebox.SurvivalChatStore.add(mSurvImei, "victim", txt);
+                input.setText("");
+            } else {
+                android.widget.Toast.makeText(getContext(), "\uC138\uC158 \uC5C6\uC74C (No active session)", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        mSurvListener = (imei, msg) -> {
+            if (!mSurvImei.equals(imei)) return;
+            if (mSurvRecycler == null) return;
+            mSurvRecycler.post(() -> {
+                mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvImei);
+                if (mSurvRecycler.getAdapter() != null) mSurvRecycler.getAdapter().notifyDataSetChanged();
+                updatePeek();
+                scrollBottom();
+            });
+        };
+        com.ah.acr.messagebox.SurvivalChatStore.addListener(mSurvListener);
+    }
+
+    private void updatePeek() {
+        if (mSurvPeekText == null || mSurvMsgs.isEmpty()) return;
+        com.ah.acr.messagebox.SurvivalChatStore.Msg last = mSurvMsgs.get(mSurvMsgs.size() - 1);
+        mSurvPeekText.setText(last.content);
+    }
+
+    private void scrollBottom() {
+        if (mSurvRecycler != null && !mSurvMsgs.isEmpty())
+            mSurvRecycler.scrollToPosition(mSurvMsgs.size() - 1);
+    }
+
+    // [S5-chat] bubble adapter: server=left(navy), victim=right(cyan)
+    private class SurvAdapter extends RecyclerView.Adapter<SurvAdapter.VH> {
+        class VH extends RecyclerView.ViewHolder {
+            android.view.View sl, sr; android.widget.TextView bubble;
+            VH(android.view.View v) {
+                super(v);
+                sl = v.findViewById(R.id.surv_spacer_left);
+                sr = v.findViewById(R.id.surv_spacer_right);
+                bubble = v.findViewById(R.id.surv_bubble);
+            }
+        }
+        @NonNull public VH onCreateViewHolder(@NonNull ViewGroup p, int vt) {
+            android.view.View v = LayoutInflater.from(p.getContext()).inflate(R.layout.item_surv_msg, p, false);
+            return new VH(v);
+        }
+        public void onBindViewHolder(@NonNull VH h, int pos) {
+            com.ah.acr.messagebox.SurvivalChatStore.Msg m = mSurvMsgs.get(pos);
+            boolean victim = "victim".equals(m.sender);
+            h.bubble.setText(m.content);
+            android.widget.LinearLayout.LayoutParams lpL = (android.widget.LinearLayout.LayoutParams) h.sl.getLayoutParams();
+            android.widget.LinearLayout.LayoutParams lpR = (android.widget.LinearLayout.LayoutParams) h.sr.getLayoutParams();
+            lpL.weight = victim ? 1.2f : 0f;
+            lpR.weight = victim ? 0f : 1.2f;
+            h.sl.setLayoutParams(lpL);
+            h.sr.setLayoutParams(lpR);
+            h.bubble.setBackgroundColor(victim ? 0xFF0E4A4A : 0xFF152A4A);
+            h.bubble.setTextColor(victim ? 0xFF00E5D1 : 0xFFFFFFFF);
+        }
+        public int getItemCount() { return mSurvMsgs.size(); }
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (mSurvListener != null) com.ah.acr.messagebox.SurvivalChatStore.removeListener(mSurvListener);
         if (mMapView != null) { mMapView.onDetach(); mMapView = null; }
     }
 }
