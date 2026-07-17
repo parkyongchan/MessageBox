@@ -58,7 +58,22 @@ public class TacticalStore {
     }
 
     public static synchronized List<Entry> getAll() {
-        return new ArrayList<>(sEntries);
+        // [SURV-latest] \uac19\uc740 \uc7a5\ube44(fromImei)\ub294 \uac00\uc7a5 \ucd5c\uc2e0 \uc138\uc158(sessionId \理\ub300)\ub9cc \ud45c\uc2dc, \uc774\uc804 \uc138\uc158 \uc228\uae40
+        java.util.HashMap<String, Long> latestSid = new java.util.HashMap<>();
+        for (Entry e : sEntries) {
+            if (e.data == null || e.data.sessionId < 0) continue;
+            String imei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            Long cur = latestSid.get(imei);
+            if (cur == null || e.data.sessionId > cur) latestSid.put(imei, e.data.sessionId);
+        }
+        List<Entry> out = new ArrayList<>();
+        for (Entry e : sEntries) {
+            if (e.data == null || e.data.sessionId < 0) { out.add(e); continue; }   // \ube44\uc0dd\uc874 \ub9c8\ucee4\ub294 \uadf8\ub300\ub85c
+            String imei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            Long latest = latestSid.get(imei);
+            if (latest != null && e.data.sessionId == latest) out.add(e);   // \ucd5c\uc2e0 \uc138\uc158\ub9cc
+        }
+        return out;
     }
 
     public static synchronized void clear() {

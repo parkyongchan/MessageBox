@@ -102,7 +102,8 @@
 
                 <LinearLayout
                     android:id="@+id/signal_bar_container"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="14dp"
                     android:orientation="horizontal"
                     android:gravity="bottom"
@@ -154,15 +155,15 @@
                 <ImageView
                     android:id="@+id/btn_msg_delete"
                     android:layout_marginEnd="2dp"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
                     android:src="@android:drawable/ic_menu_delete"
-                    app:tint="#FF5252"
-                    android:layout_marginStart="4dp"
-                    android:padding="2dp"
+                    app:tint="#FF6B6B"
+                    android:layout_marginStart="6dp"
+                    android:padding="5dp"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/bg_map_button"
                     android:contentDescription="단말 메시지 전체 삭제" />
 
             </LinearLayout>

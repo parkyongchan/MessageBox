@@ -62,6 +62,19 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
         String _sum = "markers " + mCnt + ", lines " + lCnt + ", measures " + rCnt;
         if (_isSurv) _sum += "\n\u25B6 TAP TWICE ON MAP TO OPEN GUIDE";
         h.summary.setText(_sum);
+        // [SURV-color] \ub300\ud45c survType \uc0c9\uc73c\ub85c \uc138\ub85c \ubc14 (\uc704\ud5d8 \uc6b0\uc120)
+        if (h.bar != null) {
+            int repType = -1; boolean disaster = false;
+            if (e.data != null && e.data.markers != null) {
+                for (com.ah.acr.messagebox.TacticalParser.TMarker _m : e.data.markers) {
+                    if (_m.survDisaster >= 0) disaster = true;
+                    if (_m.survType == 4) { repType = 4; break; }
+                    if (repType < 0 && _m.survType >= 0) repType = _m.survType;
+                }
+            }
+            if (repType >= 0) h.bar.setBackgroundColor(
+                com.ah.acr.messagebox.TacticalMarkerIcon.survColor(repType, disaster));
+        }
 
         h.time.setText(sdf.format(new java.util.Date(e.recvAt)));
 
@@ -74,6 +87,7 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
 
     static class VH extends RecyclerView.ViewHolder {
         final TextView from, summary, time;
+        final View bar;
         final ImageView detail;
         VH(@NonNull View v) {
             super(v);
@@ -81,6 +95,7 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
             summary = v.findViewById(R.id.tac_item_summary);
             time = v.findViewById(R.id.tac_item_time);
             detail = v.findViewById(R.id.tac_item_detail);
+            bar = v.findViewById(R.id.tac_item_bar);
         }
     }
 }
