@@ -185,7 +185,26 @@ public class TacticalDetailFragment extends DialogFragment {
         }
         initSurvivalPanel(root);
         initFavorites(root);
+        showEnterGuide(root);
         return root;
+    }
+
+    // [S5-nav] \uc9c4\uc785 \uc2dc \ub098\uce68\ubc18 \uc790\ub3d9 \ud65c\uc131\ud654 + \uc548\ub0b4 \ubc30\ub108 (4\ucd08 \ud6c4 \uc0ac\ub77c\uc9d0)
+    private void showEnterGuide(View root) {
+        // \ub098\uce68\ubc18 \uc624\ubc84\ub808\uc774 \uc790\ub3d9 \ud45c\uc2dc + \uc13c\uc11c \uc2dc\uc791
+        android.view.View ov = root.findViewById(R.id.tac_compass_overlay);
+        if (ov != null) { ov.setVisibility(View.VISIBLE); startCompass(); }
+        // \uc548\ub0b4 \ubc30\ub108 \ud45c\uc2dc \u2192 4\ucd08 \ud6c4 \ud398\uc774\ub4dc\uc544\uc6c3
+        final View hint = root.findViewById(R.id.tac_enter_hint);
+        if (hint == null) return;
+        hint.setVisibility(View.VISIBLE);
+        hint.setAlpha(1f);
+        hint.setOnClickListener(v -> v.setVisibility(View.GONE));   // \ud0ed\ud558\uba74 \uc989\uc2dc \ub2eb\uae30
+        hint.postDelayed(() -> {
+            if (hint.getVisibility() != View.VISIBLE) return;
+            hint.animate().alpha(0f).setDuration(600).withEndAction(
+                () -> hint.setVisibility(View.GONE)).start();
+        }, 30000);
     }
 
     // [S5-nav] 내 위치(폰 GPS) 수신 시작. 권한 있으면 마지막 위치 즉시 + 실시간 갱신.

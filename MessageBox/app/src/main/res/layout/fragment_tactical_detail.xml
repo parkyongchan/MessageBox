@@ -164,7 +164,7 @@
                 android:layout_height="30dp"
                 android:layout_marginBottom="8dp"
                 android:background="@drawable/bg_map_button"
-                android:src="@android:drawable/ic_input_add"
+                android:src="@drawable/ic_tac_zoom_in"
                 android:contentDescription="Zoom in" />
 
             <ImageButton
@@ -173,7 +173,7 @@
                 android:layout_height="30dp"
                 android:layout_marginBottom="8dp"
                 android:background="@drawable/bg_map_button"
-                android:src="@android:drawable/ic_delete"
+                android:src="@drawable/ic_tac_zoom_out"
                 android:contentDescription="Zoom out" />
 
             <ImageButton
@@ -181,7 +181,7 @@
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:background="@drawable/bg_map_button"
-                android:src="@android:drawable/ic_menu_crop"
+                android:src="@drawable/ic_tac_fit"
                 android:contentDescription="Fit all" />
 
             <ImageButton
@@ -199,7 +199,7 @@
                 android:layout_height="30dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_map_button"
-                android:src="@android:drawable/ic_menu_mylocation"
+                android:src="@drawable/ic_tac_track"
                 android:contentDescription="My location tracking" />
 
             <ImageButton
@@ -208,10 +208,10 @@
                 android:layout_height="30dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_map_button"
-                android:src="@android:drawable/ic_menu_compass"
+                android:src="@drawable/ic_tac_compass"
                 android:contentDescription="Compass mode" />
 
-            <ImageButton                 android:id="@+id/tac_detail_fav"                 android:layout_width="30dp"                 android:layout_height="30dp"                 android:layout_marginTop="8dp"                 android:background="@drawable/bg_map_button"                 android:src="@android:drawable/btn_star_big_on"                 android:contentDescription="Favorites" />
+            <ImageButton                 android:id="@+id/tac_detail_fav"                 android:layout_width="30dp"                 android:layout_height="30dp"                 android:layout_marginTop="8dp"                 android:background="@drawable/bg_map_button"                 android:src="@drawable/ic_tac_fav"                 android:contentDescription="Favorites" />
         </LinearLayout>
         <!-- Playback controls (bottom center) -->
         <LinearLayout
@@ -372,6 +372,22 @@
                 android:textColor="#7A93B8"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- [S5-nav] \uc9c4\uc785 \uc548\ub0b4 \ubc30\ub108 (\uc0c1\ub2e8, \uba87\ucd08 \ud6c4 \uc0ac\ub77c\uc9d0) -->
+        <TextView
+            android:id="@+id/tac_enter_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:layout_marginTop="56dp"
+            android:layout_marginHorizontal="12dp"
+            android:background="#E60D1E33"
+            android:padding="12dp"
+            android:gravity="center"
+            android:text="\u2b50 Tap the \u2295 target icon on the right to track your movement toward a destination."
+            android:textColor="#00E5D1"
+            android:textSize="13sp"
+            android:visibility="gone" />
 
         <!-- [S5-chat] survival message panel (overlay, bottom) -->
         <LinearLayout
