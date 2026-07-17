@@ -24,6 +24,9 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.MapEventsOverlay;
+import org.osmdroid.events.MapEventsReceiver;
+import com.ah.acr.messagebox.SurvivalFavStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +46,7 @@ public class TacticalDetailFragment extends DialogFragment {
     private android.widget.TextView mSurvPeekText;
     private android.view.View mSurvExpanded;
     private com.ah.acr.messagebox.SurvivalChatStore.Listener mSurvListener;
+    private final java.util.List<org.osmdroid.views.overlay.Marker> mFavMarkers = new java.util.ArrayList<>();
     private java.util.List<TacticalStore.Entry> mSets = new java.util.ArrayList<>();
     private java.util.List<TacticalStore.Entry> mAllSets = new java.util.ArrayList<>(); // 전체 백업(재생용)
     private int mPlayIndex = -1;
@@ -180,6 +184,7 @@ public class TacticalDetailFragment extends DialogFragment {
             android.util.Log.e("TAC-DETAIL", "render fail", e);
         }
         initSurvivalPanel(root);
+        initFavorites(root);
         return root;
     }
 
@@ -852,6 +857,121 @@ public class TacticalDetailFragment extends DialogFragment {
             h.bubble.setTextColor(victim ? 0xFF00E5D1 : 0xFFFFFFFF);
         }
         public int getItemCount() { return mSurvMsgs.size(); }
+    }
+
+    // [S5-fav] favorites: long-press to save, star icon to list
+    private void initFavorites(View root) {
+        android.widget.ImageButton favBtn = root.findViewById(R.id.tac_detail_fav);
+        if (favBtn != null) favBtn.setOnClickListener(v -> showFavList());
+        if (mMapView == null) return;
+        MapEventsReceiver rx = new MapEventsReceiver() {
+            @Override public boolean singleTapConfirmedHelper(GeoPoint p) { return false; }
+            @Override public boolean longPressHelper(GeoPoint p) {
+                promptSaveFav(p.getLatitude(), p.getLongitude());
+                return true;
+            }
+        };
+        mMapView.getOverlays().add(0, new MapEventsOverlay(rx));
+        drawFavMarkers();
+    }
+
+    // [S5-fav] 저장된 즐겨찾기를 지도에 별 마커로 표시
+    private void drawFavMarkers() {
+        if (mMapView == null || getContext() == null) return;
+        for (org.osmdroid.views.overlay.Marker m : mFavMarkers) mMapView.getOverlays().remove(m);
+        mFavMarkers.clear();
+        android.graphics.drawable.Drawable star = androidx.core.content.res.ResourcesCompat.getDrawable(
+                getResources(), android.R.drawable.btn_star_big_on, null);
+        for (SurvivalFavStore.Fav f : SurvivalFavStore.getAll(getContext())) {
+            if (f.isEmpty()) continue;
+            org.osmdroid.views.overlay.Marker mk = new org.osmdroid.views.overlay.Marker(mMapView);
+            mk.setPosition(new GeoPoint(f.lat, f.lon));
+            mk.setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM);
+            if (star != null) mk.setIcon(star);
+            mk.setTitle("★ " + f.name);
+            mMapView.getOverlays().add(mk);
+            mFavMarkers.add(mk);
+        }
+        mMapView.invalidate();
+    }
+
+    private void promptSaveFav(double lat, double lon) {
+        if (getContext() == null) return;
+        if (SurvivalFavStore.count(getContext()) >= SurvivalFavStore.MAX_SLOTS) {
+            android.widget.Toast.makeText(getContext(), "\uc990\uaca8\ucc3e\uae30 \uac00\ub4dd (\ucd5c\ub300 10\uac1c)", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final android.widget.EditText input = new android.widget.EditText(getContext());
+        input.setHint("\uc774\ub984 (\uc608: \uc9d1, \ub300\ud53c\uc18c)");
+        input.setPadding(40, 30, 40, 30);
+        new android.app.AlertDialog.Builder(getContext())
+            .setTitle("\uc990\uaca8\ucc3e\uae30 \uc800\uc7a5")
+            .setMessage(String.format(java.util.Locale.US, "%.5f, %.5f", lat, lon))
+            .setView(input)
+            .setPositiveButton("\uc800\uc7a5", (d, w) -> {
+                String name = input.getText().toString().trim();
+                if (name.isEmpty()) return;
+                int slot = SurvivalFavStore.saveToFirstEmpty(getContext(), name, lat, lon);
+                if (slot >= 0) {
+                    android.widget.Toast.makeText(getContext(), "\uc800\uc7a5\ub428: \uc2ac\ub86f" + (slot + 1) + " " + name, android.widget.Toast.LENGTH_SHORT).show();
+                    drawFavMarkers();
+                }
+            })
+            .setNegativeButton("\ucde8\uc18c", null)
+            .show();
+    }
+
+    private void showFavList() {
+        if (getContext() == null) return;
+        java.util.List<SurvivalFavStore.Fav> all = SurvivalFavStore.getAll(getContext());
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        final java.util.List<SurvivalFavStore.Fav> picks = new java.util.ArrayList<>();
+        for (SurvivalFavStore.Fav f : all) {
+            if (f.isEmpty()) continue;
+            labels.add("\uc2ac\ub86f" + (f.slot + 1) + " : " + f.name);
+            picks.add(f);
+        }
+        if (picks.isEmpty()) {
+            android.widget.Toast.makeText(getContext(), "\uc800\uc7a5\ub41c \uc990\uaca8\ucc3e\uae30 \uc5c6\uc74c (\uc9c0\ub3c4 \uae38\uac8c \ub20c\ub7ec \uc800\uc7a5)", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] arr = labels.toArray(new String[0]);
+        new android.app.AlertDialog.Builder(getContext())
+            .setTitle("\uc990\uaca8\ucc3e\uae30 \u2014 \uc774\ub3d9 \ubaa9\ud45c \uc120\ud0dd")
+            .setItems(arr, (d, which) -> {
+                SurvivalFavStore.Fav f = picks.get(which);
+                mSelLat = f.lat; mSelLon = f.lon;
+                drawNavLine(f.lat, f.lon);
+                if (!mTrackingOn) toggleTracking();
+                if (mMapView != null) mMapView.getController().animateTo(new GeoPoint(f.lat, f.lon));
+                android.widget.Toast.makeText(getContext(), f.name + " \ub85c \uc548\ub0b4 \uc2dc\uc791", android.widget.Toast.LENGTH_SHORT).show();
+            })
+            .setNeutralButton("\uc0ad\uc81c", (d, w) -> showFavDelete())
+            .setNegativeButton("\ub2eb\uae30", null)
+            .show();
+    }
+
+    private void showFavDelete() {
+        if (getContext() == null) return;
+        java.util.List<SurvivalFavStore.Fav> all = SurvivalFavStore.getAll(getContext());
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        final java.util.List<Integer> slots = new java.util.ArrayList<>();
+        for (SurvivalFavStore.Fav f : all) {
+            if (f.isEmpty()) continue;
+            labels.add("\uc2ac\ub86f" + (f.slot + 1) + " : " + f.name);
+            slots.add(f.slot);
+        }
+        if (slots.isEmpty()) return;
+        String[] arr = labels.toArray(new String[0]);
+        new android.app.AlertDialog.Builder(getContext())
+            .setTitle("\uc0ad\uc81c\ud560 \uc990\uaca8\ucc3e\uae30")
+            .setItems(arr, (d, which) -> {
+                SurvivalFavStore.delete(getContext(), slots.get(which));
+                drawFavMarkers();
+                android.widget.Toast.makeText(getContext(), "\uc0ad\uc81c\ub428", android.widget.Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("\ucde8\uc18c", null)
+            .show();
     }
 
     @Override

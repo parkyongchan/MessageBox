@@ -210,6 +210,8 @@
                 android:background="@drawable/bg_map_button"
                 android:src="@android:drawable/ic_menu_compass"
                 android:contentDescription="Compass mode" />
+
+            <ImageButton                 android:id="@+id/tac_detail_fav"                 android:layout_width="30dp"                 android:layout_height="30dp"                 android:layout_marginTop="8dp"                 android:background="@drawable/bg_map_button"                 android:src="@android:drawable/btn_star_big_on"                 android:contentDescription="Favorites" />
         </LinearLayout>
         <!-- Playback controls (bottom center) -->
         <LinearLayout
