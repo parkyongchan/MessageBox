@@ -684,8 +684,13 @@ public class MapTabFragment extends Fragment {
         // [CLIMATE] 날씨 목록 어댑터
         mWeatherAdapter = new com.ah.acr.messagebox.adapter.WeatherListAdapter(w -> {
             if (w != null) {
-                android.util.Log.d("WEATHER-LIST", "클릭 " + (w.marine ? "해상" : "육상") + " " + w.fields);
-                // TODO(2d): 상세지도 (육지/해양별 정보, 7일예보, 하단 문구)
+                // [2d] 날씨 상세 다이얼로그
+                try {
+                    com.ah.acr.messagebox.WeatherDetailDialog.newInstance(w)
+                        .show(getParentFragmentManager(), "WeatherDetail");
+                } catch (Exception ex) {
+                    android.util.Log.e(TAG, "WeatherDetail open failed: " + ex.getMessage(), ex);
+                }
             }
         });
     }
