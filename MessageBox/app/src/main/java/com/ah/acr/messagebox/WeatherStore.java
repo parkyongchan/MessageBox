@@ -24,6 +24,13 @@ public class WeatherStore {
         public Map<String, String> fields = new LinkedHashMap<>();  // T, FL, P, WS, WD, WH, ...
         public List<Day> forecast7 = new ArrayList<>();
         public long recvAt = System.currentTimeMillis();
+
+        public double lat() { return parseF(fields.get("LAT")); }
+        public double lon() { return parseF(fields.get("LON")); }
+        private static double parseF(String s) {
+            if (s == null) return 0;
+            try { return Double.parseDouble(s.trim()); } catch (Exception e) { return 0; }
+        }
     }
 
     private static final List<Weather> LIST = new ArrayList<>();

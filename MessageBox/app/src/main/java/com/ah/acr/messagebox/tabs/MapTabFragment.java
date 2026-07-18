@@ -54,6 +54,7 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.Polygon;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -313,7 +314,8 @@ public class MapTabFragment extends Fragment {
             mInitialFitDone = true;
             mMapView.post(this::fitAllMarkers);
         }
-        renderTacticalOverlays(); // refreshMarkers 후 전술도 다시 그림
+        renderTacticalOverlays();
+        renderWeatherOverlays(); // refreshMarkers 후 전술도 다시 그림
     }
 
 
@@ -327,6 +329,43 @@ public class MapTabFragment extends Fragment {
         } catch (Exception ex) {
             android.util.Log.e(TAG, "openTacticalDetail 실패: " + ex.getMessage(), ex);
         }
+    }
+
+    private final java.util.List<org.osmdroid.views.overlay.Polygon> mWeatherCircles = new java.util.ArrayList<>();
+
+    private void renderWeatherOverlays() {
+        if (mMapView == null) return;
+        for (org.osmdroid.views.overlay.Polygon c : mWeatherCircles) mMapView.getOverlays().remove(c);
+        mWeatherCircles.clear();
+        if (mCurrentMode != MODE_WEATHER) { mMapView.invalidate(); return; }
+        for (com.ah.acr.messagebox.WeatherStore.Weather w : com.ah.acr.messagebox.WeatherStore.getAll()) {
+            double lat = w.lat(), lon = w.lon();
+            if (lat == 0 && lon == 0) continue;
+            org.osmdroid.views.overlay.Polygon circle = new org.osmdroid.views.overlay.Polygon(mMapView);
+            circle.setPoints(org.osmdroid.views.overlay.Polygon.pointsAsCircle(new GeoPoint(lat, lon), 3000.0));
+            int fill = w.marine ? 0x330077CC : 0x3300C9FF;
+            int stroke = w.marine ? 0xFF0077CC : 0xFF00C9FF;
+            circle.getFillPaint().setColor(fill);
+            circle.getOutlinePaint().setColor(stroke);
+            circle.getOutlinePaint().setStrokeWidth(3f);
+            // 요약 (탭 시 정보창)
+            StringBuilder t = new StringBuilder(w.marine ? "\ud574\uc0c1 \ub0a0\uc528" : "\uc721\uc0c1 \ub0a0\uc528");
+            if (w.marine) {
+                t.append("\n\ud30c\uace0 ").append(v(w,"WH")).append("m  \uc218\uc628 ").append(v(w,"SST")).append("\u00b0");
+            } else {
+                t.append("\n\uae30\uc628 ").append(v(w,"T")).append("\u00b0  \uccb4\uac10 ").append(v(w,"FL")).append("\u00b0");
+            }
+            t.append("  \ud48d\uc18d ").append(v(w,"WS"));
+            circle.setTitle(t.toString());
+            mWeatherCircles.add(circle);
+            mMapView.getOverlays().add(circle);
+        }
+        mMapView.invalidate();
+    }
+
+    private String v(com.ah.acr.messagebox.WeatherStore.Weather w, String k) {
+        String s = w.fields.get(k);
+        return s == null ? "-" : s;
     }
 
     private void renderTacticalOverlays() {
@@ -758,17 +797,19 @@ public class MapTabFragment extends Fragment {
         mCurrentMode = mode;
         locationViewModel.setFilterMode(mode);
         renderTacticalOverlays();
+        renderWeatherOverlays();
 
         // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
         if (mode == MODE_WEATHER) {
-            // [CLIMATE] 날씨 목록 표시 (WeatherStore)
+            // [CLIMATE] 날씨 목록 + 지도 반경 원
             binding.listLocation.setAdapter(mWeatherAdapter);
             java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> wl = com.ah.acr.messagebox.WeatherStore.getAll();
             mWeatherAdapter.submit(wl);
             android.util.Log.d("WEATHER-LIST", "날씨 모드 count=" + wl.size());
             binding.emptyState.setVisibility(wl.isEmpty() ? View.VISIBLE : View.GONE);
             binding.listLocation.setVisibility(wl.isEmpty() ? View.GONE : View.VISIBLE);
-            // TODO: 지도 반경 원(2c) + 상세지도(2d)
+            renderWeatherOverlays();   // [2c] 지도 반경 원
+            // TODO(2d): 상세지도
         } else if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL) {
             binding.listLocation.setAdapter(mTacticalAdapter);
             java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries(mode);
