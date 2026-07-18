@@ -32,11 +32,13 @@ public class WeatherListAdapter extends RecyclerView.Adapter<WeatherListAdapter.
         items.clear();
         if (list != null) items.addAll(list);
         notifyDataSetChanged();
+        android.util.Log.d("WX-ADAPTER", "submit size=" + items.size());
     }
 
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        android.util.Log.d("WX-ADAPTER", "onCreateVH");
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_weather, parent, false);
         return new VH(v);

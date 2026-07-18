@@ -24,6 +24,7 @@ public class WeatherStore {
         public Map<String, String> fields = new LinkedHashMap<>();  // T, FL, P, WS, WD, WH, ...
         public List<Day> forecast7 = new ArrayList<>();
         public long recvAt = System.currentTimeMillis();
+        public String rawBody;   // 영속 저장용
 
         public double lat() { return parseF(fields.get("LAT")); }
         public double lon() { return parseF(fields.get("LON")); }
@@ -67,7 +68,9 @@ public class WeatherStore {
                 }
             }
         } catch (Exception ignore) {}
-        LIST.add(0, w);   // \ucd5c\uc2e0\uc774 \uc55e
+        w.rawBody = body;
+        LIST.add(0, w);
+        while (LIST.size() > 30) LIST.remove(LIST.size() - 1);
         return w;
     }
 
@@ -84,4 +87,46 @@ public class WeatherStore {
     }
 
     public static synchronized void clear() { LIST.clear(); }
+
+    private static final String PREF = "weather_store";
+    private static final String KEY = "raw_list";
+
+    public static synchronized void persist(android.content.Context ctx) {
+        if (ctx == null) return;
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray();
+            for (Weather w : LIST) {
+                if (w.rawBody == null) continue;
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("from", w.from == null ? "" : w.from);
+                o.put("body", w.rawBody);
+                o.put("recvAt", w.recvAt);
+                arr.put(o);
+            }
+            ctx.getSharedPreferences(PREF, android.content.Context.MODE_PRIVATE)
+               .edit().putString(KEY, arr.toString()).apply();
+        } catch (Exception ignore) {}
+    }
+
+    public static synchronized void load(android.content.Context ctx) {
+        if (ctx == null) return;
+        try {
+            String s = ctx.getSharedPreferences(PREF, android.content.Context.MODE_PRIVATE)
+                          .getString(KEY, null);
+            if (s == null) return;
+            org.json.JSONArray arr = new org.json.JSONArray(s);
+            LIST.clear();
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.getJSONObject(i);
+                Weather w = addFromBody(o.optString("from"), o.optString("body"));
+                if (w != null) w.recvAt = o.optLong("recvAt", System.currentTimeMillis());
+            }
+        } catch (Exception ignore) {}
+    }
+
+    public static synchronized Weather addAndPersist(android.content.Context ctx, String from, String body) {
+        Weather w = addFromBody(from, body);
+        persist(ctx);
+        return w;
+    }
 }

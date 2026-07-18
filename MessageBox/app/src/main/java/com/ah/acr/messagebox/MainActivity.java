@@ -253,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean("pref_integrity_short", true)
                     .putBoolean("pref_integrity_large", true)
                     .putBoolean("pref_resend_auto", true)
-                    .putInt("pref_resend_interval", 2)
+                    .putInt("pref_resend_interval", 5)
                     .putBoolean("pref_defaults_initialized", true)
                     .apply();
             }
@@ -278,6 +278,7 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        WeatherStore.load(getApplicationContext());   // [CLIMATE] 저장된 날씨 로드
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (this.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -3498,6 +3499,10 @@ public class MainActivity extends AppCompatActivity {
                                 mLargeMsgLastAt.put(msgId, System.currentTimeMillis());   // [gap-fill] 마지막 조각 시각
                                 mLargeMsgSender.put(msgId, codeNum);
                                 java.util.TreeMap<Integer, String> parts = mLargeMsgBuf.get(msgId);
+                                // [gap-fill] 미완성 대용량 → 설정 간격으로 자동 조각 재요청 (파일과 동일 메커니즘, SURV/TAC/WX 공통)
+                                if (parts != null && parts.size() < total && isAutoResend()) {
+                                    scheduleAutoMtGapfill(msgId);
+                                }
                                 android.util.Log.d("LARGE-MSG", "조각 수신 msgId=" + msgId
                                         + " seq=" + seq + "/" + (total - 1)
                                         + " 누적=" + parts.size() + "/" + total);
@@ -3536,7 +3541,7 @@ public class MainActivity extends AppCompatActivity {
                                         SurvivalChatStore.add(codeNum, "server", full.substring(6));
                                         android.util.Log.d("SURV-CHAT", "GUIDE recv from=" + codeNum + " len=" + (full.length()-6));
                                     } else if (_isWeather) {
-                                        WeatherStore.Weather _w = WeatherStore.addFromBody(codeNum, full);
+                                        WeatherStore.Weather _w = WeatherStore.addAndPersist(getApplicationContext(), codeNum, full);
                                         android.util.Log.d("WEATHER-RECV", "WX recv marine=" + (_w != null && _w.marine)
                                                 + " fields=" + (_w != null ? _w.fields : "-")
                                                 + " days=" + (_w != null ? _w.forecast7.size() : 0));

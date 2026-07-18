@@ -796,6 +796,7 @@ public class MapTabFragment extends Fragment {
         binding.chipSos.setSelected(false);
         binding.chipTactical.setSelected(false);
         binding.chipSurvival.setSelected(false);
+        binding.chipWeather.setSelected(false);
         chip.setSelected(true);
 
         mInitialFitDone = false;
