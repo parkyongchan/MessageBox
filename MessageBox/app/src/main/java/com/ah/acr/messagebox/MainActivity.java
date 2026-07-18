@@ -669,6 +669,35 @@ public class MainActivity extends AppCompatActivity {
 
         mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
         mSyncHandler.postDelayed(mSurvivalRetryRunnable, SURVIVAL_RETRY_MS);
+        showCancelSnackbar("SURVIVAL", key);   // [CLIMATE] 발신 후 취소 스낵바
+    }
+
+    // [CLIMATE] 발신 후 취소 스낵바 (약 6초). 취소 시 앱 재전송 중단.
+    private void showCancelSnackbar(String kind, String key) {
+        try {
+            View root = findViewById(android.R.id.content);
+            if (root == null) return;
+            com.google.android.material.snackbar.Snackbar
+                .make(root, kind + " request sent", 6000)
+                .setAction("CANCEL", v -> cancelSurvivalSend(kind, key))
+                .show();
+        } catch (Exception ignore) {}
+    }
+
+    // [CLIMATE] 생존/날씨 발신 취소: 앱 재전송 중단 + 세션 키 초기화.
+    //   주의: 첫 발신은 이미 나갔을 수 있어 서버 세션은 별도 종료 필요(추후).
+    private void cancelSurvivalSend(String kind, String key) {
+        mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
+        if (key != null && key.equals(mSurvivalKey)) {
+            mSurvivalKey = null;
+            mSurvivalTitle = null;
+            mSurvivalRetryCount = 0;
+        }
+        if (key != null && key.equals(mActiveSurvivalKey)) {
+            mActiveSurvivalKey = null;
+        }
+        Log.v("SURVIVAL", "cancelled by user: kind=" + kind + " key=" + key);
+        Toast.makeText(this, "Cancelled — resend stopped", Toast.LENGTH_SHORT).show();
     }
 
     // [CLIMATE] 날씨 진입 발신: ~W:1 + key:lat:lon (위치 1회). 생존과 동일 방식, 식별자만 ~W.
@@ -687,7 +716,7 @@ public class MainActivity extends AppCompatActivity {
         String packet = buildSurvivalPacket("~W:1", key + ":" + lat + ":" + lon);
         BLE.INSTANCE.getWriteQueue().offer(packet);
         Log.v("WEATHER", "start send: key=" + key + " lat=" + lat + " lon=" + lon);
-        Toast.makeText(this, "Weather request sent", Toast.LENGTH_SHORT).show();
+        showCancelSnackbar("WEATHER", key);   // [CLIMATE] 발신 후 취소 스낵바
     }
 
     // [SURVIVAL] 0x07 패킷 조립 (채팅 doSendPending과 동일 형식). codeNum=""=서버.
