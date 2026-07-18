@@ -106,6 +106,7 @@ public class MapTabFragment extends Fragment {
     private static final int MODE_SOS = 4;
     private static final int MODE_TACTICAL = 6;
     private static final int MODE_SURVIVAL = 5;   // [SURV] 생존 전용 필터
+    private static final int MODE_WEATHER = 7;   // [CLIMATE] 날씨 전용 필터
 
     private boolean mIsSearchMode = false;
 
@@ -720,6 +721,7 @@ public class MapTabFragment extends Fragment {
         binding.chipSos.setOnClickListener(v -> selectModeChip(v, MODE_SOS));
         binding.chipTactical.setOnClickListener(v -> selectModeChip(v, MODE_TACTICAL));
         binding.chipSurvival.setOnClickListener(v -> selectModeChip(v, MODE_SURVIVAL));
+        binding.chipWeather.setOnClickListener(v -> selectModeChip(v, MODE_WEATHER));
     }
 
     private void selectQuickDate(View chip, int value, boolean isHours) {
@@ -750,7 +752,18 @@ public class MapTabFragment extends Fragment {
         renderTacticalOverlays();
 
         // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
-        if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL) {
+        if (mode == MODE_WEATHER) {
+            // [CLIMATE] 날씨 목록 표시 (WeatherStore) - 뼈대. 상세 UI는 후속.
+            java.util.List<WeatherStore.Weather> wl = WeatherStore.getAll();
+            android.util.Log.d("WEATHER-LIST", "날씨 모드 선택 count=" + wl.size());
+            for (WeatherStore.Weather w : wl) {
+                android.util.Log.d("WEATHER-LIST", "  " + (w.marine ? "해상" : "육상")
+                        + " from=" + w.from + " fields=" + w.fields + " days=" + w.forecast7.size());
+            }
+            binding.emptyState.setVisibility(wl.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.listLocation.setVisibility(wl.isEmpty() ? View.GONE : View.VISIBLE);
+            // TODO: 전용 어댑터로 목록 렌더 + 지도 반경 원(2c) + 상세지도(2d)
+        } else if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL) {
             binding.listLocation.setAdapter(mTacticalAdapter);
             java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries(mode);
             mTacticalAdapter.submit(latest);
