@@ -3531,9 +3531,18 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                     // 전술이면 채팅 본문 = 요약, 아니면 원문
                                     boolean _isGuide = full.startsWith("GUIDE:");
+                                    boolean _isWeather = full.startsWith("WX:");
                                     if (_isGuide) {
                                         SurvivalChatStore.add(codeNum, "server", full.substring(6));
                                         android.util.Log.d("SURV-CHAT", "GUIDE recv from=" + codeNum + " len=" + (full.length()-6));
+                                    } else if (_isWeather) {
+                                        WeatherStore.Weather _w = WeatherStore.addFromBody(codeNum, full);
+                                        android.util.Log.d("WEATHER-RECV", "WX recv marine=" + (_w != null && _w.marine)
+                                                + " fields=" + (_w != null ? _w.fields : "-")
+                                                + " days=" + (_w != null ? _w.forecast7.size() : 0));
+                                        runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this,
+                                                (_w != null && _w.marine ? "\ud574\uc0c1 \ub0a0\uc528 \uc218\uc2e0" : "\uc721\uc0c1 \ub0a0\uc528 \uc218\uc2e0"),
+                                                android.widget.Toast.LENGTH_SHORT).show());
                                     }
                                     String bubbleBody = (tacticalSummary != null) ? tacticalSummary : full;
                                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", bubbleBody,
@@ -3541,7 +3550,7 @@ public class MainActivity extends AppCompatActivity {
                                             new Date(System.currentTimeMillis()),
                                             new Date(System.currentTimeMillis()),
                                             false, false, false);
-                                    if (!_isGuide) insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
+                                    if (!_isGuide && !_isWeather) insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
                                     mLargeMsgBuf.remove(msgId);
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);
