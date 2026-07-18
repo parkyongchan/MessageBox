@@ -86,6 +86,7 @@ public class MapTabFragment extends Fragment {
     private FragmentMapTabBinding binding;
     private LocationAdapter mAdapter;
     private com.ah.acr.messagebox.adapter.TacticalListAdapter mTacticalAdapter;
+    private com.ah.acr.messagebox.adapter.WeatherListAdapter mWeatherAdapter;
     private LocationViewModel locationViewModel;
     private AddressViewModel addressViewModel;
     private BleViewModel mBleViewModel;
@@ -641,6 +642,13 @@ public class MapTabFragment extends Fragment {
                     }
                 }
             });
+        // [CLIMATE] 날씨 목록 어댑터
+        mWeatherAdapter = new com.ah.acr.messagebox.adapter.WeatherListAdapter(w -> {
+            if (w != null) {
+                android.util.Log.d("WEATHER-LIST", "클릭 " + (w.marine ? "해상" : "육상") + " " + w.fields);
+                // TODO(2d): 상세지도 (육지/해양별 정보, 7일예보, 하단 문구)
+            }
+        });
     }
 
 
@@ -753,16 +761,14 @@ public class MapTabFragment extends Fragment {
 
         // [TAC 목록] TAC 모드면 전술 목록 어댑터로 교체, 아니면 위치 목록
         if (mode == MODE_WEATHER) {
-            // [CLIMATE] 날씨 목록 표시 (WeatherStore) - 뼈대. 상세 UI는 후속.
-            java.util.List<WeatherStore.Weather> wl = WeatherStore.getAll();
-            android.util.Log.d("WEATHER-LIST", "날씨 모드 선택 count=" + wl.size());
-            for (WeatherStore.Weather w : wl) {
-                android.util.Log.d("WEATHER-LIST", "  " + (w.marine ? "해상" : "육상")
-                        + " from=" + w.from + " fields=" + w.fields + " days=" + w.forecast7.size());
-            }
+            // [CLIMATE] 날씨 목록 표시 (WeatherStore)
+            binding.listLocation.setAdapter(mWeatherAdapter);
+            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> wl = com.ah.acr.messagebox.WeatherStore.getAll();
+            mWeatherAdapter.submit(wl);
+            android.util.Log.d("WEATHER-LIST", "날씨 모드 count=" + wl.size());
             binding.emptyState.setVisibility(wl.isEmpty() ? View.VISIBLE : View.GONE);
             binding.listLocation.setVisibility(wl.isEmpty() ? View.GONE : View.VISIBLE);
-            // TODO: 전용 어댑터로 목록 렌더 + 지도 반경 원(2c) + 상세지도(2d)
+            // TODO: 지도 반경 원(2c) + 상세지도(2d)
         } else if (mode == MODE_TACTICAL || mode == MODE_SURVIVAL) {
             binding.listLocation.setAdapter(mTacticalAdapter);
             java.util.List<TacticalStore.Entry> latest = getLatestTacticalEntries(mode);
