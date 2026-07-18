@@ -14,7 +14,7 @@
             android:id="@+id/wxd_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\ub0a0\uc528 \uc0c1\uc138"
+            android:text="Weather Detail"
             android:textColor="#00E5D1"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -38,7 +38,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\ud604\uc7ac"
+            android:text="Current"
             android:textColor="#E8F1FB"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -63,7 +63,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="7\uc77c \uc608\ubcf4"
+            android:text="7-Day Forecast"
             android:textColor="#E8F1FB"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -79,7 +79,7 @@
             android:id="@+id/wxd_close"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="\ub2eb\uae30"
+            android:text="Close"
             android:gravity="center"
             android:padding="12dp"
             android:layout_marginTop="16dp"

@@ -338,7 +338,7 @@ public class MapTabFragment extends Fragment {
         for (org.osmdroid.views.overlay.Polygon c : mWeatherCircles) mMapView.getOverlays().remove(c);
         mWeatherCircles.clear();
         if (mCurrentMode != MODE_WEATHER) { mMapView.invalidate(); return; }
-        for (com.ah.acr.messagebox.WeatherStore.Weather w : com.ah.acr.messagebox.WeatherStore.getAll()) {
+        for (com.ah.acr.messagebox.WeatherStore.Weather w : com.ah.acr.messagebox.WeatherStore.getLatest()) {
             double lat = w.lat(), lon = w.lon();
             if (lat == 0 && lon == 0) continue;
             org.osmdroid.views.overlay.Polygon circle = new org.osmdroid.views.overlay.Polygon(mMapView);
@@ -349,13 +349,13 @@ public class MapTabFragment extends Fragment {
             circle.getOutlinePaint().setColor(stroke);
             circle.getOutlinePaint().setStrokeWidth(3f);
             // 요약 (탭 시 정보창)
-            StringBuilder t = new StringBuilder(w.marine ? "\ud574\uc0c1 \ub0a0\uc528" : "\uc721\uc0c1 \ub0a0\uc528");
+            StringBuilder t = new StringBuilder(w.marine ? "Marine" : "Land");
             if (w.marine) {
-                t.append("\n\ud30c\uace0 ").append(v(w,"WH")).append("m  \uc218\uc628 ").append(v(w,"SST")).append("\u00b0");
+                t.append("\nWave ").append(v(w,"WH")).append("m  SST ").append(v(w,"SST")).append("\u00b0");
             } else {
-                t.append("\n\uae30\uc628 ").append(v(w,"T")).append("\u00b0  \uccb4\uac10 ").append(v(w,"FL")).append("\u00b0");
+                t.append("\nTemp ").append(v(w,"T")).append("\u00b0  Feels ").append(v(w,"FL")).append("\u00b0");
             }
-            t.append("  \ud48d\uc18d ").append(v(w,"WS"));
+            t.append("  Wind ").append(v(w,"WS"));
             circle.setTitle(t.toString());
             mWeatherCircles.add(circle);
             mMapView.getOverlays().add(circle);
@@ -725,7 +725,7 @@ public class MapTabFragment extends Fragment {
                         // [목록가드] TAC/SURV/ALL은 전술목록 어댑터 사용 → 위치목록 갱신으로 덮어쓰지 않음
                         if (mCurrentMode == MODE_WEATHER) {
                             // [CLIMATE] 날씨 모드는 위치 갱신으로 목록을 덮지 않음
-                            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> _wl = com.ah.acr.messagebox.WeatherStore.getAll();
+                            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> _wl = com.ah.acr.messagebox.WeatherStore.getLatest();
                             binding.listLocation.setAdapter(mWeatherAdapter);
                             mWeatherAdapter.submit(_wl);
                             binding.listLocation.setVisibility(_wl.isEmpty() ? View.GONE : View.VISIBLE);
@@ -833,7 +833,7 @@ public class MapTabFragment extends Fragment {
             }
             binding.listLocation.setAdapter(mWeatherAdapter);
             android.util.Log.d("WEATHER-LIST", "adapter=" + (mWeatherAdapter != null) + " lm=" + (binding.listLocation.getLayoutManager() != null));
-            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> wl = com.ah.acr.messagebox.WeatherStore.getAll();
+            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> wl = com.ah.acr.messagebox.WeatherStore.getLatest();
             mWeatherAdapter.submit(wl);
             android.util.Log.d("WEATHER-LIST", "날씨 모드 count=" + wl.size());
             binding.emptyState.setVisibility(wl.isEmpty() ? View.VISIBLE : View.GONE);

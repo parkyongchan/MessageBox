@@ -41,44 +41,44 @@ public class WeatherDetailDialog extends DialogFragment {
         TextView close = root.findViewById(R.id.wxd_close);
 
         if (w == null) {
-            title.setText("\ub0a0\uc528 \uc815\ubcf4 \uc5c6\uc74c");
+            title.setText("No weather data");
             close.setOnClickListener(v -> dismiss());
             return root;
         }
 
-        title.setText(w.marine ? "\ud574\uc0c1 \ub0a0\uc528" : "\uc721\uc0c1 \ub0a0\uc528");
-        loc.setText(String.format(Locale.US, "\uc704\uce58: %.4f, %.4f", w.lat(), w.lon()));
+        title.setText(w.marine ? "Marine Weather" : "Land Weather");
+        loc.setText(String.format(Locale.US, "Location: %.4f, %.4f", w.lat(), w.lon()));
 
         // 현재 정보 (육상/해상 다르게)
         StringBuilder c = new StringBuilder();
         if (w.marine) {
-            line(c, "\ud30c\uace0", w, "WH", "m");
-            line(c, "\ud30c\ud5a5", w, "WVD", "\u00b0");
-            line(c, "\ud30c\uc8fc\uae30", w, "WP", "s");
-            line(c, "\uc218\uc628", w, "SST", "\u00b0C");
-            line(c, "\uae30\uc628", w, "T", "\u00b0C");
-            line(c, "\ud48d\uc18d", w, "WS", "");
-            line(c, "\ud48d\ud5a5", w, "WD", "\u00b0");
+            line(c, "Wave", w, "WH", "m");
+            line(c, "Wave Dir", w, "WVD", "\u00b0");
+            line(c, "Wave Period", w, "WP", "s");
+            line(c, "SST", w, "SST", "\u00b0C");
+            line(c, "Temp", w, "T", "\u00b0C");
+            line(c, "Wind", w, "WS", "");
+            line(c, "Wind Dir", w, "WD", "\u00b0");
         } else {
-            line(c, "\uae30\uc628", w, "T", "\u00b0C");
-            line(c, "\uccb4\uac10", w, "FL", "\u00b0C");
-            line(c, "\uac15\uc218", w, "P", "mm");
-            line(c, "\ud48d\uc18d", w, "WS", "");
-            line(c, "\ud48d\ud5a5", w, "WD", "\u00b0");
+            line(c, "Temp", w, "T", "\u00b0C");
+            line(c, "Feels", w, "FL", "\u00b0C");
+            line(c, "Precip", w, "P", "mm");
+            line(c, "Wind", w, "WS", "");
+            line(c, "Wind Dir", w, "WD", "\u00b0");
         }
         current.setText(c.toString().trim());
 
         // 7일 예보
         if (w.forecast7.isEmpty()) {
             TextView none = new TextView(getContext());
-            none.setText("\uc608\ubcf4 \uc5c6\uc74c");
+            none.setText("No forecast");
             none.setTextColor(0xFF95B0D4);
             forecast.addView(none);
         } else {
             for (WeatherStore.Day day : w.forecast7) {
                 TextView row = new TextView(getContext());
                 row.setText(String.format(Locale.US,
-                        "%s   \ucd5c\uace0 %.0f\u00b0  \ucd5c\uc800 %.0f\u00b0  \uac15\uc218 %.0fmm  \ubc14\ub78c %.0f",
+                        "%s   Max %.0f\u00b0  Min %.0f\u00b0  Rain %.0fmm  Wind %.0f",
                         day.date, day.tmax, day.tmin, day.rain, day.wmax));
                 row.setTextColor(0xFFC5D6EC);
                 row.setTextSize(13f);

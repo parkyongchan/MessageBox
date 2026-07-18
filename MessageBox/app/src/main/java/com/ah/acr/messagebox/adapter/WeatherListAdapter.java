@@ -47,24 +47,24 @@ public class WeatherListAdapter extends RecyclerView.Adapter<WeatherListAdapter.
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         WeatherStore.Weather w = items.get(position);
-        h.title.setText(w.marine ? "\ud574\uc0c1 \ub0a0\uc528" : "\uc721\uc0c1 \ub0a0\uc528");
+        h.title.setText(w.marine ? "Marine" : "Land");
         h.bar.setBackgroundColor(w.marine ? 0xFF0077CC : 0xFF00C9FF);
 
         // 요약: 육상/해상 다른 필드
         StringBuilder s = new StringBuilder();
         if (w.marine) {
-            appendF(s, "\ud30c\uace0", w.fields.get("WH"), "m");
-            appendF(s, "\uc218\uc628", w.fields.get("SST"), "\u00b0");
-            appendF(s, "\ud48d\uc18d", w.fields.get("WS"), "");
+            appendF(s, "Wave", w.fields.get("WH"), "m");
+            appendF(s, "SST", w.fields.get("SST"), "\u00b0");
+            appendF(s, "Wind", w.fields.get("WS"), "");
         } else {
-            appendF(s, "\uae30\uc628", w.fields.get("T"), "\u00b0");
-            appendF(s, "\uccb4\uac10", w.fields.get("FL"), "\u00b0");
-            appendF(s, "\uac15\uc218", w.fields.get("P"), "mm");
-            appendF(s, "\ud48d\uc18d", w.fields.get("WS"), "");
+            appendF(s, "Temp", w.fields.get("T"), "\u00b0");
+            appendF(s, "Feels", w.fields.get("FL"), "\u00b0");
+            appendF(s, "Rain", w.fields.get("P"), "mm");
+            appendF(s, "Wind", w.fields.get("WS"), "");
         }
-        if (!w.forecast7.isEmpty()) s.append("  \u00b7 7\uc77c\uc608\ubcf4 ").append(w.forecast7.size()).append("\uc77c");
+        if (!w.forecast7.isEmpty()) s.append("  \u00b7 ").append(w.forecast7.size()).append("-day");
         h.summary.setText(s.toString());
-        h.time.setText(sdf.format(new java.util.Date(w.recvAt)) + " \uc218\uc2e0");
+        h.time.setText(sdf.format(new java.util.Date(w.recvAt)) + "");
 
         h.itemView.setOnClickListener(v -> { if (listener != null) listener.onWeatherClick(w); });
         h.detail.setOnClickListener(v -> { if (listener != null) listener.onWeatherClick(w); });

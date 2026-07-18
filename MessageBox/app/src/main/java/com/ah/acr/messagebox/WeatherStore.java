@@ -82,6 +82,16 @@ public class WeatherStore {
         return new ArrayList<>(LIST);
     }
 
+    /** 발신(from)별 최신 1개만. LIST는 최신이 앞이므로 처음 만난 from을 채택. */
+    public static synchronized List<Weather> getLatest() {
+        java.util.LinkedHashMap<String, Weather> byFrom = new java.util.LinkedHashMap<>();
+        for (Weather w : LIST) {
+            String key = (w.from == null ? "" : w.from);
+            if (!byFrom.containsKey(key)) byFrom.put(key, w);
+        }
+        return new ArrayList<>(byFrom.values());
+    }
+
     public static synchronized Weather latest() {
         return LIST.isEmpty() ? null : LIST.get(0);
     }
