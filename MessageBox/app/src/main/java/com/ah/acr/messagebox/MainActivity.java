@@ -253,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean("pref_integrity_short", true)
                     .putBoolean("pref_integrity_large", true)
                     .putBoolean("pref_resend_auto", true)
-                    .putInt("pref_resend_interval", 5)
+                    .putInt("pref_resend_interval", 10)
                     .putBoolean("pref_defaults_initialized", true)
                     .apply();
             }
@@ -2093,7 +2093,7 @@ public class MainActivity extends AppCompatActivity {
     // ═══ [Step2-auto] 자동 재시도 인프라 ═══
     private final android.os.Handler mAutoHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final java.util.Map<Integer,Integer> mAutoMoCount = new java.util.HashMap<>();   // msgId -> 자동 재송신 횟수
-    public static final int AUTO_RESEND_MAX = 10;            // 자동 3회 상한
+    public static final int AUTO_RESEND_MAX = 2;            // 자동 3회 상한
     public static final long AUTO_INTERVAL_DEFAULT_MS = 600000;   // 기본 10분
 
     /** 설정된 자동 주기(ms). pref 분 단위 → ms. */
@@ -2189,6 +2189,13 @@ public class MainActivity extends AppCompatActivity {
                     int _goutbox = (_gst != null) ? _gst.getOutBox() : 0;
                     if (_goutbox > 0) {
                         android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " 위성 outbox 적체(" + _goutbox + ") - cnt 보존, 다음 주기 대기 (" + cnt + "/" + AUTO_RESEND_MAX + ")");
+                        cnt++;
+                        synchronized (mAutoMtCount) { mAutoMtCount.put(msgId, cnt); }
+                        if (cnt >= AUTO_RESEND_MAX) {
+                            synchronized (mAutoMtGaveUp) { mAutoMtGaveUp.add(msgId); }
+                            android.util.Log.d("GAP-FILL", "[auto] msgId=" + msgId + " outbox limit give-up");
+                            return;
+                        }
                         mAutoHandler.postDelayed(this, interval);
                         return;
                     }
