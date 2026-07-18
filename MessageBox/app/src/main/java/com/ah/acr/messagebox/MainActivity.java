@@ -435,7 +435,23 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 단말 메시지 전체 삭제 버튼 (MO 버퍼 클리어 - 깨진 프레임으로 막힌 송신 복구용)
-        binding.statusArea.btnMsgDelete.setOnClickListener(v -> sendMsgDelete());
+        binding.statusArea.btnMsgDelete.setOnClickListener(v -> sendMsgDelete());
+        // [CLIMATE] SURV \ubc84\ud2bc: \uc704\uce58 1\ud68c + \uc0dd\uc874\uc9c4\uc785 (SOS \ubc18\ubcf5 \uc5c6\uc74c)
+        binding.statusArea.btnClimateSurv.setOnClickListener(v -> {
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            startSurvivalEntry();
+        });
+        // [CLIMATE] WEATHER \ubc84\ud2bc: \uc704\uce58 1\ud68c + \ub0a0\uc528 \uc694\uccad (\ub370\uc774\ud130 \uac00\uacf5\uc740 \ucd94\ud6c4 \uc11c\ubc84 \uad6c\ud604)
+        binding.statusArea.btnClimateWeather.setOnClickListener(v -> {
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            startWeatherEntry();
+        });
     }
 
     private void updateAutoReceiveToggleUI(boolean enabled, boolean isReceiving) {
@@ -653,6 +669,25 @@ public class MainActivity extends AppCompatActivity {
 
         mSyncHandler.removeCallbacks(mSurvivalRetryRunnable);
         mSyncHandler.postDelayed(mSurvivalRetryRunnable, SURVIVAL_RETRY_MS);
+    }
+
+    // [CLIMATE] 날씨 진입 발신: ~W:1 + key:lat:lon (위치 1회). 생존과 동일 방식, 식별자만 ~W.
+    //   데이터 가공/회신은 추후 서버에서 기획대로 구현. 지금은 발신 방식만.
+    private void startWeatherEntry() {
+        DeviceStatus st = mBleViewModel.getDeviceStatus().getValue();
+        String imei = ImeiStorage.getSanitizedLast(this);
+        if (imei == null || imei.isEmpty()) {
+            Toast.makeText(this, getString(R.string.toast_survival_no_imei), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String lat = (st != null && st.getGpsLat() != null) ? st.getGpsLat() : "0";
+        String lon = (st != null && st.getGpsLng() != null) ? st.getGpsLng() : "0";
+        String key = imei + "-" + (System.currentTimeMillis() / 1000L);
+        // title=~W:1 (20B 제한), memo=key:lat:lon. 0x07 FREE 프레임, 서버 발신.
+        String packet = buildSurvivalPacket("~W:1", key + ":" + lat + ":" + lon);
+        BLE.INSTANCE.getWriteQueue().offer(packet);
+        Log.v("WEATHER", "start send: key=" + key + " lat=" + lat + " lon=" + lon);
+        Toast.makeText(this, "Weather request sent", Toast.LENGTH_SHORT).show();
     }
 
     // [SURVIVAL] 0x07 패킷 조립 (채팅 doSendPending과 동일 형식). codeNum=""=서버.
