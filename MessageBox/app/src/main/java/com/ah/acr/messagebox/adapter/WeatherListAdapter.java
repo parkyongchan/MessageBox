@@ -47,7 +47,8 @@ public class WeatherListAdapter extends RecyclerView.Adapter<WeatherListAdapter.
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         WeatherStore.Weather w = items.get(position);
-        h.title.setText(w.marine ? "Marine" : "Land");
+        String _wc = com.ah.acr.messagebox.WeatherStore.currentText(w);
+        h.title.setText((w.marine ? "Marine" : "Land") + (_wc.isEmpty() ? "" : " \u00b7 " + _wc));
         h.bar.setBackgroundColor(w.marine ? 0xFF0077CC : 0xFF00C9FF);
 
         // 요약: 육상/해상 다른 필드

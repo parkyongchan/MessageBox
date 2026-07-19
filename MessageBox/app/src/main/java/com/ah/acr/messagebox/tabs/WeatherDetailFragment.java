@@ -113,7 +113,10 @@ public class WeatherDetailFragment extends DialogFragment {
         WeatherStore.Weather w = mSelected;
         if (w == null) { mCurrent.setText(""); mForecast.removeAllViews(); return; }
         StringBuilder c = new StringBuilder();
-        c.append(w.marine ? "Marine Weather" : "Land Weather").append("\n");
+        String _wc = com.ah.acr.messagebox.WeatherStore.currentText(w);
+        c.append(w.marine ? "Marine Weather" : "Land Weather");
+        if (!_wc.isEmpty()) c.append("  \u00b7  ").append(_wc);
+        c.append("\n");
         c.append(String.format(Locale.US, "Location: %.4f, %.4f\n", w.lat(), w.lon()));
         c.append("Received: ").append(sdf.format(new java.util.Date(w.recvAt))).append("\n\n");
         if (w.marine) {
@@ -133,8 +136,9 @@ public class WeatherDetailFragment extends DialogFragment {
         } else {
             for (WeatherStore.Day d : w.forecast7) {
                 android.widget.TextView t = new android.widget.TextView(getContext());
-                t.setText(String.format(Locale.US, "%s   Max %.0f\u00b0  Min %.0f\u00b0  Rain %.0fmm  Wind %.0f",
-                        d.date, d.tmax, d.tmin, d.rain, d.wmax));
+                String _dwc = com.ah.acr.messagebox.WeatherStore.wcodeText(d.wcode);
+                t.setText(String.format(Locale.US, "%s   Max %.0f\u00b0  Min %.0f\u00b0  Rain %.0fmm  Wind %.0f%s",
+                        d.date, d.tmax, d.tmin, d.rain, d.wmax, _dwc.isEmpty() ? "" : "   " + _dwc));
                 t.setTextColor(0xFFC5D6EC); t.setTextSize(13f); t.setPadding(0, 8, 0, 8);
                 mForecast.addView(t);
             }

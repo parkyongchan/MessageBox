@@ -15,6 +15,7 @@ public class WeatherStore {
     public static class Day {
         public String date;
         public double tmax, tmin, rain, wmax;
+        public int wcode = -1;
     }
 
     public static class Weather {
@@ -35,6 +36,30 @@ public class WeatherStore {
     }
 
     private static final List<Weather> LIST = new ArrayList<>();
+
+    /** WMO weather code → 대표 날씨 텍스트 (Clear/Rain/Cloudy 등). */
+    public static String wcodeText(int c) {
+        if (c < 0) return "";
+        if (c == 0) return "Clear";
+        if (c <= 2) return "Partly Cloudy";
+        if (c == 3) return "Cloudy";
+        if (c <= 48) return "Fog";
+        if (c <= 57) return "Drizzle";
+        if (c <= 67) return "Rain";
+        if (c <= 77) return "Snow";
+        if (c <= 82) return "Showers";
+        if (c <= 86) return "Snow Showers";
+        return "Thunderstorm";
+    }
+
+    /** Weather의 현재 대표 날씨 텍스트 (WC 필드에서). */
+    public static String currentText(Weather w) {
+        if (w == null) return "";
+        String wc = w.fields.get("WC");
+        if (wc == null) return "";
+        try { return wcodeText((int) Double.parseDouble(wc.trim())); }
+        catch (Exception e) { return ""; }
+    }
 
     /** WX: \ubcf8\ubb38 \ud30c\uc2f1 \ud6c4 \uc800\uc7a5. \uc131\uacf5\ud558\uba74 Weather \ubc18\ud658. */
     public static synchronized Weather addFromBody(String from, String body) {
@@ -60,6 +85,7 @@ public class WeatherStore {
                             d.date = f[0];
                             d.tmax = parseD(f[1]); d.tmin = parseD(f[2]);
                             d.rain = parseD(f[3]); d.wmax = parseD(f[4]);
+                            if (f.length >= 6) { try { d.wcode = (int) parseD(f[5]); } catch (Exception ig) {} }
                             w.forecast7.add(d);
                         }
                     }
