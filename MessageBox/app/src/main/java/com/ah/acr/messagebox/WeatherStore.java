@@ -98,6 +98,20 @@ public class WeatherStore {
 
     public static synchronized void clear() { LIST.clear(); }
 
+    /** 개별 삭제 (recvAt로 식별) + 저장. */
+    public static synchronized void remove(android.content.Context ctx, long recvAt) {
+        for (int i = LIST.size() - 1; i >= 0; i--) {
+            if (LIST.get(i).recvAt == recvAt) { LIST.remove(i); break; }
+        }
+        persist(ctx);
+    }
+
+    /** 전체 삭제 + 저장. */
+    public static synchronized void clearAndPersist(android.content.Context ctx) {
+        LIST.clear();
+        persist(ctx);
+    }
+
     private static final String PREF = "weather_store";
     private static final String KEY = "raw_list";
 

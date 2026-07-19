@@ -686,7 +686,7 @@ public class MapTabFragment extends Fragment {
             if (w != null) {
                 // [2d] 날씨 상세 다이얼로그
                 try {
-                    com.ah.acr.messagebox.WeatherDetailDialog.newInstance(w)
+                    new com.ah.acr.messagebox.tabs.WeatherDetailFragment()
                         .show(getParentFragmentManager(), "WeatherDetail");
                 } catch (Exception ex) {
                     android.util.Log.e(TAG, "WeatherDetail open failed: " + ex.getMessage(), ex);
@@ -822,7 +822,7 @@ public class MapTabFragment extends Fragment {
                 mWeatherAdapter = new com.ah.acr.messagebox.adapter.WeatherListAdapter(w -> {
                     if (w != null) {
                         try {
-                            com.ah.acr.messagebox.WeatherDetailDialog.newInstance(w)
+                            new com.ah.acr.messagebox.tabs.WeatherDetailFragment()
                                 .show(getParentFragmentManager(), "WeatherDetail");
                         } catch (Exception ex) { android.util.Log.e(TAG, "WxDetail fail", ex); }
                     }
