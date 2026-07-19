@@ -48,6 +48,7 @@ public class WeatherListAdapter extends RecyclerView.Adapter<WeatherListAdapter.
     public void onBindViewHolder(@NonNull VH h, int position) {
         WeatherStore.Weather w = items.get(position);
         String _wc = com.ah.acr.messagebox.WeatherStore.currentText(w);
+        android.util.Log.d("WX-WC", "field=[" + w.fields.get("WC") + "] text=[" + _wc + "]");
         h.title.setText((w.marine ? "Marine" : "Land") + (_wc.isEmpty() ? "" : " \u00b7 " + _wc));
         h.bar.setBackgroundColor(w.marine ? 0xFF0077CC : 0xFF00C9FF);
 

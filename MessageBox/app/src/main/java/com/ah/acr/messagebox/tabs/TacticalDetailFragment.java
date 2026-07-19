@@ -782,6 +782,7 @@ public class TacticalDetailFragment extends DialogFragment {
     private void initSurvivalPanel(View root) {
         mSurvImei = getArguments() != null ? getArguments().getString(ARG_FROM, "") : "";
         if (mSurvImei == null) mSurvImei = "";
+        android.util.Log.d("SURV-ARG", "args=" + (getArguments()!=null) + " ARG_FROM=[" + (getArguments()!=null?getArguments().getString(ARG_FROM):"NOARGS") + "] mSurvImei=[" + mSurvImei + "]");
         android.view.View peek = root.findViewById(R.id.tac_surv_peek);
         android.view.View handle = root.findViewById(R.id.tac_surv_handle);
         mSurvExpanded = root.findViewById(R.id.tac_surv_expanded);
@@ -796,6 +797,7 @@ public class TacticalDetailFragment extends DialogFragment {
         mSurvRecycler.setAdapter(adapter);
 
         mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvImei);
+        android.util.Log.d("SURV-PANEL", "imei=[" + mSurvImei + "] msgCount=" + (mSurvMsgs != null ? mSurvMsgs.size() : -1));
         adapter.notifyDataSetChanged();
         updatePeek();
         scrollBottom();

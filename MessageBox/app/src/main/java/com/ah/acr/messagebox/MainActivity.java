@@ -436,22 +436,38 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 단말 메시지 전체 삭제 버튼 (MO 버퍼 클리어 - 깨진 프레임으로 막힌 송신 복구용)
-        binding.statusArea.btnMsgDelete.setOnClickListener(v -> sendMsgDelete());
-        // [CLIMATE] SURV \ubc84\ud2bc: \uc704\uce58 1\ud68c + \uc0dd\uc874\uc9c4\uc785 (SOS \ubc18\ubcf5 \uc5c6\uc74c)
-        binding.statusArea.btnClimateSurv.setOnClickListener(v -> {
-            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startSurvivalEntry();
-        });
-        // [CLIMATE] WEATHER \ubc84\ud2bc: \uc704\uce58 1\ud68c + \ub0a0\uc528 \uc694\uccad (\ub370\uc774\ud130 \uac00\uacf5\uc740 \ucd94\ud6c4 \uc11c\ubc84 \uad6c\ud604)
-        binding.statusArea.btnClimateWeather.setOnClickListener(v -> {
-            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
-                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startWeatherEntry();
+        binding.statusArea.btnMsgDelete.setOnClickListener(v -> sendMsgDelete());
+
+        // [CLIMATE] SURV \ubc84\ud2bc: \uc704\uce58 1\ud68c + \uc0dd\uc874\uc9c4\uc785 (SOS \ubc18\ubcf5 \uc5c6\uc74c)
+
+        binding.statusArea.btnClimateSurv.setOnClickListener(v -> {
+
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+
+                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
+
+                return;
+
+            }
+
+            new android.app.AlertDialog.Builder(this).setTitle("Survival Mode").setMessage("Enter survival mode and transmit your position via satellite?").setPositiveButton("Yes", (d, wch) -> startSurvivalEntry()).setNegativeButton("No", null).setCancelable(false).show();
+
+        });
+
+        // [CLIMATE] WEATHER \ubc84\ud2bc: \uc704\uce58 1\ud68c + \ub0a0\uc528 \uc694\uccad (\ub370\uc774\ud130 \uac00\uacf5\uc740 \ucd94\ud6c4 \uc11c\ubc84 \uad6c\ud604)
+
+        binding.statusArea.btnClimateWeather.setOnClickListener(v -> {
+
+            if (BLE.INSTANCE.getSelectedDevice().getValue() == null) {
+
+                Toast.makeText(this, getString(R.string.toast_device_not_connected), Toast.LENGTH_SHORT).show();
+
+                return;
+
+            }
+
+            new android.app.AlertDialog.Builder(this).setTitle("Weather Request").setMessage("Request weather information for your current location via satellite?").setPositiveButton("Yes", (d, wch) -> startWeatherEntry()).setNegativeButton("No", null).setCancelable(false).show();
+
         });
     }
 

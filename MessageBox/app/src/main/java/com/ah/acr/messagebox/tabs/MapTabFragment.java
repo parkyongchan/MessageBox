@@ -672,6 +672,7 @@ public class MapTabFragment extends Fragment {
                     // [TAC 상세] 그 전술 그룹을 상세 화면으로 (원본 payload 전달)
                     if (e.data == null || e.payload == null) return;
                     String fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+                    android.util.Log.d("SURV-DETAIL", "677 path fromImei=[" + fromImei + "] dataNull=" + (e.data==null));
                     try {
                         com.ah.acr.messagebox.tabs.TacticalDetailFragment dlg =
                             com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei);
