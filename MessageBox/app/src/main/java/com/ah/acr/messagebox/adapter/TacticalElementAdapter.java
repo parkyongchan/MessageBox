@@ -50,7 +50,13 @@ public class TacticalElementAdapter extends RecyclerView.Adapter<TacticalElement
     public void onBindViewHolder(@NonNull VH h, int position) {
         Row r = rows.get(position);
         h.cls.setText(r.cls);
-        if (h.setbar != null && r.setColor != 0) h.setbar.setBackgroundColor(r.setColor);
+        if (r.setColor != 0) {
+            if (h.setbar != null) h.setbar.setBackgroundColor(r.setColor);
+            h.itemView.setBackgroundColor((r.setColor & 0x00FFFFFF) | 0x55000000);
+        } else {
+            h.itemView.setBackgroundColor(0x00000000);
+            if (h.setbar != null) h.setbar.setBackgroundColor(0xFF00E5D1);
+        }
         h.id.setText(r.id);
         h.affil.setText(r.affil);
         h.lat.setText(String.format(Locale.US, "%.5f", r.lat));

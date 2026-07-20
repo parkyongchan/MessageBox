@@ -98,6 +98,33 @@ public class MapTabFragment extends Fragment {
     private final List<Marker> mTacticalMarkers = new ArrayList<>();
     private final List<Polyline> mTacticalLines = new ArrayList<>();
     private int mCurrentMode = MODE_ALL;
+    private String mSelFromImei = null;   // [list-filter] selected item fromImei (null = show all)
+
+    // [auto-refresh] packet received -> refresh SURV/TAC/WX list & markers
+    private final android.content.BroadcastReceiver mPacketReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context ctx, android.content.Intent intent) {
+            if (getActivity() == null || binding == null) return;
+            getActivity().runOnUiThread(() -> refreshCurrentMode());
+        }
+    };
+
+    private void refreshCurrentMode() {
+        if (binding == null) return;
+        if (mCurrentMode == MODE_WEATHER) {
+            java.util.List<com.ah.acr.messagebox.WeatherStore.Weather> _wl = com.ah.acr.messagebox.WeatherStore.getLatest();
+            binding.listLocation.setAdapter(mWeatherAdapter);
+            mWeatherAdapter.submit(_wl);
+            binding.listLocation.setVisibility(_wl.isEmpty() ? View.GONE : View.VISIBLE);
+            binding.emptyState.setVisibility(_wl.isEmpty() ? View.VISIBLE : View.GONE);
+        } else if (mCurrentMode == MODE_TACTICAL || mCurrentMode == MODE_SURVIVAL) {
+            java.util.List<TacticalStore.Entry> _lt = getLatestTacticalEntries(mCurrentMode);
+            binding.listLocation.setAdapter(mTacticalAdapter);
+            mTacticalAdapter.submit(_lt);
+            binding.listLocation.setVisibility(_lt.isEmpty() ? View.GONE : View.VISIBLE);
+            binding.emptyState.setVisibility(_lt.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+        renderTacticalOverlays();
+    }
     private boolean mInitialFitDone = false;
 
     private final SimpleDateFormat dateFmt =
@@ -124,7 +151,7 @@ public class MapTabFragment extends Fragment {
         setupViewModel();
         setupFilterChips();
         setupDatePickers();
-        setupSearch();
+        // setupSearch(); // [DISABLED] 검색 기능 제거 - 먹통 원인
         setupRefresh();
         setupMap();
         setupMapControls();
@@ -164,8 +191,9 @@ public class MapTabFragment extends Fragment {
                 requireActivity().getPackageName()
         );
 
-        File osmDir = requireContext().getExternalFilesDir(null);
+        File osmDir = new File(requireContext().getExternalFilesDir(null), "osmdroid");
         if (osmDir != null) {
+            if (!osmDir.exists()) osmDir.mkdirs();
             Configuration.getInstance().setOsmdroidBasePath(osmDir);
             Configuration.getInstance().setOsmdroidTileCache(
                     new File(osmDir, "cache")
@@ -255,6 +283,7 @@ public class MapTabFragment extends Fragment {
 
     private void refreshMarkers(List<LocationWithAddress> locations) {
         if (mMapView == null) return;
+        if (mIsSearchMode) return; // 검색 모드(지도 숨김)에서는 타일 폭주 방지 위해 지도 갱신 skip
 
         for (Marker m : mMarkers) {
             mMapView.getOverlays().remove(m);
@@ -321,6 +350,15 @@ public class MapTabFragment extends Fragment {
 
     // [tactical] 전술 오버레이 렌더 (TacticalStore 읽어 마커/라인/메저 표시)
     // [상세진입] 생존/전술 마커 2탭 시 상세 지도(트래킹) 열기.
+    private void openTacticalDetail(String fromImei, long sessionId) {
+        try {
+            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei, sessionId)
+                .show(getParentFragmentManager(), "TacticalDetail");
+        } catch (Exception ex) {
+            android.util.Log.e(TAG, "openTacticalDetail(sid) fail: " + ex.getMessage(), ex);
+        }
+    }
+
     private void openTacticalDetail(String fromImei) {
         android.util.Log.d("SURV-DETAIL", "openTacticalDetail 호출: fromImei=[" + fromImei + "]");
         try {
@@ -390,6 +428,14 @@ public class MapTabFragment extends Fragment {
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }
         java.util.List<TacticalStore.Entry> entries = new java.util.ArrayList<>(latestByImei.values());
+        if (mSelFromImei != null) {
+            java.util.List<TacticalStore.Entry> _sel = new java.util.ArrayList<>();
+            for (TacticalStore.Entry _e : entries) {
+                String _fi = (_e.data == null || _e.data.fromImei == null) ? "" : _e.data.fromImei;
+                if (_fi.equals(mSelFromImei)) _sel.add(_e);
+            }
+            entries = _sel;
+        }
         long latestSid = -1;
         for (TacticalStore.Entry _e : entries) { if (_e.data != null && _e.data.sessionId > latestSid) latestSid = _e.data.sessionId; }
         for (TacticalStore.Entry e : entries) {
@@ -662,20 +708,25 @@ public class MapTabFragment extends Fragment {
         mTacticalAdapter = new com.ah.acr.messagebox.adapter.TacticalListAdapter(
             new com.ah.acr.messagebox.adapter.TacticalListAdapter.OnTacticalClickListener() {
                 @Override public void onTacticalClick(TacticalStore.Entry e) {
+                    String _fi = (e.data == null || e.data.fromImei == null) ? "" : e.data.fromImei;
+                    if (_fi.equals(mSelFromImei)) { mSelFromImei = null; } else { mSelFromImei = _fi; }
+                    renderTacticalOverlays();
                     // 지도에서 그 전술 첫 마커 위치로 이동
                     if (e.data != null && e.data.markers != null && !e.data.markers.isEmpty()) {
                         TacticalParser.TMarker m0 = e.data.markers.get(0);
                         mMapView.getController().animateTo(new GeoPoint(m0.lat, m0.lon));
                     }
                 }
+                @Override public void onTacticalDelete(TacticalStore.Entry e) { handleTacticalDelete(e); }
                 @Override public void onTacticalDetail(TacticalStore.Entry e) {
                     // [TAC 상세] 그 전술 그룹을 상세 화면으로 (원본 payload 전달)
                     if (e.data == null || e.payload == null) return;
                     String fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+                    long _detSid = (e.data != null) ? e.data.sessionId : -1L;
                     android.util.Log.d("SURV-DETAIL", "677 path fromImei=[" + fromImei + "] dataNull=" + (e.data==null));
                     try {
                         com.ah.acr.messagebox.tabs.TacticalDetailFragment dlg =
-                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei);
+                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei, _detSid);
                         dlg.show(getParentFragmentManager(), "TacticalDetail");
                     } catch (Exception ex) {
                         android.util.Log.e(TAG, "TacticalDetail open failed: " + ex.getMessage(), ex);
@@ -812,6 +863,7 @@ public class MapTabFragment extends Fragment {
 
         mInitialFitDone = false;
         mCurrentMode = mode;
+        mSelFromImei = null;   // [list-filter] reset selection on mode change
         locationViewModel.setFilterMode(mode);
         renderTacticalOverlays();
         renderWeatherOverlays();
@@ -857,23 +909,61 @@ public class MapTabFragment extends Fragment {
     private String cats(java.util.List<TacticalParser.TMarker> ms) { StringBuilder sb = new StringBuilder(); for (TacticalParser.TMarker m : ms) sb.append("[").append(m.cat).append("/st").append(m.survType).append("]"); return sb.toString(); }
 
     private java.util.List<TacticalStore.Entry> getLatestTacticalEntries(int mode) {
+        if (mode == MODE_SURVIVAL) {
+            // [SURV] 전체 이력: 세션(sessionId)별로 한 줄씩
+            java.util.Map<String, TacticalStore.Entry> bySession = new java.util.HashMap<>();
+            for (TacticalStore.Entry e : TacticalStore.getAll()) {
+                if (e.data == null) continue;
+                boolean hasSurv = false;
+                for (TacticalParser.TMarker tm : e.data.markers) { if ("S".equals(tm.cat)) { hasSurv = true; break; } }
+                if (!hasSurv) continue;
+                String imei = (e.data.fromImei == null) ? "" : e.data.fromImei;
+                String key = imei + "#" + e.data.sessionId;
+                // 세션별 구분
+                TacticalStore.Entry cur = bySession.get(key);
+                if (cur == null || e.recvAt > cur.recvAt) bySession.put(key, e);
+            }
+            java.util.List<TacticalStore.Entry> result = new java.util.ArrayList<>(bySession.values());
+            java.util.Collections.sort(result, (a, b) -> Long.compare(b.recvAt, a.recvAt));
+            return result;
+        }
+        // [TAC] 발신자별 최신 1건
         java.util.Map<String, TacticalStore.Entry> latestByImei = new java.util.HashMap<>();
         for (TacticalStore.Entry e : TacticalStore.getAll()) {
             if (e.data == null) continue;
             boolean hasSurv = false, hasTac = false;
             for (TacticalParser.TMarker tm : e.data.markers) { if ("S".equals(tm.cat)) hasSurv = true; else hasTac = true; }
             if (!e.data.lines.isEmpty() || !e.data.measures.isEmpty()) hasTac = true;
-            android.util.Log.d("SURV-LIST", "mode=" + mode + " hasSurv=" + hasSurv + " hasTac=" + hasTac + " markers=" + e.data.markers.size() + " cats=" + cats(e.data.markers));
-            if (mode == MODE_SURVIVAL && !hasSurv) continue;
             if (mode == MODE_TACTICAL && !hasTac) continue;
-            String key = ((e.data.fromImei == null) ? "" : e.data.fromImei) + "#" + (hasSurv ? "S" : "T");   // 종류 포함 → 생존/전술 서로 안 밀어냄
+            String key = ((e.data.fromImei == null) ? "" : e.data.fromImei) + "#" + (hasSurv ? "S" : "T");
             TacticalStore.Entry cur = latestByImei.get(key);
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }
         java.util.List<TacticalStore.Entry> result = new java.util.ArrayList<>(latestByImei.values());
+        java.util.Collections.sort(result, (a, b) -> Long.compare(b.recvAt, a.recvAt));
         return result;
     }
 
+
+    private void handleTacticalDelete(TacticalStore.Entry e) {
+        if (e == null || getContext() == null) return;
+        final String fromImei = (e.data == null || e.data.fromImei == null) ? "" : e.data.fromImei;
+        String label = fromImei.isEmpty() ? "Control" : fromImei;
+        new android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Delete")
+            .setMessage("Delete received data from " + label + " ?")
+            .setPositiveButton("Delete", (d, w) -> {
+                TacticalStore.removeByFromImei(requireContext().getApplicationContext(), fromImei);
+                if (fromImei.equals(mSelFromImei)) mSelFromImei = null;
+                java.util.List<TacticalStore.Entry> _lt = getLatestTacticalEntries(mCurrentMode);
+                mTacticalAdapter.submit(_lt);
+                binding.listLocation.setVisibility(_lt.isEmpty() ? View.GONE : View.VISIBLE);
+                binding.emptyState.setVisibility(_lt.isEmpty() ? View.VISIBLE : View.GONE);
+                renderTacticalOverlays();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
 
     private void setupDatePickers() {
         binding.btnStartDate.setOnClickListener(v -> showDatePicker(true));
@@ -956,6 +1046,7 @@ public class MapTabFragment extends Fragment {
             binding.mapContainer.setLayoutParams(lp);
         }
 
+        if (mMapView != null) mMapView.onPause(); // 지도 정지: 숨김 상태에서 타일 로딩 폭주 방지
         Log.v(TAG, "Search mode entered: map hidden");
     }
 
@@ -973,6 +1064,7 @@ public class MapTabFragment extends Fragment {
             binding.mapContainer.setLayoutParams(lp);
         }
 
+        if (mMapView != null) { mMapView.onResume(); mMapView.invalidate(); } // 지도 재개
         Log.v(TAG, "Search mode exited: map restored");
     }
 
@@ -1237,6 +1329,16 @@ public class MapTabFragment extends Fragment {
     public void onResume() {
         super.onResume();
         if (mMapView != null) mMapView.onResume();
+        try {
+            android.content.IntentFilter _pf = new android.content.IntentFilter(
+                com.ah.acr.messagebox.service.TytoConnectService.BROADCAST_PACKET_RECEIVED);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                requireContext().registerReceiver(mPacketReceiver, _pf, android.content.Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                requireContext().registerReceiver(mPacketReceiver, _pf);
+            }
+            refreshCurrentMode();
+        } catch (Exception ignore) {}
         // 전술 데이터 DB 로드 후 지도에 렌더 (재시작/탭전환에도 유지)
         new Thread(() -> {
             TacticalStore.loadFromDb(getContext());
@@ -1248,6 +1350,7 @@ public class MapTabFragment extends Fragment {
     public void onPause() {
         super.onPause();
         if (mMapView != null) mMapView.onPause();
+        try { requireContext().unregisterReceiver(mPacketReceiver); } catch (Exception ignore) {}
 
         if (mIsSearchMode) {
             exitSearchMode();

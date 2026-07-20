@@ -36,11 +36,13 @@ public class TacticalDetailFragment extends DialogFragment {
 
     private static final String ARG_PAYLOAD = "payload";
     private static final String ARG_FROM = "fromImei";
+    private static final String ARG_SID = "sessionId";
     private static final String[] AFFIL = {"HOSTILE","FRIENDLY","UNKNOWN","NEUTRAL","POI","ENGAGED","THREAT"};
     private static final int[] SET_COLORS = {0xFF00E5FF, 0xFFFF6D00, 0xFFFFEB3B, 0xFF76FF03, 0xFFE040FB, 0xFFFF4081, 0xFF40C4FF, 0xFFB388FF};
 
     private MapView mMapView;
     private String mSurvImei = "";
+    private String mSurvKey = "";
     private java.util.List<com.ah.acr.messagebox.SurvivalChatStore.Msg> mSurvMsgs = new java.util.ArrayList<>();
     private RecyclerView mSurvRecycler;
     private android.widget.TextView mSurvPeekText;
@@ -72,6 +74,15 @@ public class TacticalDetailFragment extends DialogFragment {
     // [S5-nav] 경로 위험 검사용: 위험지역(survType 4) 좌표 수집
     private final java.util.List<double[]> mHazards = new java.util.ArrayList<>();
 
+    public static TacticalDetailFragment newInstance(String fromImei, long sessionId) {
+        TacticalDetailFragment f = new TacticalDetailFragment();
+        Bundle b = new Bundle();
+        b.putString(ARG_FROM, fromImei);
+        b.putLong(ARG_SID, sessionId);
+        f.setArguments(b);
+        return f;
+    }
+
     public static TacticalDetailFragment newInstance(String fromImei) {
         TacticalDetailFragment f = new TacticalDetailFragment();
         Bundle b = new Bundle();
@@ -96,11 +107,12 @@ public class TacticalDetailFragment extends DialogFragment {
         View root = inflater.inflate(R.layout.fragment_tactical_detail, container, false);
 
                 String fromImei = getArguments() != null ? getArguments().getString(ARG_FROM) : "";
+        long _argSid = getArguments() != null ? getArguments().getLong(ARG_SID, -1L) : -1L;
         String fKey = (fromImei == null) ? "" : fromImei;
         for (TacticalStore.Entry e : TacticalStore.getAll()) {
             if (e.data == null) continue;
             String k = (e.data.fromImei == null) ? "" : e.data.fromImei;
-            if (k.equals(fKey)) mSets.add(e);
+            if (_argSid >= 0) { if (e.data.sessionId == _argSid) mSets.add(e); } else if (k.equals(fKey)) mSets.add(e);
         }
         java.util.Collections.sort(mSets, (x, y) -> Long.compare(x.recvAt, y.recvAt));
         mAllSets = new java.util.ArrayList<>(mSets);
@@ -110,9 +122,9 @@ public class TacticalDetailFragment extends DialogFragment {
 
         root.findViewById(R.id.tac_detail_close).setOnClickListener(v -> dismiss());
         root.findViewById(R.id.tac_detail_export).setOnClickListener(v -> showExportDialog());
-        root.findViewById(R.id.tac_detail_play).setOnClickListener(v -> togglePlay());
-        root.findViewById(R.id.tac_detail_prev).setOnClickListener(v -> { stopPlay(); stepPlay(-1); });
-        root.findViewById(R.id.tac_detail_next).setOnClickListener(v -> { stopPlay(); stepPlay(1); });
+        // [removed] playback controls
+        
+        
         // coord: 하단 목록 접기/펴기
         final View listContainer = root.findViewById(R.id.tac_detail_list_container);
         final android.widget.ImageButton coordBtn = root.findViewById(R.id.tac_detail_coord);
@@ -123,7 +135,7 @@ public class TacticalDetailFragment extends DialogFragment {
             coordBtn.setColorFilter(showList[0] ? 0xFFFFEB3B : 0xFF95B0D4);
         });
         coordBtn.setColorFilter(0xFFFFEB3B); // 초기 ON
-        setupDateBar(root);
+        // [removed] date filter bar
 
         // 줌 인/아웃/fit
         root.findViewById(R.id.tac_detail_zoom_in).setOnClickListener(v -> {
@@ -600,21 +612,11 @@ public class TacticalDetailFragment extends DialogFragment {
     }
 
     private void updatePlayIcon() {
-        View v = getView();
-        if (v == null) return;
-        android.widget.ImageButton btn = v.findViewById(R.id.tac_detail_play);
-        if (btn != null) btn.setImageResource(mPlaying
-                ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+        // [removed] playback icon (view deleted)
     }
 
     private void updateProgress() {
-        View v = getView();
-        if (v == null) return;
-        android.widget.TextView tv = v.findViewById(R.id.tac_detail_progress);
-        if (tv != null) {
-            int cur = (mPlayIndex < 0) ? mAllSets.size() : (mPlayIndex + 1);
-            tv.setText(cur + "/" + mAllSets.size());
-        }
+        // [removed] progress text (view deleted)
     }
 
     private final java.text.SimpleDateFormat mDateFmt =
@@ -623,47 +625,7 @@ public class TacticalDetailFragment extends DialogFragment {
     private android.widget.TextView mTvStart, mTvEnd;
 
     private void setupDateBar(View root) {
-        android.widget.TextView tvStart = root.findViewById(R.id.tac_start_date);
-        android.widget.TextView tvEnd = root.findViewById(R.id.tac_end_date);
-        mTvStart = tvStart; mTvEnd = tvEnd;
-        android.widget.TextView btnApply = root.findViewById(R.id.tac_date_apply);
-        android.widget.TextView btnAll = root.findViewById(R.id.tac_date_all);
-
-        // 초기값: 이력 첫/끝 날짜
-        if (!mAllSets.isEmpty()) {
-            mStartCal = java.util.Calendar.getInstance();
-            mStartCal.setTimeInMillis(mAllSets.get(0).recvAt);
-            mEndCal = java.util.Calendar.getInstance();
-            mEndCal.setTimeInMillis(mAllSets.get(mAllSets.size() - 1).recvAt);
-            tvStart.setText(mDateFmt.format(mStartCal.getTime()));
-            tvEnd.setText(mDateFmt.format(mEndCal.getTime()));
-        }
-
-        tvStart.setOnClickListener(v -> pickDate(true, tvStart));
-        tvEnd.setOnClickListener(v -> pickDate(false, tvEnd));
-
-        btnApply.setOnClickListener(v -> {
-            if (mStartCal == null || mEndCal == null) return;
-            long s = startOfDay(mStartCal);
-            long e = endOfDay(mEndCal);
-            applyDateFilter(s, e);
-        });
-
-        btnAll.setOnClickListener(v -> {
-            mSets = new java.util.ArrayList<>(mAllSets);
-            mPlayIndex = -1;
-            stopPlay();
-            renderHistory();
-            buildRows();
-            updateProgress();
-        });
-
-        // 빠른 칩 (현재 시각 기준)
-        root.findViewById(R.id.tac_chip_24h).setOnClickListener(v -> filterRecentHours(24));
-        root.findViewById(R.id.tac_chip_48h).setOnClickListener(v -> filterRecentHours(48));
-        root.findViewById(R.id.tac_chip_3d).setOnClickListener(v -> filterRecentHours(24 * 3));
-        root.findViewById(R.id.tac_chip_7d).setOnClickListener(v -> filterRecentHours(24 * 7));
-        root.findViewById(R.id.tac_chip_30d).setOnClickListener(v -> filterRecentHours(24 * 30));
+        // [removed] date/period filter bar (views deleted)
     }
 
     private void filterRecentHours(int hours) {
@@ -757,7 +719,7 @@ public class TacticalDetailFragment extends DialogFragment {
             for (TacticalParser.TMarker tm : e.data.markers) {
                 String ident = "S".equals(tm.cat) ? TacticalMarkerIcon.survivalIdentifier(tm.survType, tm.survDisaster, tm.id) : TacticalParser.makeIdentifier(tm.type, tm.unit, tm.place, tm.id);
                 String affil = "S".equals(tm.cat) ? TacticalMarkerIcon.survivalName(tm.survType, tm.survDisaster) : ((tm.type >= 0 && tm.type < AFFIL.length) ? AFFIL[tm.type] : "-");
-                { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("MARKER", ident, affil, tm.lat, tm.lon); __r.setColor = __color; rows.add(__r); }
+                { TacticalElementAdapter.Row __r = new TacticalElementAdapter.Row("MARKER", ident, affil, tm.lat, tm.lon); __r.setColor = ("S".equals(tm.cat) ? TacticalMarkerIcon.survColor(tm.survType, tm.survDisaster >= 0) : __color); rows.add(__r); }
             }
             for (TacticalParser.TLine ln : e.data.lines) {
                 if (!ln.points.isEmpty())
@@ -782,6 +744,12 @@ public class TacticalDetailFragment extends DialogFragment {
     private void initSurvivalPanel(View root) {
         mSurvImei = getArguments() != null ? getArguments().getString(ARG_FROM, "") : "";
         if (mSurvImei == null) mSurvImei = "";
+        mSurvKey = "";
+        if (!mSets.isEmpty()) {
+            TacticalStore.Entry _le = mSets.get(mSets.size() - 1);
+            if (_le.data != null && _le.data.sessionId >= 0) mSurvKey = String.valueOf(_le.data.sessionId);
+        }
+        if (mSurvKey.isEmpty()) mSurvKey = mSurvImei;
         android.util.Log.d("SURV-ARG", "args=" + (getArguments()!=null) + " ARG_FROM=[" + (getArguments()!=null?getArguments().getString(ARG_FROM):"NOARGS") + "] mSurvImei=[" + mSurvImei + "]");
         android.view.View peek = root.findViewById(R.id.tac_surv_peek);
         android.view.View handle = root.findViewById(R.id.tac_surv_handle);
@@ -796,8 +764,8 @@ public class TacticalDetailFragment extends DialogFragment {
         SurvAdapter adapter = new SurvAdapter();
         mSurvRecycler.setAdapter(adapter);
 
-        mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvImei);
-        android.util.Log.d("SURV-PANEL", "imei=[" + mSurvImei + "] msgCount=" + (mSurvMsgs != null ? mSurvMsgs.size() : -1));
+        mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvKey);
+        android.util.Log.d("SURV-PANEL", "imei=[" + mSurvImei + "] key=[" + mSurvKey + "] msgCount=" + (mSurvMsgs != null ? mSurvMsgs.size() : -1));
         adapter.notifyDataSetChanged();
         updatePeek();
         scrollBottom();
@@ -818,7 +786,7 @@ public class TacticalDetailFragment extends DialogFragment {
                 ok = ((com.ah.acr.messagebox.MainActivity) getActivity()).sendSurvivalQuery(txt);
             }
             if (ok) {
-                com.ah.acr.messagebox.SurvivalChatStore.add(mSurvImei, "victim", txt);
+                com.ah.acr.messagebox.SurvivalChatStore.add(mSurvKey, "victim", txt);
                 input.setText("");
             } else {
                 android.widget.Toast.makeText(getContext(), "\uC138\uC158 \uC5C6\uC74C (No active session)", android.widget.Toast.LENGTH_SHORT).show();
@@ -826,10 +794,10 @@ public class TacticalDetailFragment extends DialogFragment {
         });
 
         mSurvListener = (imei, msg) -> {
-            if (!mSurvImei.equals(imei)) return;
+            if (!mSurvKey.equals(imei)) return;
             if (mSurvRecycler == null) return;
             mSurvRecycler.post(() -> {
-                mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvImei);
+                mSurvMsgs = com.ah.acr.messagebox.SurvivalChatStore.get(mSurvKey);
                 if (mSurvRecycler.getAdapter() != null) mSurvRecycler.getAdapter().notifyDataSetChanged();
                 updatePeek();
                 scrollBottom();

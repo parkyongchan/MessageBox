@@ -3561,8 +3561,15 @@ public class MainActivity extends AppCompatActivity {
                                     boolean _isGuide = full.startsWith("GUIDE:");
                                     boolean _isWeather = full.startsWith("WX:");
                                     if (_isGuide) {
-                                        SurvivalChatStore.add(codeNum, "server", full.substring(6));
-                                        android.util.Log.d("SURV-CHAT", "GUIDE recv from=" + codeNum + " len=" + (full.length()-6));
+                                        String _g = full.substring(6);
+                                        String _sid = null; String _body = _g;
+                                        if (_g.startsWith("SID=")) {
+                                            int _ci = _g.indexOf(':');
+                                            if (_ci > 4) { _sid = _g.substring(4, _ci).trim(); _body = _g.substring(_ci + 1); }
+                                        }
+                                        String _gkey = (_sid != null && !_sid.isEmpty()) ? _sid : codeNum;
+                                        SurvivalChatStore.add(_gkey, "server", _body);
+                                        android.util.Log.d("SURV-CHAT", "GUIDE recv key=" + _gkey + " sid=" + _sid + " len=" + _body.length());
                                     } else if (_isWeather) {
                                         WeatherStore.Weather _w = WeatherStore.addAndPersist(getApplicationContext(), codeNum, full);
                                         android.util.Log.d("WEATHER-RECV", "WX recv marine=" + (_w != null && _w.marine)

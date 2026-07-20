@@ -16,6 +16,8 @@ interface TacticalRecvDao {
 
     @Query("DELETE FROM tactical_recv")
     fun deleteAll()
+    @Query("DELETE FROM tactical_recv WHERE COALESCE(from_imei,'') = :imei")
+    fun deleteByFromImei(imei: String)
 
     @Query("SELECT COUNT(*) FROM tactical_recv")
     fun count(): Int

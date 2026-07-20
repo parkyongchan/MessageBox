@@ -122,6 +122,26 @@ public class TacticalStore {
         }
     }
 
+    public static synchronized void removeByFromImei(final android.content.Context ctx, final String fromImei) {
+        final String key = (fromImei == null) ? "" : fromImei;
+        java.util.Iterator<Entry> it = sEntries.iterator();
+        while (it.hasNext()) {
+            Entry e = it.next();
+            String ei = (e.data == null || e.data.fromImei == null) ? "" : e.data.fromImei;
+            if (ei.equals(key)) it.remove();
+        }
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+                        .getDatabase(ctx).tacticalRecvDao().deleteByFromImei(key);
+                } catch (Exception ex) {
+                    android.util.Log.e("TACTICAL-STORE", "removeByFromImei fail: " + ex.getMessage());
+                }
+            }
+        }).start();
+    }
+
     public static void clearAll(android.content.Context ctx) {
         try {
             com.ah.acr.messagebox.database.MsgRoomDatabase.Companion

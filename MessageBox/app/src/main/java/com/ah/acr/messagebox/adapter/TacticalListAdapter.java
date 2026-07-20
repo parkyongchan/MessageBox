@@ -19,7 +19,8 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
 
     public interface OnTacticalClickListener {
         void onTacticalClick(TacticalStore.Entry entry);   // 항목 클릭 → 지도 이동
-        void onTacticalDetail(TacticalStore.Entry entry);  // 상세 아이콘 클릭
+        void onTacticalDetail(TacticalStore.Entry entry);
+        void onTacticalDelete(TacticalStore.Entry entry);  // 상세 아이콘 클릭
     }
 
     private final List<TacticalStore.Entry> items = new ArrayList<>();
@@ -79,6 +80,7 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
         h.time.setText(sdf.format(new java.util.Date(e.recvAt)));
 
         h.itemView.setOnClickListener(v -> { if (listener != null) listener.onTacticalClick(e); });
+        h.itemView.setOnLongClickListener(v -> { if (listener != null) listener.onTacticalDelete(e); return true; });
         h.detail.setOnClickListener(v -> { if (listener != null) listener.onTacticalDetail(e); });
     }
 
