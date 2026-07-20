@@ -84,6 +84,11 @@ public class DevicesTabFragment extends Fragment {
     private MapView mapViewTracking;
     private Button btnStopTracking;
 
+    // [NAV] entry area: My Track button + travel mode toggle (0=WALK,1=VEHICLE,2=VESSEL)
+    private Button btnMyTrack;
+    private TextView navModeWalk, navModeVehicle, navModeVessel;
+    private int mNavMode = 0;
+
     private View mapModeToggleMyLoc;
 
     // ===== ViewModels & state =====
@@ -240,6 +245,10 @@ public class DevicesTabFragment extends Fragment {
         tvWaitingGps = root.findViewById(R.id.tvWaitingGps);
         mapViewTracking = root.findViewById(R.id.mapViewTracking);
         btnStopTracking = root.findViewById(R.id.btnStopTracking);
+        btnMyTrack = root.findViewById(R.id.btnMyTrack);
+        navModeWalk = root.findViewById(R.id.navModeWalk);
+        navModeVehicle = root.findViewById(R.id.navModeVehicle);
+        navModeVessel = root.findViewById(R.id.navModeVessel);
 
         mapModeToggleMyLoc = root.findViewById(R.id.mapModeToggleMyLoc);
     }
@@ -288,6 +297,16 @@ public class DevicesTabFragment extends Fragment {
     private void setupButtons() {
         btnStartTracking.setOnClickListener(v -> onStartClicked());
         btnStopTracking.setOnClickListener(v -> onStopClicked());
+
+        // [NAV] entry area listeners
+        if (btnMyTrack != null) btnMyTrack.setOnClickListener(v -> {
+            // My Track: current screen already shows track list; scroll to it / highlight
+            if (rvTracks != null) rvTracks.requestFocus();
+        });
+        if (navModeWalk != null) navModeWalk.setOnClickListener(v -> { selectNavMode(0); openNavRoute(0); });
+        if (navModeVehicle != null) navModeVehicle.setOnClickListener(v -> { selectNavMode(1); openNavRoute(1); });
+        if (navModeVessel != null) navModeVessel.setOnClickListener(v -> { selectNavMode(2); openNavRoute(2); });
+        selectNavMode(mNavMode);
     }
 
 
@@ -309,6 +328,25 @@ public class DevicesTabFragment extends Fragment {
         });
     }
 
+
+    // [NAV] travel mode toggle: highlight selected, dim others
+    private void selectNavMode(int mode) {
+        mNavMode = mode;
+        int on = 0xFF00E5D1, off = 0xFF95B0D4;
+        if (navModeWalk != null) navModeWalk.setTextColor(mode == 0 ? on : off);
+        if (navModeVehicle != null) navModeVehicle.setTextColor(mode == 1 ? on : off);
+        if (navModeVessel != null) navModeVessel.setTextColor(mode == 2 ? on : off);
+    }
+
+    // [NAV] open route planning screen for the selected travel mode
+    private void openNavRoute(int mode) {
+        try {
+            com.ah.acr.messagebox.nav.NavRouteFragment.newInstance(mode)
+                .show(getParentFragmentManager(), "NavRoute");
+        } catch (Exception ex) {
+            android.util.Log.e("NAV", "openNavRoute fail: " + ex.getMessage(), ex);
+        }
+    }
 
     private void openTrackDetail(MyTrackEntity track) {
         MyTrackDetailFragment dialog = MyTrackDetailFragment.newInstance(track.getId());

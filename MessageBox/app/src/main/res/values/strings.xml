@@ -220,7 +220,13 @@
     <!-- ⭐ Bottom Navigation Tabs -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="tab_chat">Chat</string>
-    <string name="tab_self">Self</string>
+    <string name="tab_self">NAV</string>
+    <!-- NAV feature -->
+    <string name="nav_my_track">My Track</string>
+    <string name="nav_mode_walk">WALK</string>
+    <string name="nav_mode_vehicle">VEHICLE</string>
+    <string name="nav_mode_vessel">VESSEL</string>
+    <string name="nav_section_title">Navigation</string>
     <string name="tab_network">Network</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_connect">Connect</string>

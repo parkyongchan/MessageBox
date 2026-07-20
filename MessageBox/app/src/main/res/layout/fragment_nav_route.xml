@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A1628">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#0D1628"
+        android:paddingHorizontal="14dp">
+        <TextView
+            android:id="@+id/nav_route_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="NAV"
+            android:textColor="#00E5D1"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/nav_route_fav"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FAV"
+            android:textColor="#FFEB3B"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginEnd="8dp" />
+        <TextView
+            android:id="@+id/nav_route_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLOSE"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp" />
+    </LinearLayout>
+
+    <!-- Summary bar: distance / ETA -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1628"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp">
+        <TextView
+            android:id="@+id/nav_route_summary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Long-press map to set destination"
+            android:textColor="#B0C4DE"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/nav_route_mode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WALK"
+            android:textColor="#00E5D1"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Map -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/nav_route_map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/nav_route_zoom_in"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@drawable/ic_tac_zoom_in"
+                android:contentDescription="Zoom in" />
+            <ImageButton
+                android:id="@+id/nav_route_zoom_out"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_map_button"
+                android:src="@drawable/ic_tac_zoom_out"
+                android:contentDescription="Zoom out" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Action bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#0D1628"
+        android:padding="10dp">
+        <Button
+            android:id="@+id/nav_route_calc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Get Route"
+            android:textColor="#0A1628"
+            android:textStyle="bold"
+            android:backgroundTint="#00E5D1"
+            android:layout_marginEnd="8dp" />
+        <Button
+            android:id="@+id/nav_route_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear"
+            android:textColor="#B0C4DE"
+            android:backgroundTint="#20344D" />
+    </LinearLayout>
+</LinearLayout>

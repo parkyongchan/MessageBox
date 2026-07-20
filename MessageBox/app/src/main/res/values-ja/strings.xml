@@ -215,7 +215,7 @@
     <!-- ⭐ ボトムナビゲーションタブ -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <string name="tab_chat">チャット</string>
-    <string name="tab_self">自機</string>
+    <string name="tab_self">NAV</string>
     <string name="tab_network">他機</string>
     <string name="tab_settings">設定</string>
     <string name="tab_connect">接続</string>
