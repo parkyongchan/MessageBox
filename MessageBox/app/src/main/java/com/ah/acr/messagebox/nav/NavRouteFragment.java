@@ -14,6 +14,8 @@ import androidx.fragment.app.DialogFragment;
 import com.ah.acr.messagebox.R;
 import com.ah.acr.messagebox.SurvivalFavStore;
 import com.ah.acr.messagebox.util.MapModeManager;
+import com.ah.acr.messagebox.nav.NavPlanner;
+import com.ah.acr.messagebox.database.MsgRoomDatabase;
 
 import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.util.GeoPoint;
@@ -46,6 +48,8 @@ public class NavRouteFragment extends DialogFragment {
 
     private double mStartLat, mStartLon;
     private double mDestLat = Double.NaN, mDestLon = Double.NaN;
+    private NavPlanner mNavPlanner;
+    private android.app.ProgressDialog mLoading;
 
     public static NavRouteFragment newInstance(int mode) {
         NavRouteFragment f = new NavRouteFragment();
@@ -72,6 +76,8 @@ public class NavRouteFragment extends DialogFragment {
         mModeLabel.setText(modeName(mMode));
 
         root.findViewById(R.id.nav_route_close).setOnClickListener(v -> dismiss());
+        root.findViewById(R.id.nav_route_saved).setOnClickListener(v ->
+                NavRoutesFragment.newInstance().show(getParentFragmentManager(), "nav_routes"));
         root.findViewById(R.id.nav_route_fav).setOnClickListener(v -> showFavList());
         root.findViewById(R.id.nav_route_calc).setOnClickListener(v -> calcRoute());
         root.findViewById(R.id.nav_route_clear).setOnClickListener(v -> clearRoute());
@@ -206,9 +212,76 @@ public class NavRouteFragment extends DialogFragment {
                 durS = r.distanceM / (kmh * 1000.0 / 3600.0);
             }
             drawRouteLine(r.geometry);
-            mSummary.setText(String.format(Locale.US, "%.1f km  ·  %s  (%s)",
+            mSummary.setText(String.format(Locale.US, "%.1f km  쨌  %s  (%s)",
                     r.distanceM / 1000.0, fmtDur(durS), modeName(mMode)));
+
+            // ---- NAV 3단계: 구간 분할 + 7일 날씨 확보 + DB 저장 ----
+            startWeatherPlan(r, durS);
         });
+    }
+
+    /** Segment split + 7-day weather + DB save (NAV step 3~4) */
+    private void startWeatherPlan(NavRouteService.RouteResult r, double durS) {
+        if (getContext() == null) return;
+        if (mNavPlanner == null) {
+            mNavPlanner = new NavPlanner(
+                    requireContext().getApplicationContext(),
+                    MsgRoomDatabase.Companion.getDatabase(requireContext().getApplicationContext()).navDao());
+        }
+
+        NavPlanner.RouteInput in = new NavPlanner.RouteInput();
+        in.mode           = modeName(mMode);
+        in.points         = r.geometry;
+        in.totalDistanceM = r.distanceM;
+        in.totalDurationS = (long) durS;
+        in.originLat = mStartLat;  in.originLon = mStartLon;
+        in.destLat   = mDestLat;   in.destLon   = mDestLon;
+        in.destName  = null;
+        in.geometry  = NavSegmenter.encodePolyline(r.geometry);
+        in.sourceApi = (mMode == 2) ? "straight" : "osrm";
+        in.cruiseSpeedKn = (mMode == 2) ? VESSEL_KNOTS : null;
+
+        // Loading indicator (long routes take time due to throttled weather calls)
+        mLoading = new android.app.ProgressDialog(getContext());
+        mLoading.setMessage("Fetching route data…");
+        mLoading.setCancelable(false);
+        mLoading.show();
+
+        mNavPlanner.run(in, new NavPlanner.Callback() {
+            @Override public void onProgress(int done, int total) {
+                if (!isAdded()) return;
+                if (mLoading != null && mLoading.isShowing())
+                    mLoading.setMessage("Fetching weather " + done + "/" + total + "…");
+                mSummary.setText(String.format(Locale.US, "%.1f km  ·  %s  (%s)  |  weather %d/%d",
+                        r.distanceM / 1000.0, fmtDur(durS), modeName(mMode), done, total));
+            }
+            @Override public void onComplete(long routeId, int segCount, int weatherOk) {
+                if (!isAdded()) return;
+                if (mLoading != null) { mLoading.dismiss(); mLoading = null; }
+                mSummary.setText(String.format(Locale.US,
+                        "%.1f km  ·  %s  (%s)  |  %d segments, %d weather saved (route #%d)",
+                        r.distanceM / 1000.0, fmtDur(durS), modeName(mMode),
+                        segCount, weatherOk, routeId));
+                promptStartGuide(routeId);
+            }
+            @Override public void onError(String message) {
+                if (!isAdded()) return;
+                if (mLoading != null) { mLoading.dismiss(); mLoading = null; }
+                Toast.makeText(getContext(), "Failed: " + message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    /** Ask whether to open the guidance screen after data is saved */
+    private void promptStartGuide(final long routeId) {
+        if (getContext() == null) return;
+        new android.app.AlertDialog.Builder(getContext())
+            .setTitle("Data ready")
+            .setMessage("Start route guidance?")
+            .setPositiveButton("Start", (d, w) ->
+                NavGuideFragment.newInstance(routeId).show(getParentFragmentManager(), "nav_guide"))
+            .setNegativeButton("Later", null)
+            .show();
     }
 
     private void drawRouteLine(List<GeoPoint> pts) {
@@ -293,5 +366,7 @@ public class NavRouteFragment extends DialogFragment {
     @Override public void onDestroyView() {
         super.onDestroyView();
         if (mMap != null) { mMap.onDetach(); mMap = null; }
+        if (mNavPlanner != null) { mNavPlanner.shutdown(); mNavPlanner = null; }
+        if (mLoading != null) { mLoading.dismiss(); mLoading = null; }
     }
 }

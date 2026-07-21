@@ -7,6 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.ah.acr.messagebox.nav.db.NavRoute
+import com.ah.acr.messagebox.nav.db.NavSegment
+import com.ah.acr.messagebox.nav.db.NavWeather
+import com.ah.acr.messagebox.nav.db.NavWeatherDay
+import com.ah.acr.messagebox.nav.db.NavDao
 
 @Database(
     entities = [
@@ -17,11 +22,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MyTrackPointEntity::class,
         SatTrackEntity::class,
         SatTrackPointEntity::class,
-        TacticalRecvEntity::class
+        TacticalRecvEntity::class,
+        NavRoute::class,
+        NavSegment::class,
+        NavWeather::class,
+        NavWeatherDay::class
     ],
-    version = 8,   // v7 -> v8: tactical_recv 테이블 추가 (전술 데이터 영속화)   // v6 -> v7: ack_state column (ACK V/VV state, isSend와 분리)
+    version = 9,   // v8 -> v9: NAV 테이블 추가 (nav_route/segment/weather/weather_day)
     exportSchema = false
 )
+
 @TypeConverters(Converters::class)
 abstract class MsgRoomDatabase : RoomDatabase() {
 
@@ -31,6 +41,7 @@ abstract class MsgRoomDatabase : RoomDatabase() {
     abstract fun myTrackDao(): MyTrackDao
     abstract fun satTrackDao(): SatTrackDao
     abstract fun tacticalRecvDao(): TacticalRecvDao
+    abstract fun navDao(): NavDao
 
     companion object {
         @Volatile
@@ -70,7 +81,7 @@ abstract class MsgRoomDatabase : RoomDatabase() {
             }
         }
 
-        // v7 -> v8: tactical_recv 테이블 (전술 데이터 영속화)
+        // v7 -> v8: tactical_recv ...
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -83,6 +94,49 @@ abstract class MsgRoomDatabase : RoomDatabase() {
             }
         }
 
+        // v8 -> v9: NAV 테이블 4종 추가 (구간 분할 + 7일 날씨 저장)
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `nav_route` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mode` TEXT, " +
+                    "`origin_lat` REAL NOT NULL, `origin_lon` REAL NOT NULL, " +
+                    "`dest_lat` REAL NOT NULL, `dest_lon` REAL NOT NULL, `dest_name` TEXT, " +
+                    "`total_distance_m` REAL NOT NULL, `total_duration_s` INTEGER NOT NULL, " +
+                    "`cruise_speed` REAL, `geometry` TEXT, `source_api` TEXT, " +
+                    "`fetched_at` INTEGER NOT NULL, `status` TEXT NOT NULL)"
+                )
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `nav_segment` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`route_id` INTEGER NOT NULL, `seq` INTEGER NOT NULL, " +
+                    "`rep_lat` REAL NOT NULL, `rep_lon` REAL NOT NULL, " +
+                    "`dist_from_start_m` REAL NOT NULL, `eta_offset_s` INTEGER NOT NULL, `label` TEXT, " +
+                    "FOREIGN KEY(`route_id`) REFERENCES `nav_route`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_nav_segment_route_id` ON `nav_segment` (`route_id`)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `nav_weather` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`segment_id` INTEGER NOT NULL, `marine` INTEGER NOT NULL, " +
+                    "`fetched_at` INTEGER NOT NULL, `json_daily` TEXT, " +
+                    "FOREIGN KEY(`segment_id`) REFERENCES `nav_segment`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_nav_weather_segment_id` ON `nav_weather` (`segment_id`)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `nav_weather_day` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `weather_id` INTEGER NOT NULL, " +
+                    "`date` TEXT, `t_min` REAL, `t_max` REAL, `precip_mm` REAL, " +
+                    "`wind_max` REAL, `wave_max` REAL, `weather_code` INTEGER, " +
+                    "FOREIGN KEY(`weather_id`) REFERENCES `nav_weather`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_nav_weather_day_weather_id` ON `nav_weather_day` (`weather_id`)")
+            }
+        }
+
         fun getDatabase(context: Context): MsgRoomDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -90,8 +144,8 @@ abstract class MsgRoomDatabase : RoomDatabase() {
                     MsgRoomDatabase::class.java,
                     "msgbox.db"
                 )
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)        // ⭐ 정식 마이그레이션 등록
-                    .fallbackToDestructiveMigration()    // 보험용 (마이그레이션 실패 시에만 작동)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .fallbackToDestructiveMigration()    // ...
                     .build()
                 INSTANCE = instance
                 instance

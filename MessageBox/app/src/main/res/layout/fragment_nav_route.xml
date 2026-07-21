@@ -23,6 +23,18 @@
             android:textSize="13sp"
             android:textStyle="bold" />
         <TextView
+            android:id="@+id/nav_route_saved"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SAVED"
+            android:textColor="#8BC34A"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginEnd="8dp" />
+        <TextView
             android:id="@+id/nav_route_fav"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

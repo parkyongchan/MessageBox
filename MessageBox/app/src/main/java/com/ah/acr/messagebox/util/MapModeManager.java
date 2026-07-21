@@ -68,6 +68,11 @@ public class MapModeManager {
     }
 
 
+    /** MBTiles directory used for offline maps (external files / mbtiles). */
+    public static File getMbtilesDir(Context ctx) {
+        return new File(ctx.getExternalFilesDir(null), MBTILES_SUBDIR);
+    }
+
     /**
      * Check if MBTiles files are available.
      */

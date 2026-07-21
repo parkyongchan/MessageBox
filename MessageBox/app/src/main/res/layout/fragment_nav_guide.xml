@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#101418">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#0D47A1">
+
+        <TextView
+            android:id="@+id/nav_guide_title"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="14dp"
+            android:gravity="center_vertical"
+            android:text="Route Guide"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/nav_guide_close"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:background="@android:color/transparent"
+            android:minWidth="0dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="Close"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+    </RelativeLayout>
+
+    <!-- Top banner: remaining / ETA / progress -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#17202A"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/nav_guide_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Waiting for location…"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/nav_guide_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progress="0" />
+
+        <TextView
+            android:id="@+id/nav_guide_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="#9E9E9E"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Map (with overlay widgets) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/nav_guide_map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Custom compass (rotated by device azimuth) -->
+        <ImageView
+            android:id="@+id/nav_guide_compass"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:src="@drawable/ic_tac_compass"
+            android:contentDescription="Compass" />
+
+        <!-- Map source selector -->
+        <Button
+            android:id="@+id/nav_guide_mapsrc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:background="#CC17202A"
+            android:minWidth="0dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Map"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/nav_guide_follow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="12dp"
+            android:background="#CC0D47A1"
+            android:minWidth="0dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="Follow ●"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+    </FrameLayout>
+
+    <!-- Segment weather cards (horizontal swipe) -->
+    <HorizontalScrollView
+        android:id="@+id/nav_guide_cards_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#0F1114"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/nav_guide_cards"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp" />
+    </HorizontalScrollView>
+
+</LinearLayout>

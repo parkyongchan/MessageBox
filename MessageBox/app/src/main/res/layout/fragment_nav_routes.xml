@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A1628">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#0D1628"
+        android:paddingHorizontal="14dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Saved Routes"
+            android:textColor="#00E5D1"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/nav_routes_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLOSE"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_map_button"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/nav_routes_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#0D1628"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="6dp"
+        android:text="Tap to open · Long-press to delete"
+        android:textColor="#7E9CB8"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/nav_routes_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp"
+        android:gravity="center"
+        android:text="No saved routes yet."
+        android:textColor="#7E9CB8"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/nav_routes_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp" />
+    </ScrollView>
+
+</LinearLayout>
