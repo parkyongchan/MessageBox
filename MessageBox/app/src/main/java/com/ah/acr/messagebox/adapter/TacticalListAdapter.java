@@ -50,11 +50,14 @@ public class TacticalListAdapter extends RecyclerView.Adapter<TacticalListAdapte
         TacticalStore.Entry e = items.get(position);
         String from = (e.data != null && e.data.fromImei != null && !e.data.fromImei.isEmpty())
                 ? e.data.fromImei : "Control";
-        // [SURV] 생존 데이터 판별 (markers 중 cat="S")
-        boolean _isSurv = false;
+        // [SURV] 생존 데이터 판별: 전술 마커(M)가 하나도 없고 생존 마커(S)만 있을 때만 SURVIVAL
+        boolean _hasSurv = false, _hasTac = false;
         if (e.data != null && e.data.markers != null) {
-            for (com.ah.acr.messagebox.TacticalParser.TMarker _m : e.data.markers) { if ("S".equals(_m.cat)) { _isSurv = true; break; } }
+            for (com.ah.acr.messagebox.TacticalParser.TMarker _m : e.data.markers) {
+                if ("S".equals(_m.cat)) _hasSurv = true; else _hasTac = true;
+            }
         }
+        boolean _isSurv = _hasSurv && !_hasTac;
         h.from.setText((_isSurv ? "SURVIVAL — " : "TACTICAL — ") + from);
 
         int mCnt = (e.data != null && e.data.markers != null) ? e.data.markers.size() : 0;
