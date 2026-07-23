@@ -117,6 +117,8 @@ public class SettingFragment extends Fragment {
 
     // Dirty 상태 관리
     private boolean mIsDirty = false;
+    private long mDirtyAtMs = 0L;                          // [dirty-timeout] last edit time
+    private static final long DIRTY_AUTO_CLEAR_MS = 60000L; // [dirty-timeout] idle -> auto clear
     private boolean mIsInitializing = true;
 
     // [Group] group receiver selected -> groupNo(10 digits), null if normal
@@ -236,7 +238,15 @@ public class SettingFragment extends Fragment {
         }
         if (vals.length < 3) { Log.v(TAG, "★X vals.length < 3, 종료"); return; }
         // [설정저장fix] 편집 중(dirty)이면 SET=? 폴링 응답으로 화면을 덮어쓰지 않음 (LED와 동일 보호)
-        if (mIsDirty) { Log.v(TAG, "★X 편집 중(dirty) → 화면 유지, 덮어쓰기 스킵"); return; }
+        if (mIsDirty) {
+            if (System.currentTimeMillis() - mDirtyAtMs < DIRTY_AUTO_CLEAR_MS) {
+                Log.v(TAG, "X dirty -> keep screen, skip overwrite");
+                return;
+            }
+            Log.v(TAG, "! dirty auto-clear (idle) -> refresh from device");
+            clearDirty();
+            Toast.makeText(getContext(), "Device settings changed - screen refreshed", Toast.LENGTH_SHORT).show();
+        }
         Log.v(TAG, "★2 파싱: vals=" + java.util.Arrays.toString(vals));
 
         // ★★★ 캐시 저장 — 다음 진입 시 즉시 복원할 수 있도록
@@ -402,6 +412,7 @@ public class SettingFragment extends Fragment {
 
     private void markDirty() {
         if (mIsInitializing) return;
+        mDirtyAtMs = System.currentTimeMillis();   // [dirty-timeout] refresh on every edit
         if (mIsDirty) return;
         mIsDirty = true;
         updateSaveButtonHighlight();
