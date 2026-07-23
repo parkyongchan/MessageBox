@@ -20,7 +20,8 @@ public class TacticalStore {
         public String codeNum;                 // 수신 경로(발신 연락처 코드)
         public TacticalParser.TacticalData data;
         public long recvAt;                    // 수신 시각(ms)
-        public String payload;                 // 원본 payload (상세 화면용)
+        public String payload;
+        public int dbId = 0;   // DB row id (0 = not persisted yet)                 // 원본 payload (상세 화면용)
     }
 
     private static final List<Entry> sEntries = new ArrayList<>();
@@ -92,7 +93,7 @@ public class TacticalStore {
             ent.setRecvAt(System.currentTimeMillis());
             TacticalParser.TacticalData td = TacticalParser.parse(payload);
             ent.setFromImei(td.fromImei);
-            com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+            long _newId = com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
                     .getDatabase(ctx).tacticalRecvDao().insert(ent);
             add(codeNum, td, payload);
         } catch (Exception e) {
@@ -112,7 +113,8 @@ public class TacticalStore {
                 e.codeNum = r.getCodeNum();
                 e.data = td;
                 e.payload = r.getPayload();
-                e.recvAt = r.getRecvAt();
+                e.recvAt = r.getRecvAt();
+                e.dbId = r.getId();
                 sEntries.add(e);
             }
             dedupBySession();
@@ -142,6 +144,42 @@ public class TacticalStore {
         }).start();
     }
 
+    /** [TAC/SURV] delete only entries of the current mode (survival-only vs tactical). */
+    public static synchronized void removeByFromImeiAndMode(final android.content.Context ctx,
+                                                            final String fromImei,
+                                                            final boolean survivalOnly) {
+        final String key = (fromImei == null) ? "" : fromImei;
+        final java.util.List<Integer> ids = new java.util.ArrayList<>();
+        java.util.Iterator<Entry> it = sEntries.iterator();
+        while (it.hasNext()) {
+            Entry e = it.next();
+            String ei = (e.data == null || e.data.fromImei == null) ? "" : e.data.fromImei;
+            if (!ei.equals(key)) continue;
+            boolean hasSurv = false, hasTac = false;
+            if (e.data != null) {
+                for (TacticalParser.TMarker m : e.data.markers) {
+                    if ("S".equals(m.cat)) hasSurv = true; else hasTac = true;
+                }
+                if (!e.data.lines.isEmpty() || !e.data.measures.isEmpty()) hasTac = true;
+            }
+            boolean match = survivalOnly ? (hasSurv && !hasTac) : hasTac;
+            if (!match) continue;
+            if (e.dbId > 0) ids.add(e.dbId);
+            it.remove();
+        }
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    for (Integer id : ids) {
+                        com.ah.acr.messagebox.database.MsgRoomDatabase.Companion
+                            .getDatabase(ctx).tacticalRecvDao().deleteById(id);
+                    }
+                } catch (Exception ex) {
+                    android.util.Log.e("TACTICAL-STORE", "removeByFromImeiAndMode fail: " + ex.getMessage());
+                }
+            }
+        }).start();
+    }
     public static void clearAll(android.content.Context ctx) {
         try {
             com.ah.acr.messagebox.database.MsgRoomDatabase.Companion

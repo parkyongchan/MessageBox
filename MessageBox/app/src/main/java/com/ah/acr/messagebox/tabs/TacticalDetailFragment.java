@@ -37,6 +37,7 @@ public class TacticalDetailFragment extends DialogFragment {
     private static final String ARG_PAYLOAD = "payload";
     private static final String ARG_FROM = "fromImei";
     private static final String ARG_SID = "sessionId";
+    private static final String ARG_SURV = "survOnly";   // 1=survival, 0=tactical, absent=no filter
     private static final String[] AFFIL = {"HOSTILE","FRIENDLY","UNKNOWN","NEUTRAL","POI","ENGAGED","THREAT"};
     private static final int[] SET_COLORS = {0xFF00E5FF, 0xFFFF6D00, 0xFFFFEB3B, 0xFF76FF03, 0xFFE040FB, 0xFFFF4081, 0xFF40C4FF, 0xFFB388FF};
 
@@ -74,6 +75,16 @@ public class TacticalDetailFragment extends DialogFragment {
     // [S5-nav] 경로 위험 검사용: 위험지역(survType 4) 좌표 수집
     private final java.util.List<double[]> mHazards = new java.util.ArrayList<>();
 
+    public static TacticalDetailFragment newInstance(String fromImei, long sessionId, boolean survivalOnly) {
+        TacticalDetailFragment f = new TacticalDetailFragment();
+        Bundle b = new Bundle();
+        b.putString(ARG_FROM, fromImei);
+        b.putLong(ARG_SID, sessionId);
+        b.putInt(ARG_SURV, survivalOnly ? 1 : 0);
+        f.setArguments(b);
+        return f;
+    }
+
     public static TacticalDetailFragment newInstance(String fromImei, long sessionId) {
         TacticalDetailFragment f = new TacticalDetailFragment();
         Bundle b = new Bundle();
@@ -108,10 +119,14 @@ public class TacticalDetailFragment extends DialogFragment {
 
                 String fromImei = getArguments() != null ? getArguments().getString(ARG_FROM) : "";
         long _argSid = getArguments() != null ? getArguments().getLong(ARG_SID, -1L) : -1L;
+        int _argSurv = getArguments() != null ? getArguments().getInt(ARG_SURV, -1) : -1;
         String fKey = (fromImei == null) ? "" : fromImei;
         for (TacticalStore.Entry e : TacticalStore.getAll()) {
             if (e.data == null) continue;
             String k = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            boolean _eS = false;
+            for (TacticalParser.TMarker _m : e.data.markers) { if ("S".equals(_m.cat)) { _eS = true; break; } }
+            if (_argSurv >= 0 && ((_argSurv == 1) != _eS)) continue;   // [TAC/SURV] category filter
             if (_argSid >= 0) { if (e.data.sessionId == _argSid) mSets.add(e); } else if (k.equals(fKey)) mSets.add(e);
         }
         java.util.Collections.sort(mSets, (x, y) -> Long.compare(x.recvAt, y.recvAt));
@@ -195,7 +210,16 @@ public class TacticalDetailFragment extends DialogFragment {
         } catch (Exception e) {
             android.util.Log.e("TAC-DETAIL", "render fail", e);
         }
-        initSurvivalPanel(root);
+        // [TAC-SURV-GUARD] survival panel only for survival-only data
+        boolean _hasSurv = false, _hasTac = false;
+        for (TacticalStore.Entry _e : mSets) {
+            if (_e.data == null) continue;
+            for (TacticalParser.TMarker _m : _e.data.markers) {
+                if ("S".equals(_m.cat)) _hasSurv = true; else _hasTac = true;
+            }
+            if (!_e.data.lines.isEmpty() || !_e.data.measures.isEmpty()) _hasTac = true;
+        }
+        if (_hasSurv && !_hasTac) initSurvivalPanel(root);
         initFavorites(root);
         showEnterGuide(root);
         return root;

@@ -423,7 +423,9 @@ public class MapTabFragment extends Fragment {
         java.util.Map<String, TacticalStore.Entry> latestByImei = new java.util.HashMap<>();
         for (TacticalStore.Entry e : allEntries) {
             if (e.data == null) continue;
-            String key = (e.data.fromImei == null) ? "" : e.data.fromImei;
+            boolean _hs = false;
+            for (TacticalParser.TMarker _m : e.data.markers) { if ("S".equals(_m.cat)) { _hs = true; break; } }
+            String key = ((e.data.fromImei == null) ? "" : e.data.fromImei) + "#" + (_hs ? "S" : "T");
             TacticalStore.Entry cur = latestByImei.get(key);
             if (cur == null || e.recvAt > cur.recvAt) latestByImei.put(key, e);
         }
@@ -723,10 +725,12 @@ public class MapTabFragment extends Fragment {
                     if (e.data == null || e.payload == null) return;
                     String fromImei = (e.data.fromImei == null) ? "" : e.data.fromImei;
                     long _detSid = (e.data != null) ? e.data.sessionId : -1L;
+                    boolean _detSurv = false;
+                    if (e.data != null) { for (TacticalParser.TMarker _m : e.data.markers) { if ("S".equals(_m.cat)) { _detSurv = true; break; } } }
                     android.util.Log.d("SURV-DETAIL", "677 path fromImei=[" + fromImei + "] dataNull=" + (e.data==null));
                     try {
                         com.ah.acr.messagebox.tabs.TacticalDetailFragment dlg =
-                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei, _detSid);
+                            com.ah.acr.messagebox.tabs.TacticalDetailFragment.newInstance(fromImei, _detSid, _detSurv);
                         dlg.show(getParentFragmentManager(), "TacticalDetail");
                     } catch (Exception ex) {
                         android.util.Log.e(TAG, "TacticalDetail open failed: " + ex.getMessage(), ex);
@@ -953,7 +957,7 @@ public class MapTabFragment extends Fragment {
             .setTitle("Delete")
             .setMessage("Delete received data from " + label + " ?")
             .setPositiveButton("Delete", (d, w) -> {
-                TacticalStore.removeByFromImei(requireContext().getApplicationContext(), fromImei);
+                TacticalStore.removeByFromImeiAndMode(requireContext().getApplicationContext(), fromImei, mCurrentMode == MODE_SURVIVAL);
                 if (fromImei.equals(mSelFromImei)) mSelFromImei = null;
                 java.util.List<TacticalStore.Entry> _lt = getLatestTacticalEntries(mCurrentMode);
                 mTacticalAdapter.submit(_lt);
