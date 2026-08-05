@@ -175,8 +175,8 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.concurrent.atomic.AtomicInteger mLargeMsgIdSeq = new java.util.concurrent.atomic.AtomicInteger(new java.util.Random().nextInt(256));   // [idFix3] 부팅마다 랜덤 시작 → msgId=0 고정 충돌 방지
     private final java.util.concurrent.atomic.AtomicInteger mLargeSendIdSeq = new java.util.concurrent.atomic.AtomicInteger(800);
     // ⭐ ACK 송신: 모뎀 수락 에코(SENDING=<idx>,OK) 대기 (doSendPending과 동일 메커니즘)
-    private static final long ACK_ECHO_TIMEOUT_MS = 10000;   // 1회 대기 10초
-    private static final int  ACK_MAX_ATTEMPTS = 3;          // 에코 없으면 재송신(최대 3회)
+    private static final long ACK_ECHO_TIMEOUT_MS = 30000;   // 1회 대기 30초 (위성 왕복 + 위치 MO 경합 여유)
+    private static final int  ACK_MAX_ATTEMPTS = 5;          // 에코 없으면 재송신(최대 5회, 총 150초)
     private static final long BROAD_TIMEOUT_MS = 15000;
     private static final long INFO_TIMEOUT_MS = 8000;
     private static final long PERIODIC_SYNC_MS = 30000;
