@@ -163,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
     private static final long LARGE_MSG_DONE_WINDOW_MS = 10 * 60 * 1000L;
     private final java.util.Map<Integer, String> mSentLargeMsg = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeMsgTo = new java.util.HashMap<>();
+    private com.ah.acr.messagebox.nav.NavSatelliteProviderImpl mNavSatProvider = null;   // [NAV] 위성 폴백 provider
     // [fileMsg MO복구] 보낸 파일/사진 byte[] + 메타 (~Q:/auto/수동 재전송용)
     private final java.util.Map<Integer, byte[]> mSentLargeFile = new java.util.HashMap<>();
     private final java.util.Map<Integer, String> mSentLargeFileName = new java.util.HashMap<>();
@@ -736,6 +737,23 @@ public class MainActivity extends AppCompatActivity {
         showCancelSnackbar("WEATHER", key);   // [CLIMATE] 발신 후 취소 스낵바
     }
 
+    // [NAV] 위성 경로요청 발사기 + provider 접근자
+    public com.ah.acr.messagebox.nav.NavSatelliteProviderImpl getNavSatProvider() {
+        if (mNavSatProvider == null) {
+            mNavSatProvider = new com.ah.acr.messagebox.nav.NavSatelliteProviderImpl(
+                    (key, memo) -> sendNavRequest(key, memo));
+        }
+        return mNavSatProvider;
+    }
+    // [NAV] ~N:1 위성 발사 (WEATHER ~W:1 과 동일 패턴)
+    public void sendNavRequest(String key, String memo) {
+        // writeQueue(LiveData)는 메인 스레드에서만 offer 가능 → runOnUiThread
+        runOnUiThread(() -> {
+            String packet = buildSurvivalPacket("~N:1", memo);
+            BLE.INSTANCE.getWriteQueue().offer(packet);
+            Log.v("NAV-SAT", "MO send: key=" + key + " memo=" + memo);
+        });
+    }
     // [SURVIVAL] 0x07 패킷 조립 (채팅 doSendPending과 동일 형식). codeNum=""=서버.
     private String buildSurvivalPacket(String title, String memo) {
         String codeNum = "";   // addrForSend: SERVER -> ""
@@ -3560,6 +3578,7 @@ public class MainActivity extends AppCompatActivity {
                                     // 전술이면 채팅 본문 = 요약, 아니면 원문
                                     boolean _isGuide = full.startsWith("GUIDE:");
                                     boolean _isWeather = full.startsWith("WX:");
+                                    boolean _isNav = full.startsWith("NWX:");   // [NAV] 위성 경로응답
                                     if (_isGuide) {
                                         String _g = full.substring(6);
                                         String _sid = null; String _body = _g;
@@ -3578,6 +3597,9 @@ public class MainActivity extends AppCompatActivity {
                                         runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this,
                                                 (_w != null && _w.marine ? "\ud574\uc0c1 \ub0a0\uc528 \uc218\uc2e0" : "\uc721\uc0c1 \ub0a0\uc528 \uc218\uc2e0"),
                                                 android.widget.Toast.LENGTH_SHORT).show());
+                                    } else if (_isNav) {
+                                        android.util.Log.d("NAV-RECV", "NWX recv len=" + full.length());
+                                        if (mNavSatProvider != null) mNavSatProvider.onNwxReceived(null, full);
                                     }
                                     String bubbleBody = (tacticalSummary != null) ? tacticalSummary : full;
                                     MsgEntity addMsg = new MsgEntity(0, false, codeNum, "", bubbleBody,
@@ -3585,7 +3607,7 @@ public class MainActivity extends AppCompatActivity {
                                             new Date(System.currentTimeMillis()),
                                             new Date(System.currentTimeMillis()),
                                             false, false, false);
-                                    if (!_isGuide && !_isWeather) insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
+                                    if (!_isGuide && !_isWeather && !_isNav) insertMsgWithDedupAndEcho(addMsg, codeNum, bubbleBody);
                                     mLargeMsgBuf.remove(msgId);
                                     mLargeMsgTotal.remove(msgId);
                                     mLargeMsgSender.remove(msgId);

@@ -199,6 +199,12 @@ public class NavRouteFragment extends DialogFragment {
             return;
         }
         mSummary.setText("Calculating...");
+        // [NAV] 오프라인이면 OSRM 건너뛰고 바로 위성 경로요청
+        if (!NavConnectivity.isOnline(requireContext())) {
+            android.util.Log.i("NAV-SAT", "offline at calcRoute -> satellite");
+            startSatelliteRoute();
+            return;
+        }
         NavRouteService.requestRoute(mMode, mStartLat, mStartLon, mDestLat, mDestLon, r -> {
             if (!isAdded()) return;
             if (!r.ok) { mSummary.setText("Route failed: " + r.error); return; }
@@ -220,6 +226,58 @@ public class NavRouteFragment extends DialogFragment {
         });
     }
 
+    // [NAV] 오프라인 전용: 경로계산까지 서버(위성)에 위임. points 없이 출발/목적지만 보냄.
+    private void startSatelliteRoute() {
+        if (getContext() == null) return;
+        if (mNavPlanner == null) {
+            mNavPlanner = new NavPlanner(
+                    requireContext().getApplicationContext(),
+                    MsgRoomDatabase.Companion.getDatabase(requireContext().getApplicationContext()).navDao());
+        }
+        try {
+            if (getActivity() instanceof com.ah.acr.messagebox.MainActivity) {
+                mNavPlanner.setSatelliteProvider(
+                        ((com.ah.acr.messagebox.MainActivity) getActivity()).getNavSatProvider());
+            }
+        } catch (Exception e) {
+            android.util.Log.w("NAV-SAT", "provider link fail: " + e.getMessage());
+        }
+        NavPlanner.RouteInput in = new NavPlanner.RouteInput();
+        in.mode      = modeName(mMode);
+        in.points    = new java.util.ArrayList<>();
+        in.originLat = mStartLat;  in.originLon = mStartLon;
+        in.destLat   = mDestLat;   in.destLon   = mDestLon;
+        in.destName  = null;
+        in.cruiseSpeedKn = (mMode == 2) ? VESSEL_KNOTS : null;
+
+        mLoading = new android.app.ProgressDialog(getContext());
+        mLoading.setMessage("Requesting route via satellite...");
+        mLoading.setCancelable(false);
+        mLoading.show();
+        mSummary.setText("Offline - requesting route via satellite...");
+
+        mNavPlanner.run(in, new NavPlanner.Callback() {
+            @Override public void onProgress(int done, int total) {
+                if (!isAdded()) return;
+                if (mLoading != null && mLoading.isShowing())
+                    mLoading.setMessage("Satellite... " + done + "/" + total);
+            }
+            @Override public void onComplete(long routeId, int segCount, int weatherOk) {
+                if (!isAdded()) return;
+                if (mLoading != null) { mLoading.dismiss(); mLoading = null; }
+                mSummary.setText(String.format(Locale.US,
+                        "Satellite route saved: %d segments (route #%d)", segCount, routeId));
+                promptStartGuide(routeId);
+            }
+            @Override public void onError(String message) {
+                if (!isAdded()) return;
+                if (mLoading != null) { mLoading.dismiss(); mLoading = null; }
+                mSummary.setText("Satellite failed: " + message);
+                Toast.makeText(getContext(), "Satellite failed: " + message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     /** Segment split + 7-day weather + DB save (NAV step 3~4) */
     private void startWeatherPlan(NavRouteService.RouteResult r, double durS) {
         if (getContext() == null) return;
@@ -227,6 +285,15 @@ public class NavRouteFragment extends DialogFragment {
             mNavPlanner = new NavPlanner(
                     requireContext().getApplicationContext(),
                     MsgRoomDatabase.Companion.getDatabase(requireContext().getApplicationContext()).navDao());
+            // [NAV] 위성 폴백 provider 연결 (오프라인 시 사용)
+            try {
+                if (getActivity() instanceof com.ah.acr.messagebox.MainActivity) {
+                    mNavPlanner.setSatelliteProvider(
+                            ((com.ah.acr.messagebox.MainActivity) getActivity()).getNavSatProvider());
+                }
+            } catch (Exception e) {
+                android.util.Log.w("NAV-SAT", "provider link fail: " + e.getMessage());
+            }
         }
 
         NavPlanner.RouteInput in = new NavPlanner.RouteInput();
